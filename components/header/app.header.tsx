@@ -46,9 +46,9 @@ export default function Header() {
         >
           {[
             { name: "Trang chủ", path: "/" },
-            { name: "Dịch vụ", path: "/khachhang/dichvu" },
-            { name: "Về chúng tôi", path: "/khachhang/about" },
-            { name: "Liên hệ", path: "/khachhang/lienhe" },
+            { name: "Dịch vụ", path: "/customer/list-services" },
+            { name: "Về chúng tôi", path: "/customer/about" },
+            { name: "Liên hệ", path: "/customer/contact" },
           ].map((item) => (
             <Link
               key={item.name}
@@ -71,7 +71,7 @@ export default function Header() {
         {/* Auth Buttons */}
         <div className="hidden md:flex gap-4 items-center">
           <Link
-            href="/khachhang/dangky"
+            href="/customer/sign-up"
             className="px-5 py-2.5 border-2 rounded-xl font-medium hover:scale-105 transition-all duration-300"
             style={{
               borderColor: primaryColor,
@@ -88,7 +88,7 @@ export default function Header() {
           </Link>
 
           <Link
-            href="/khachhang/dangnhap"
+            href="/customer/sign-in"
             className="px-5 py-2.5 text-white rounded-xl font-medium hover:scale-105 transition-all duration-300 shadow-[0_4px_14px_0_rgba(0,153,102,0.39)] hover:shadow-[0_6px_20px_rgba(0,153,102,0.23)]"
             style={{
               backgroundColor: primaryColor,
@@ -142,9 +142,9 @@ export default function Header() {
         >
           {[
             { name: "Trang chủ", path: "/" },
-            { name: "Dịch vụ", path: "/khachhang/dichvu" },
-            { name: "Về chúng tôi", path: "/khachhang/about" },
-            { name: "Liên hệ", path: "/khachhang/lienhe" },
+            { name: "Dịch vụ", path: "/customer/list-services" },
+            { name: "Về chúng tôi", path: "/customer/about" },
+            { name: "Liên hệ", path: "/customer/contact" },
           ].map((item) => (
             <Link
               key={item.name}
@@ -162,7 +162,7 @@ export default function Header() {
         </nav>
         <div className="flex flex-col gap-3 px-10 pb-6 pt-2 border-t border-gray-100 mt-2">
           <Link
-            href="/login"
+            href="/customer/sign-up"
             className="px-4 py-3 border-2 rounded-xl transition-all duration-300 text-center font-bold"
             style={{
               borderColor: primaryColor,
@@ -176,10 +176,10 @@ export default function Header() {
               (e.currentTarget.style.backgroundColor = "transparent")
             }
           >
-            Người thuê
+            Đăng ký
           </Link>
           <Link
-            href="/worker/register"
+            href="/customer/sign-in"
             className="px-4 py-3 text-white rounded-xl transition-all duration-300 text-center font-bold shadow-md"
             style={{
               backgroundColor: primaryColor,
@@ -192,7 +192,7 @@ export default function Header() {
               (e.currentTarget.style.backgroundColor = primaryColor)
             }
           >
-            Người giúp việc
+            Đăng nhập
           </Link>
         </div>
       </div>

@@ -6,7 +6,7 @@ import Link from "next/link";
 
 type Role = "CUSTOMER" | "PARTNER";
 
-export default function RoleBasedLogin() {
+export default function Login() {
   const [activeRole, setActiveRole] = useState<Role>("CUSTOMER");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -197,7 +197,7 @@ export default function RoleBasedLogin() {
             <p className="text-stone-500 text-sm">
               Chưa có tài khoản?{" "}
               <Link
-                href="/khachhang/dangky"
+                href="/customer/sign-up"
                 className="font-bold text-amber-500 hover:text-amber-600 transition-colors"
               >
                 Đăng ký ngay

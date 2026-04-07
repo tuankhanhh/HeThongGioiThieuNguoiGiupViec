@@ -185,7 +185,7 @@ function ServiceCard({ service }: { service: ServiceType }) {
         </ul>
 
         {/* Action Button */}
-        <Link href="/khachhang/dichvu/datdichvu">
+        <Link href="/customer/list-services/service-type">
           <button className="w-full py-3 px-4 bg-stone-50 hover:bg-amber-500 hover:text-white text-stone-700 font-bold rounded-xl border border-stone-200 hover:border-amber-500 transition-all duration-300 mt-auto">
             Đặt dịch vụ
           </button>
