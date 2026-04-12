@@ -1,269 +1,384 @@
 "use client";
 
-import React, { useState } from "react";
-import { format, differenceInCalendarDays } from "date-fns";
+import React, { useState, useEffect } from "react";
+import { format, isBefore, startOfDay, addHours, parse } from "date-fns";
 import { vi } from "date-fns/locale";
-import { DayPicker, DateRange } from "react-day-picker";
+import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
+import { useRouter } from "next/navigation";
 
-// Import MUI Icons
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
-import Link from "next/link";
+// MUI Icons
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+
 import BookingStepper from "@/components/BookingStepper";
-import OrderSummary from "@/components/OrderSumary";
+import OrderSummary, { DayOrder } from "@/components/OrderSumary";
+import Swal from "sweetalert2";
 
-export default function TimeSelectionPage() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: new Date(),
-  });
-
-  // Mặc định chọn 14:00 (định dạng 24h)
-  const [startTime, setStartTime] = useState("14:00");
-  const [duration, setDuration] = useState<number>(4);
-
-  // ----- TÍNH TOÁN GIÁ TIỀN ĐỘNG -----
-  const PRICE_PER_HOUR = 150000;
-  const PRICE_FULL_DAY = 1000000;
-
-  const numberOfDays =
-    dateRange?.from && dateRange?.to
-      ? differenceInCalendarDays(dateRange.to, dateRange.from) + 1
-      : dateRange?.from
-        ? 1
-        : 0;
-
-  const basePricePerDay =
-    duration === 24 ? PRICE_FULL_DAY : duration * PRICE_PER_HOUR;
-
-  const totalBasePrice = basePricePerDay * numberOfDays;
-  const vat = totalBasePrice * 0.08;
-  const finalPrice = totalBasePrice + vat;
-
-  // Formatter tiền tệ & Ngày tháng
-  const formatVND = (amount: number) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-
-  const formatSingleDate = (date?: Date) => {
-    if (!date) return "Chưa chọn";
-    return format(date, "dd/MM/yyyy");
+// ---------------- DATA MAPPING ----------------
+const MOCK_SERVICES_DB: Record<string, { name: string; pricePerHour: number }> =
+  {
+    cleaning: { name: "Dọn dẹp nhà cửa", pricePerHour: 100000 },
+    cooking: { name: "Nấu ăn tại gia", pricePerHour: 120000 },
+    childcare: { name: "Chăm sóc trẻ em", pricePerHour: 150000 },
+    eldercare: { name: "Chăm sóc người già", pricePerHour: 150000 },
+    "sofa-cleaning": { name: "Giặt sofa & nệm", pricePerHour: 200000 },
+    combo: { name: "Tổng vệ sinh", pricePerHour: 250000 },
   };
 
-  // ----- TÍNH THỜI GIAN KẾT THÚC (24H) -----
-  const calculateEndTime = () => {
-    const [hours, minutes] = startTime.split(":").map(Number);
-    let endHour = hours + duration;
-    let daySuffix = "cùng ngày";
+export default function TimeSelectionContent() {
+  const router = useRouter();
 
-    // Nếu thời gian cộng dồn qua 24h (nửa đêm)
-    if (endHour >= 24) {
-      endHour -= 24;
-      daySuffix = "hôm sau";
+  // ✅ FIX: Thêm state để kiểm tra mounted
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
+  // ✅ 1. Lấy danh sách ID dịch vụ đã chọn từ trang 1
+  const [savedServiceIds] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const services = localStorage.getItem("booking_services");
+      try {
+        const parsed = services ? JSON.parse(services) : [];
+        return parsed.length > 0 ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // ✅ 2. Quản lý danh sách các ngày làm việc (Mặc định chọn ngày hôm nay)
+  const [selectedWorkDays, setSelectedWorkDays] = useState<DayOrder[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("booking_workdays");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const rawServices = localStorage.getItem("booking_services");
+      const currentIds = rawServices ? JSON.parse(rawServices) : [];
+
+      const defaultServices = currentIds.map((id: string) => {
+        const info = MOCK_SERVICES_DB[id];
+        return {
+          id,
+          name: info?.name || "Dịch vụ",
+          duration: 2,
+          price: (info?.pricePerHour || 0) * 2,
+        };
+      });
+
+      return [
+        {
+          executionDate: todayStr,
+          startTime: "08:00",
+          services: defaultServices,
+        },
+      ];
+    }
+    return [];
+  });
+
+  // ✅ 3. Kiểm tra nếu chưa chọn dịch vụ ở trang 1 thì yêu cầu quay lại
+  useEffect(() => {
+    if (isMounted && savedServiceIds.length === 0) {
+      Swal.fire({
+        title: "Chưa chọn dịch vụ",
+        text: "Vui lòng chọn loại dịch vụ bạn cần trước khi chọn thời gian.",
+        icon: "warning",
+        confirmButtonColor: "#0d7660",
+      }).then(() => {
+        router.push("/customer/list-services");
+      });
+    }
+  }, [savedServiceIds, router, isMounted]);
+
+  // ✅ 4. Đồng bộ localStorage khi thay đổi lịch làm việc
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem(
+        "booking_workdays",
+        JSON.stringify(selectedWorkDays),
+      );
+    }
+  }, [selectedWorkDays, isMounted]);
+
+  // ---------------- LOGIC XỬ LÝ ----------------
+
+  const handleDayClick = (day: Date) => {
+    // Chặn chọn các ngày trong quá khứ
+    if (isBefore(day, startOfDay(new Date()))) return;
+
+    const dateStr = format(day, "yyyy-MM-dd");
+    const isAlreadySelected = selectedWorkDays.some(
+      (d) => d.executionDate === dateStr,
+    );
+
+    if (isAlreadySelected) {
+      // Nếu người dùng click vào ngày đã chọn (có ý định bỏ chọn)
+      // KIỂM TRA: Nếu chỉ còn 1 ngày duy nhất thì KHÔNG cho phép xóa
+      if (selectedWorkDays.length <= 1) {
+        Swal.fire({
+          title: "Thông báo",
+          text: "Bạn cần chọn ít nhất một ngày để thực hiện dịch vụ.",
+          icon: "info",
+          confirmButtonColor: "#0d7660",
+        });
+        return; // Dừng hàm tại đây, không cập nhật state
+      }
+
+      // Nếu có nhiều hơn 1 ngày, tiến hành lọc bỏ ngày vừa click
+      setSelectedWorkDays(
+        selectedWorkDays.filter((d) => d.executionDate !== dateStr),
+      );
+    } else {
+      // Logic thêm ngày mới (giữ nguyên như cũ của bạn)
+      const servicesForThisDay = savedServiceIds.map((id) => {
+        const info = MOCK_SERVICES_DB[id];
+        return {
+          id,
+          name: info?.name || "Dịch vụ",
+          duration: 2,
+          price: (info?.pricePerHour || 0) * 2,
+        };
+      });
+
+      const newDay: DayOrder = {
+        executionDate: dateStr,
+        startTime: "08:00",
+        services: servicesForThisDay,
+      };
+
+      setSelectedWorkDays(
+        [...selectedWorkDays, newDay].sort(
+          (a, b) =>
+            new Date(a.executionDate).getTime() -
+            new Date(b.executionDate).getTime(),
+        ),
+      );
+    }
+  };
+  const updateStartTime = (dateIdx: number, time: string) => {
+    const updated = [...selectedWorkDays];
+    const targetDate = parse(
+      updated[dateIdx].executionDate,
+      "yyyy-MM-dd",
+      new Date(),
+    );
+    const [hours] = time.split(":").map(Number);
+    const selectedDateTime = addHours(startOfDay(targetDate), hours);
+    const minTimeAllowed = addHours(new Date(), 5);
+
+    if (isBefore(selectedDateTime, minTimeAllowed)) {
+      Swal.fire({
+        title: "Thời gian không hợp lệ",
+        text: "Vui lòng chọn thời gian thực hiện cách hiện tại ít nhất 5 tiếng.",
+        icon: "error",
+        confirmButtonColor: "#0d7660",
+      });
+      return;
     }
 
-    return `${endHour.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")} ${daySuffix}`;
+    updated[dateIdx].startTime = time;
+    setSelectedWorkDays(updated);
   };
 
-  // Tạo danh sách giờ (Từ 06:00 đến 18:00) theo hệ 24h
-  const timeOptions = Array.from({ length: 13 }, (_, i) => {
-    const hour = i + 6;
-    return `${hour.toString().padStart(2, "0")}:00`;
-  });
+  const updateServiceDuration = (
+    dateIdx: number,
+    serviceIdx: number,
+    duration: number,
+  ) => {
+    const updated = [...selectedWorkDays];
+    const service = updated[dateIdx].services[serviceIdx];
+    const pricePerHour = MOCK_SERVICES_DB[service.id]?.pricePerHour || 0;
+
+    updated[dateIdx].services[serviceIdx] = {
+      ...service,
+      duration: duration,
+      price: pricePerHour * duration,
+    };
+    setSelectedWorkDays(updated);
+  };
+
+  const timeOptions = Array.from(
+    { length: 15 },
+    (_, i) => `${(i + 6).toString().padStart(2, "0")}:00`,
+  );
+
+  // ✅ FIX: Trả về null hoặc skeleton nếu chưa mount để tránh lệch HTML
+  if (!isMounted) return null;
 
   return (
     <div className="min-h-screen bg-[#f8fbfb] py-10 px-4 font-sans text-gray-800">
       <BookingStepper activeStep={1} />
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Chọn thời gian thuê
+            Thiết lập lịch làm việc
           </h1>
-          <p className="text-gray-500 text-sm">
-            Vui lòng chọn khoảng thời gian và gói giờ phù hợp. Hệ thống sẽ tự
-            động tính toán chi phí cho bạn.
+          <p className="text-gray-500">
+            Hệ thống đã tự động chọn ngày hôm nay. Bạn có thể chọn thêm hoặc
+            thay đổi ngày khác.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* ---- CỘT TRÁI ---- */}
-          <div className="lg:col-span-8 flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row gap-6 items-start">
-              {/* --- BỘ LỊCH RANGE --- */}
-              <div className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100 flex-1 w-full max-w-sm">
-                <style>{`
-                  .rdp { 
-                    margin: 0; 
-                    --rdp-cell-size: 40px; 
-                    --rdp-accent-color: #0d7660; 
-                  }
-                  .rdp-caption_label { 
-                    font-size: 1.125rem; 
-                    font-weight: 700; 
-                    color: #1f2937; 
-                    text-transform: capitalize;
-                  }
-                  .rdp-head_cell { 
-                    font-size: 11px; 
-                    color: #9ca3af; 
-                    font-weight: 600; 
-                    text-transform: uppercase; 
-                  }
-                  .rdp-day { font-size: 14px; font-weight: 500; }
-                  
-                  .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { 
-                    background-color: #0d7660;
-                    color: white; 
-                  }
-
-                  .rdp-day_range_middle {
-                    background-color: #e4f7f2 !important;
-                    color: #0d7660 !important;
-                    border-radius: 0 !important;
-                  }
-
-                  .rdp-day_range_start:not(.rdp-day_range_end) {
-                    border-top-right-radius: 0 !important;
-                    border-bottom-right-radius: 0 !important;
-                  }
-
-                  .rdp-day_range_end:not(.rdp-day_range_start) {
-                    border-top-left-radius: 0 !important;
-                    border-bottom-left-radius: 0 !important;
-                  }
-                `}</style>
-
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-fit">
                 <DayPicker
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={setDateRange}
+                  mode="multiple"
+                  selected={selectedWorkDays
+                    .filter((d) => d?.executionDate)
+                    .map((d) =>
+                      parse(d.executionDate, "yyyy-MM-dd", new Date()),
+                    )}
+                  onDayClick={handleDayClick}
                   locale={vi}
-                  showOutsideDays
-                  disabled={{ before: new Date() }} // Vô hiệu hóa ngày trong quá khứ
-                  className="w-full flex justify-center"
+                  // CẬP NHẬT Ở ĐÂY 👇
+                  disabled={[
+                    { before: new Date() }, // Chặn ngày quá khứ
+                    ...(selectedWorkDays.length <= 1
+                      ? selectedWorkDays.map((d) =>
+                          parse(d.executionDate, "yyyy-MM-dd", new Date()),
+                        )
+                      : []), // Nếu còn 1 ngày, add ngày đó vào danh sách disabled
+                  ]}
+                  modifiersStyles={{
+                    selected: {
+                      backgroundColor: "#0d7660",
+                      color: "white",
+                      borderRadius: "50%",
+                    },
+                  }}
                 />
               </div>
 
-              {/* --- CÁC TÙY CHỌN GIỜ --- */}
-              <div className="flex-1 w-full space-y-5">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Giờ bắt đầu
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="appearance-none w-full bg-[#e5ecea] px-4 py-3.5 rounded-xl text-gray-800 text-sm font-medium outline-none cursor-pointer focus:ring-2 focus:ring-[#0d7660]/50"
-                    >
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </select>
-                    <ExpandMoreIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                  </div>
-                </div>
+              <div className="flex-1 space-y-4 max-h-[1000px] overflow-y-auto pr-2 custom-scrollbar">
+                {selectedWorkDays.map((day, dIdx) => (
+                  <div
+                    key={day.executionDate}
+                    className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100"
+                  >
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-50">
+                      <span className="font-bold text-[#0d7660]">
+                        {format(
+                          parse(day.executionDate, "yyyy-MM-dd", new Date()),
+                          "eeee, dd/MM",
+                          { locale: vi },
+                        )}
+                      </span>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Gói thời gian
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={duration}
-                      onChange={(e) => setDuration(Number(e.target.value))}
-                      className="appearance-none w-full bg-[#e5ecea] px-4 py-3.5 rounded-xl text-gray-800 text-sm font-medium outline-none cursor-pointer focus:ring-2 focus:ring-[#0d7660]/50"
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((hour) => (
-                        <option key={hour} value={hour}>
-                          {hour} giờ (Tiêu chuẩn)
-                        </option>
-                      ))}
-                    </select>
-                    <AccessTimeIcon
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
-                      fontSize="small"
-                    />
-                  </div>
-                </div>
+                      <button
+                        onClick={() =>
+                          handleDayClick(
+                            parse(day.executionDate, "yyyy-MM-dd", new Date()),
+                          )
+                        }
+                        // Thêm class opacity hoặc ẩn đi nếu chỉ còn 1 ngày
+                        className={`${
+                          selectedWorkDays.length <= 1
+                            ? "opacity-20 cursor-not-allowed"
+                            : "text-red-400 hover:text-red-600"
+                        } transition-colors`}
+                        disabled={selectedWorkDays.length <= 1} // Disable click trực tiếp trên button
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </button>
+                    </div>
 
-                {/* Box Thông tin thêm */}
-                <div className="bg-[#e4f7f2] p-5 rounded-xl mt-4 border border-[#b2e5d5]">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-gray-500 text-sm">
-                      Dự kiến kết thúc:
-                    </span>
-                    <span className="text-[#0d7660] font-bold text-sm">
-                      {calculateEndTime()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500 text-sm">
-                      Số ngày thực hiện:
-                    </span>
-                    <span className="text-gray-800 font-bold text-sm">
-                      {numberOfDays} ngày
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                          Giờ bắt đầu làm việc
+                        </label>
+                        <select
+                          value={day.startTime}
+                          onChange={(e) =>
+                            updateStartTime(dIdx, e.target.value)
+                          }
+                          className="w-full mt-1 bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#0d7660] outline-none"
+                        >
+                          {timeOptions.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-            {/* Banner */}
-            <div className="relative bg-[#1c4841] overflow-hidden rounded-2xl p-8 mt-2 shadow-md min-h-[160px] flex items-center">
-              <div className="relative z-10 max-w-[60%]">
-                <h3 className="text-white font-bold text-xl mb-2">
-                  Chăm sóc tận tâm
-                </h3>
-                <p className="text-gray-200 text-sm leading-relaxed opacity-90">
-                  Chúng tôi luôn đảm bảo không gian của bạn được chăm chút tỉ mỉ
-                  nhất.
-                </p>
-              </div>
-              <div className="absolute right-[-20px] top-[-20px] w-64 h-64 bg-gradient-to-tr from-[#2d6f58] to-transparent rounded-full opacity-50 blur-2xl pointer-events-none"></div>
-              <div className="absolute right-10 bottom-0 opacity-80 pointer-events-none">
-                <svg
-                  width="180"
-                  height="150"
-                  viewBox="0 0 100 100"
-                  className="fill-[#e1ece8]"
-                >
-                  <path d="M50 100 Q 40 50 10 30 Q 50 20 50 60 Q 50 20 90 30 Q 60 50 50 100 Z" />
-                </svg>
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                          Thời lượng thực hiện
+                        </label>
+                        {day.services.map((svc, sIdx) => (
+                          <div
+                            key={svc.id}
+                            className="flex items-center justify-between gap-4 bg-[#f3f7f6] p-3 rounded-xl border border-white"
+                          >
+                            <span className="text-sm font-medium text-gray-700">
+                              {svc.name}
+                            </span>
+                            <select
+                              value={svc.duration}
+                              onChange={(e) =>
+                                updateServiceDuration(
+                                  dIdx,
+                                  sIdx,
+                                  Number(e.target.value),
+                                )
+                              }
+                              className="bg-white border border-gray-200 rounded-lg text-sm p-1 px-2 outline-none focus:border-[#0d7660]"
+                            >
+                              {[2, 3, 4, 5, 6].map((h) => (
+                                <option key={h} value={h}>
+                                  {h} giờ
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* ---- CỘT PHẢI (Tóm tắt đơn hàng) ---- */}
-          {/* Phần Tóm tắt bên phải (col-span-4) */}
-          <div className="col-span-4">
+          <div className="lg:col-span-4">
             <OrderSummary
-              duration={4}
-              startTime="14:00"
-              endTime="18:00"
-              startDate="08/04/2026"
-              endDate="08/04/2026"
-              numberOfDays={1}
-              totalBasePrice={600000}
-              vat={48000}
-              finalPrice={648000}
-              nextStepUrl="/customer/list-services/address" // Link sang bước 4
-              buttonText="Tiếp tục"
+              orders={selectedWorkDays}
+              onNext={() => router.push("/customer/list-services/address")}
             />
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e1ece8;
+          border-radius: 10px;
+        }
+      `}</style>
     </div>
   );
 }

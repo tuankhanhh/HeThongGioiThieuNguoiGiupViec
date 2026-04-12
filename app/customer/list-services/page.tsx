@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, Variants } from "framer-motion";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // Định nghĩa kiểu dữ liệu cho Dịch vụ
 interface ServiceType {
@@ -15,10 +15,10 @@ interface ServiceType {
   popular?: boolean;
 }
 
-// Dữ liệu mẫu các dịch vụ
+// Dữ liệu mẫu các dịch vụ (Đã đồng bộ ID với trang Service-Type)
 const services: ServiceType[] = [
   {
-    id: "cleaning-regular",
+    id: "cleaning",
     title: "Dọn dẹp nhà cửa",
     description:
       "Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.",
@@ -30,7 +30,7 @@ const services: ServiceType[] = [
     popular: true,
   },
   {
-    id: "cleaning-deep",
+    id: "combo",
     title: "Tổng vệ sinh",
     description:
       "Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.",
@@ -68,7 +68,7 @@ const services: ServiceType[] = [
     popular: true,
   },
   {
-    id: "elderly-care",
+    id: "eldercare",
     title: "Chăm sóc người cao tuổi",
     description:
       "Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.",
@@ -116,6 +116,14 @@ const headerVariants: Variants = {
 
 /* ================== Component Thẻ Dịch Vụ ================== */
 function ServiceCard({ service }: { service: ServiceType }) {
+  const router = useRouter();
+
+  const handleBooking = () => {
+    // Lưu ID dưới dạng mảng để tương thích với logic chọn nhiều dịch vụ ở trang sau
+    localStorage.setItem("booking_services", JSON.stringify([service.id]));
+    router.push("/customer/list-services/service-type");
+  };
+
   return (
     <motion.div
       variants={itemVariants}
@@ -185,11 +193,12 @@ function ServiceCard({ service }: { service: ServiceType }) {
         </ul>
 
         {/* Action Button */}
-        <Link href="/customer/list-services/service-type">
-          <button className="w-full py-3 px-4 bg-stone-50 hover:bg-amber-500 hover:text-white text-stone-700 font-bold rounded-xl border border-stone-200 hover:border-amber-500 transition-all duration-300 mt-auto">
-            Đặt dịch vụ
-          </button>
-        </Link>
+        <button
+          onClick={handleBooking}
+          className="w-full py-3 px-4 bg-stone-50 hover:bg-amber-500 hover:text-white text-stone-700 font-bold rounded-xl border border-stone-200 hover:border-amber-500 transition-all duration-300 mt-auto"
+        >
+          Đặt dịch vụ
+        </button>
       </div>
     </motion.div>
   );

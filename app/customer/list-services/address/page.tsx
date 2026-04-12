@@ -1,27 +1,44 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { TextField, InputAdornment } from "@mui/material";
 import { LocationOn } from "@mui/icons-material";
 import BookingStepper from "@/components/BookingStepper";
-import OrderSummary from "@/components/OrderSumary";
-
-// Giả định dữ liệu này được truyền từ Context/Redux của các trang trước
-const prevStepData = {
-  serviceName: "Chăm sóc người cao tuổi",
-  duration: "4 giờ (Ca sáng)",
-  serviceFee: 850000,
-  travelFee: 50000,
-};
+import OrderSummary, { DayOrder } from "@/components/OrderSumary";
+import { useRouter } from "next/navigation";
 
 const BookingPage = () => {
-  const totalAmount = prevStepData.serviceFee + prevStepData.travelFee;
+  const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+  const [workDays, setWorkDays] = useState<DayOrder[]>([]);
+
+  // 1. Lấy dữ liệu từ localStorage khi component mounted
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+    const saved = localStorage.getItem("booking_workdays");
+    if (saved) {
+      try {
+        setWorkDays(JSON.parse(saved));
+      } catch (error) {
+        console.error("Lỗi đọc dữ liệu từ localStorage", error);
+      }
+    } else {
+      // Nếu không có dữ liệu, quay lại trang chọn thời gian
+      router.push("/customer/list-services/time-selection");
+    }
+  }, [router]);
+
+  if (!isMounted) return null;
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-10 px-4 md:px-20 font-sans text-[#2D4646]">
-      {/* 1. Stepper */}
+      {/* 1. Stepper - Bước 2: Thông tin địa chỉ */}
       <BookingStepper activeStep={2} />
-      <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-10">
-        {/* 2. Left Section */}
-        <div className="flex-1">
+
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
+        {/* 2. Left Section - Form nhập liệu */}
+        <div className="lg:col-span-8">
           <h1 className="text-3xl font-bold mb-4 text-[#1A3131]">
             Hoàn tất chi tiết yêu cầu
           </h1>
@@ -30,7 +47,8 @@ const BookingPage = () => {
             tôi có thể phục vụ bạn một cách chu đáo nhất.
           </p>
 
-          <div className="space-y-8">
+          <div className="space-y-8 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            {/* Trường Địa điểm */}
             <div className="space-y-2">
               <label className="text-xs font-black text-[#00675B] uppercase tracking-widest">
                 Địa điểm thực hiện
@@ -39,20 +57,21 @@ const BookingPage = () => {
                 fullWidth
                 placeholder="Số nhà, tên đường, phường/xã..."
                 sx={{
-                  bgcolor: "#DFEAE9",
+                  bgcolor: "#f3f7f6",
                   "& fieldset": { border: "none" },
                   borderRadius: "12px",
                 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <LocationOn className="text-[#88A4A2]" />
+                      <LocationOn className="text-[#0d7660]" />
                     </InputAdornment>
                   ),
                 }}
               />
             </div>
 
+            {/* Trường Ghi chú */}
             <div className="space-y-2">
               <label className="text-xs font-black text-[#00675B] uppercase tracking-widest">
                 Ghi chú bổ sung
@@ -63,7 +82,7 @@ const BookingPage = () => {
                 rows={4}
                 placeholder="Chia sẻ thêm về tình trạng cụ thể hoặc các chỉ dẫn đường đi..."
                 sx={{
-                  bgcolor: "#DFEAE9",
+                  bgcolor: "#f3f7f6",
                   "& fieldset": { border: "none" },
                   borderRadius: "12px",
                   "& .MuiInputBase-root": { alignItems: "flex-start" },
@@ -73,20 +92,11 @@ const BookingPage = () => {
           </div>
         </div>
 
-        {/* Phần Tóm tắt bên phải (col-span-4) */}
-        <div className="col-span-4">
+        {/* 3. Right Section - Bản tóm tắt đồng bộ dữ liệu */}
+        <div className="lg:col-span-4">
           <OrderSummary
-            duration={4}
-            startTime="14:00"
-            endTime="18:00"
-            startDate="08/04/2026"
-            endDate="08/04/2026"
-            numberOfDays={1}
-            totalBasePrice={600000}
-            vat={48000}
-            finalPrice={648000}
-            nextStepUrl="/customer/list-services/payment" // Link sang bước 4
-            buttonText="Tiếp tục"
+            orders={workDays}
+            onNext={() => router.push("/customer/list-services/payment")}
           />
         </div>
       </div>

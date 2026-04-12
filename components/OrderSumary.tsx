@@ -3,140 +3,203 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
-import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
-import Link from "next/link";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 
-interface OrderSummaryProps {
+export interface ServiceDetail {
+  id: string;
+  name: string;
   duration: number;
-  startTime: string;
-  endTime: string;
-  startDate: string;
-  endDate: string;
-  numberOfDays: number;
-  totalBasePrice: number;
-  vat: number;
-  finalPrice: number;
-  nextStepUrl: string;
-  buttonText?: string;
-  showBackButton?: boolean; // Hiện/ẩn nút quay lại
-  isButtonDisabled?: boolean;
+  price: number;
 }
 
-const OrderSummary = ({
-  duration,
-  startTime,
-  endTime,
-  startDate,
-  endDate,
-  numberOfDays,
-  totalBasePrice,
-  vat,
-  finalPrice,
+export interface DayOrder {
+  executionDate: string;
+  startTime: string;
+  services: ServiceDetail[];
+}
+
+interface OrderSummaryProps {
+  orders: DayOrder[]; // Danh sách các ngày đặt
+  voucherDiscount?: number; // Số tiền giảm giá
+  nextStepUrl?: string;
+  onNext?: () => void;
+  buttonText?: string;
+  showBackButton?: boolean;
+}
+
+const OrderSummary: React.FC<OrderSummaryProps> = ({
+  orders = [],
+  voucherDiscount = 0,
   nextStepUrl,
-  buttonText = "Tiếp theo",
+  onNext,
+  buttonText = "Tiếp tục",
   showBackButton = true,
-  isButtonDisabled = false,
-}: OrderSummaryProps) => {
+}) => {
   const router = useRouter();
 
-  const formatVND = (amount: number) =>
-    new Intl.NumberFormat("vi-VN", {
+  const formatVND = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(amount);
+  };
+
+  // 1. Lấy danh sách tên dịch vụ duy nhất (để hiển thị tiêu đề)
+  const allServiceNames = Array.from(
+    new Set(orders.flatMap((day) => day.services.map((s) => s.name))),
+  );
+  const titleServiceStr = allServiceNames.join(" và ");
+
+  // 2. Gom nhóm tổng hợp chi phí (Cộng dồn số giờ và tiền của cùng 1 loại dịch vụ qua các ngày)
+  const aggregatedCosts = orders.reduce(
+    (acc, day) => {
+      day.services.forEach((s) => {
+        if (!acc[s.name]) {
+          acc[s.name] = { totalDuration: 0, totalPrice: 0 };
+        }
+        acc[s.name].totalDuration += s.duration;
+        acc[s.name].totalPrice += s.price;
+      });
+      return acc;
+    },
+    {} as Record<string, { totalDuration: number; totalPrice: number }>,
+  );
+
+  // 3. Tính tổng tiền cuối cùng
+  const subTotal = Object.values(aggregatedCosts).reduce(
+    (sum, item) => sum + item.totalPrice,
+    0,
+  );
+  const finalTotal = subTotal - voucherDiscount;
 
   return (
     <div className="w-full">
       <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)] sticky top-6">
-        <h2 className="font-bold text-xl text-gray-800 mb-6">
-          Tóm tắt đơn hàng
+        <h2 className="font-bold text-xl text-gray-800 mb-6 border-b border-gray-100 pb-4">
+          Tóm tắt đơn đặt dịch
         </h2>
 
-        {/* Phần Dịch vụ & Ngày giờ (Giữ nguyên như cũ) */}
+        {/* Tiêu đề dịch vụ chính */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-[#0d7660] flex justify-center items-center text-white">
+          <div className="w-12 h-12 shrink-0 rounded-xl bg-[#0d7660] flex justify-center items-center text-white">
             <CleaningServicesIcon />
           </div>
-          <div>
-            <h4 className="font-bold text-gray-800 text-[15px]">
-              Dịch vụ Vệ sinh Nhà cửa
-            </h4>
-            <p className="text-gray-500 text-xs mt-0.5">Gói {duration}H</p>
+          <h4 className="font-bold text-gray-800 text-[16px]">
+            Dịch vụ {titleServiceStr || "Chưa chọn"}
+          </h4>
+        </div>
+
+        {/* LẶP QUA TỪNG NGÀY */}
+        <div className="space-y-6 mb-6">
+          {orders.map((day, idx) => (
+            <div
+              key={idx}
+              className="border-l-4 border-[#0d7660] pl-4 space-y-3"
+            >
+              <div className="flex flex-col gap-1 text-sm">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <CalendarTodayIcon sx={{ fontSize: 16 }} />
+                  <span>
+                    Ngày thực hiện:{" "}
+                    <strong className="text-gray-800">
+                      {day.executionDate}
+                    </strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <AccessTimeIcon sx={{ fontSize: 16 }} />
+                  <span>
+                    Thời gian bắt đầu:{" "}
+                    <strong className="text-gray-800">{day.startTime}</strong>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  Chi tiết gói đặt:
+                </p>
+                {day.services.map((s, sIdx) => (
+                  <div key={sIdx} className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">{s.name}</span>
+                    <span className="font-medium text-gray-800">
+                      gói {s.duration}h
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <hr className="mb-5 border-gray-100" />
+
+        {/* PHẦN CHI PHÍ TỔNG HỢP */}
+        <div className="mb-6">
+          <h5 className="text-sm font-bold text-gray-800 mb-3">
+            Chi phí dịch vụ:
+          </h5>
+          <div className="space-y-2">
+            {Object.entries(aggregatedCosts).map(([name, data]) => (
+              <div key={name} className="flex justify-between text-sm">
+                <span className="text-gray-600">
+                  {name} x {data.totalDuration}h
+                </span>
+                <span className="font-bold text-gray-800">
+                  {formatVND(data.totalPrice)}
+                </span>
+              </div>
+            ))}
+
+            {/* Voucher */}
+            <div className="flex justify-between text-sm text-orange-600 italic">
+              <span className="flex items-center gap-1">
+                <LocalOfferIcon sx={{ fontSize: 14 }} />
+                Voucher
+              </span>
+              <span>-{formatVND(voucherDiscount)}</span>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3 mb-6 border-b border-gray-200 pb-6">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500 flex items-center gap-2 italic">
-              Ngày bắt đầu
-            </span>
-            <span className="font-bold text-gray-800">{startDate}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500 flex items-center gap-2 italic">
-              Ngày kết thúc
-            </span>
-            <span className="font-bold text-gray-800">{endDate}</span>
-          </div>
-          <div className="flex justify-between text-sm mt-3 pt-3 border-t border-gray-100">
-            <span className="text-gray-500 flex items-center gap-2 text-[13px]">
-              <AccessTimeIcon className="text-gray-400" fontSize="small" />
-              Khung giờ mỗi ngày
-            </span>
-            <span className="font-bold text-gray-800">
-              {startTime} - {endTime}
-            </span>
-          </div>
-        </div>
-
-        {/* Phần Tính tiền */}
-        <div className="space-y-3 mb-6">
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Phí dịch vụ ({numberOfDays} ngày)</span>
-            <span className="font-medium text-gray-800">
-              {formatVND(totalBasePrice)}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Thuế VAT (8%)</span>
-            <span className="font-medium text-gray-800">{formatVND(vat)}</span>
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center mb-8">
-          <span className="font-bold text-gray-800 text-lg">Tổng cộng</span>
-          <span className="font-bold text-[#0d7660] text-2xl">
-            {formatVND(finalPrice)}
+        {/* TỔNG CỘNG */}
+        <div className="flex justify-between items-center mb-8 bg-[#f4fbf9] p-4 rounded-xl border border-[#e0f2ed]">
+          <span className="font-bold text-gray-800 text-base">
+            Tổng chi phí
+          </span>
+          <span className="font-bold text-[#0d7660] text-xl">
+            {formatVND(finalTotal > 0 ? finalTotal : 0)}
           </span>
         </div>
 
-        {/* Cụm Nút hành động */}
+        {/* NÚT ĐIỀU HƯỚNG */}
         <div className="space-y-4">
-          <Link href={nextStepUrl}>
-            <button
-              disabled={isButtonDisabled || numberOfDays === 0}
-              className="group w-full bg-[#0d7660] hover:bg-[#0a6350] disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-2.5 pl-6 pr-2 rounded-xl transition-all flex items-center justify-between shadow-md"
-            >
-              <span className="font-bold text-sm tracking-wide">
-                {buttonText}
-              </span>
-              <div className="bg-white/20 p-2 rounded-lg flex items-center justify-center">
-                <ArrowForwardIcon fontSize="small" />
-              </div>
-            </button>
-          </Link>
+          <button
+            onClick={() =>
+              onNext ? onNext() : nextStepUrl && router.push(nextStepUrl)
+            }
+            className="group w-full bg-[#0d7660] hover:bg-[#0a6350] text-white py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md"
+          >
+            <span className="font-bold text-sm tracking-wide">
+              {buttonText}
+            </span>
+            <ArrowForwardIcon
+              fontSize="small"
+              className="group-hover:translate-x-1 transition-transform"
+            />
+          </button>
 
-          {/* NÚT QUAY LẠI */}
           {showBackButton && (
             <button
               onClick={() => router.back()}
-              className="flex items-center justify-center w-full text-gray-400 text-[11px] font-bold hover:text-[#0d7660] transition-colors uppercase tracking-widest"
+              className="flex items-center justify-center w-full text-gray-500 text-sm font-semibold hover:text-[#0d7660] transition-colors py-2"
             >
-              <KeyboardArrowLeftIcon fontSize="small" />
-              Quay lại bước trước
+              <KeyboardArrowLeftIcon fontSize="small" className="mr-1" />
+              Quay lại
             </button>
           )}
         </div>
