@@ -182,7 +182,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             onClick={() =>
               onNext ? onNext() : nextStepUrl && router.push(nextStepUrl)
             }
-            className="group w-full bg-[#0d7660] hover:bg-[#0a6350] text-white py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md"
+            className="group w-full bg-[#0d7660] hover:bg-[#0a6350] text-white py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
           >
             <span className="font-bold text-sm tracking-wide">
               {buttonText}
@@ -196,7 +196,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           {showBackButton && (
             <button
               onClick={() => router.back()}
-              className="flex items-center justify-center w-full text-gray-500 text-sm font-semibold hover:text-[#0d7660] transition-colors py-2"
+              className="flex items-center justify-center w-full text-gray-500 text-sm font-semibold hover:text-[#0d7660] transition-colors py-2 cursor-pointer"
             >
               <KeyboardArrowLeftIcon fontSize="small" className="mr-1" />
               Quay lại

@@ -114,7 +114,7 @@ const linkColumns: LinkColumn[] = [
       { label: "Về chúng tôi", href: "/about" },
       { label: "Câu hỏi thường gặp", href: "/faq" },
       { label: "Liên hệ", href: "/contact" },
-      { label: "Kênh người giúp việc", href: "/blog" },
+      { label: "Kênh người giúp việc", href: "/maid/sign-in" },
       { label: "Kênh nhân viên", href: "/blog" },
       { label: "Kênh quản trị viên", href: "/blog" },
     ],

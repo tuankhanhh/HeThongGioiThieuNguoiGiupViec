@@ -1,4 +1,4 @@
-import Login from "@/components/auth/SignInCustomer";
+import Login from "@/components/auth/SignIn";
 export default function DangNhap() {
-  return <Login />;
+  return <Login signUpHref="/customer/sign-up" roleType="CUSTOMER" />;
 }

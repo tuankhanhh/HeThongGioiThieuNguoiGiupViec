@@ -9,8 +9,6 @@ import { useRouter } from "next/navigation";
 
 // MUI Icons
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import BookingStepper from "@/components/componentsCustomer/BookingStepper";
 import OrderSummary, {
@@ -32,7 +30,7 @@ const MOCK_SERVICES_DB: Record<string, { name: string; pricePerHour: number }> =
 export default function TimeSelectionContent() {
   const router = useRouter();
 
-  // ✅ FIX: Thêm state để kiểm tra mounted
+  // FIX: Thêm state để kiểm tra mounted
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -40,7 +38,7 @@ export default function TimeSelectionContent() {
     setIsMounted(true);
   }, []);
 
-  // ✅ 1. Lấy danh sách ID dịch vụ đã chọn từ trang 1
+  //  1. Lấy danh sách ID dịch vụ đã chọn từ trang 1
   const [savedServiceIds] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       const services = localStorage.getItem("booking_services");
@@ -54,7 +52,7 @@ export default function TimeSelectionContent() {
     return [];
   });
 
-  // ✅ 2. Quản lý danh sách các ngày làm việc (Mặc định chọn ngày hôm nay)
+  //  2. Quản lý danh sách các ngày làm việc (Mặc định chọn ngày hôm nay)
   const [selectedWorkDays, setSelectedWorkDays] = useState<DayOrder[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("booking_workdays");
@@ -92,7 +90,7 @@ export default function TimeSelectionContent() {
     return [];
   });
 
-  // ✅ 3. Kiểm tra nếu chưa chọn dịch vụ ở trang 1 thì yêu cầu quay lại
+  //  3. Kiểm tra nếu chưa chọn dịch vụ ở trang 1 thì yêu cầu quay lại
   useEffect(() => {
     if (isMounted && savedServiceIds.length === 0) {
       Swal.fire({
@@ -106,7 +104,7 @@ export default function TimeSelectionContent() {
     }
   }, [savedServiceIds, router, isMounted]);
 
-  // ✅ 4. Đồng bộ localStorage khi thay đổi lịch làm việc
+  //  4. Đồng bộ localStorage khi thay đổi lịch làm việc
   useEffect(() => {
     if (isMounted) {
       localStorage.setItem(
@@ -218,7 +216,7 @@ export default function TimeSelectionContent() {
     (_, i) => `${(i + 6).toString().padStart(2, "0")}:00`,
   );
 
-  // ✅ FIX: Trả về null hoặc skeleton nếu chưa mount để tránh lệch HTML
+  //  FIX: Trả về null hoặc skeleton nếu chưa mount để tránh lệch HTML
   if (!isMounted) return null;
 
   return (
@@ -260,15 +258,21 @@ export default function TimeSelectionContent() {
                   ]}
                   modifiersStyles={{
                     selected: {
-                      backgroundColor: "#0d7660",
-                      color: "white",
-                      borderRadius: "50%",
+                      fontSize: "inherit", // giữ cỡ chữ
+                    },
+                    today: {
+                      color: "#0ea5e9",
                     },
                   }}
                 />
               </div>
 
-              <div className="flex-1 space-y-4 max-h-[1000px] overflow-y-auto pr-2 custom-scrollbar">
+              <div
+                className="flex-1 space-y-4 max-h-[1000px] overflow-y-auto pr-2 custom-scrollbar"
+                style={{
+                  scrollbarGutter: "stable", // Đây là dòng quan trọng nhất
+                }}
+              >
                 {selectedWorkDays.map((day, dIdx) => (
                   <div
                     key={day.executionDate}
@@ -297,11 +301,13 @@ export default function TimeSelectionContent() {
                         } transition-colors`}
                         disabled={selectedWorkDays.length <= 1} // Disable click trực tiếp trên button
                       >
-                        <DeleteOutlineIcon fontSize="small" />
+                        <DeleteOutlineIcon
+                          sx={{ cursor: "pointer", fontSize: "24px" }}
+                        />
                       </button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 ">
                       <div>
                         <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                           Giờ bắt đầu làm việc
@@ -311,7 +317,7 @@ export default function TimeSelectionContent() {
                           onChange={(e) =>
                             updateStartTime(dIdx, e.target.value)
                           }
-                          className="w-full mt-1 bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#0d7660] outline-none"
+                          className="w-full mt-1 bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#0d7660] outline-none cursor-pointer"
                         >
                           {timeOptions.map((t) => (
                             <option key={t} value={t}>
@@ -328,9 +334,9 @@ export default function TimeSelectionContent() {
                         {day.services.map((svc, sIdx) => (
                           <div
                             key={svc.id}
-                            className="flex items-center justify-between gap-4 bg-[#f3f7f6] p-3 rounded-xl border border-white"
+                            className="flex items-center justify-between gap-4 bg-[#f3f7f6] p-3 rounded-xl border border-white "
                           >
-                            <span className="text-sm font-medium text-gray-700">
+                            <span className="text-sm font-medium text-gray-700 ">
                               {svc.name}
                             </span>
                             <select
@@ -342,7 +348,7 @@ export default function TimeSelectionContent() {
                                   Number(e.target.value),
                                 )
                               }
-                              className="bg-white border border-gray-200 rounded-lg text-sm p-1 px-2 outline-none focus:border-[#0d7660]"
+                              className="bg-white border border-gray-200 rounded-lg text-sm p-1 px-2 outline-none focus:border-[#0d7660] cursor-pointer"
                             >
                               {[2, 3, 4, 5, 6].map((h) => (
                                 <option key={h} value={h}>

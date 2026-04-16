@@ -17,27 +17,27 @@ const Sidebar = () => {
   const menuItems = [
     {
       title: "Hồ sơ cá nhân",
-      path: "/profile",
+      path: "/maid/profile",
       icon: <AccountCircle />,
     },
     {
       title: "Lịch rảnh của tôi",
-      path: "/availability",
+      path: "/maid/freeschedule",
       icon: <CalendarMonth />,
     },
     {
       title: "Lịch làm việc",
-      path: "/schedule",
+      path: "/maid/schedule",
       icon: <EventNote />,
     },
     {
       title: "Lịch sử công việc",
-      path: "/history",
+      path: "/maid/workhistory",
       icon: <History />,
     },
     {
       title: "Thu nhập",
-      path: "/earnings",
+      path: "/maid/income",
       icon: <Paid />,
     },
   ];
