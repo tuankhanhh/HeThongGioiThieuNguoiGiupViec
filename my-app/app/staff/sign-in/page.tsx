@@ -1,10 +1,11 @@
+import Login from "@/components/auth/SignIn";
 import Footer from "@/components/footer/app.footer";
 import Header from "@/components/header/app.header";
 export default function DangNhap() {
   return (
     <>
       <Header />
-      <div>Helll</div>
+      <Login signUpHref="/staff/sign-up" roleType="STAFF" />
       <Footer />
     </>
   );

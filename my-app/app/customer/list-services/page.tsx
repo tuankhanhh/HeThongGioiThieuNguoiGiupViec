@@ -1,97 +1,22 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import { motion, Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { CircularProgress } from "@mui/material";
 
-// Định nghĩa kiểu dữ liệu cho Dịch vụ
+// 1. Cập nhật Interface (Bỏ trường icon)
 interface ServiceType {
   id: string;
   title: string;
   description: string;
   price: string;
   image: string;
-  icon: string;
   features: string[];
   popular?: boolean;
 }
 
-// Dữ liệu mẫu các dịch vụ (Đã đồng bộ ID với trang Service-Type)
-const services: ServiceType[] = [
-  {
-    id: "cleaning",
-    title: "Dọn dẹp nhà cửa",
-    description:
-      "Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.",
-    price: "Từ 60.000đ/giờ",
-    image:
-      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=600&auto=format&fit=crop",
-    icon: "✨",
-    features: ["Quét & lau sàn", "Lau bụi nội thất", "Thu gom rác"],
-    popular: true,
-  },
-  {
-    id: "combo",
-    title: "Tổng vệ sinh",
-    description:
-      "Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.",
-    price: "Từ 150.000đ/giờ",
-    image:
-      "https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?q=80&w=600&auto=format&fit=crop",
-    icon: "🧽",
-    features: [
-      "Tẩy vết bẩn cứng đầu",
-      "Vệ sinh bếp & toilet",
-      "Hút bụi rèm cửa",
-    ],
-  },
-  {
-    id: "cooking",
-    title: "Nấu ăn gia đình",
-    description:
-      "Đi chợ và chuẩn bị những bữa ăn ngon miệng, đảm bảo dinh dưỡng cho gia đình.",
-    price: "Từ 80.000đ/giờ",
-    image:
-      "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=600&auto=format&fit=crop",
-    icon: "🍳",
-    features: ["Lên thực đơn", "Đi chợ mua đồ", "Dọn dẹp sau nấu"],
-  },
-  {
-    id: "childcare",
-    title: "Chăm sóc trẻ em",
-    description:
-      "Trông nom, chơi đùa và chăm sóc bữa ăn, giấc ngủ cho các bé khi bạn bận rộn.",
-    price: "Từ 70.000đ/giờ",
-    image:
-      "https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?q=80&w=600&auto=format&fit=crop",
-    icon: "🧸",
-    features: ["Cho bé ăn", "Tắm rửa & thay đồ", "Chơi cùng bé"],
-    popular: true,
-  },
-  {
-    id: "eldercare",
-    title: "Chăm sóc người cao tuổi",
-    description:
-      "Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.",
-    price: "Từ 80.000đ/giờ",
-    image:
-      "https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?q=80&w=600&auto=format&fit=crop",
-    icon: "❤️",
-    features: ["Hỗ trợ di chuyển", "Nhắc uống thuốc", "Trò chuyện tâm sự"],
-  },
-  {
-    id: "sofa-cleaning",
-    title: "Giặt sofa & nệm",
-    description:
-      "Sử dụng máy móc chuyên dụng để hút bụi mịn, khử khuẩn và làm sạch sâu.",
-    price: "Từ 250.000đ/sản phẩm",
-    image:
-      "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?q=80&w=600&auto=format&fit=crop",
-    icon: "🛋️",
-    features: ["Hút bụi bằng máy", "Tẩy ố bằng hơi nước", "Khử mùi diệt khuẩn"],
-  },
-];
-
-// Hiệu ứng animation
+// Giữ nguyên các hiệu ứng animation của bạn
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -119,9 +44,30 @@ function ServiceCard({ service }: { service: ServiceType }) {
   const router = useRouter();
 
   const handleBooking = () => {
-    // Lưu ID dưới dạng mảng để tương thích với logic chọn nhiều dịch vụ ở trang sau
+    // 1. Kiểm tra môi trường browser để tránh lỗi undefined
+    if (typeof window === "undefined") return;
+
+    // 2. Lưu ID dịch vụ
     localStorage.setItem("booking_services", JSON.stringify([service.id]));
-    router.push("/customer/list-services/service-type");
+
+    // 3. LẤY TOKEN ĐÚNG TÊN KEY LÀ "accessToken"
+    const token = localStorage.getItem("accessToken");
+    console.log("Current Token:", token);
+
+    // 4. Kiểm tra thêm: Token có hợp lệ không
+    const isLoggedIn =
+      token && token !== "undefined" && token !== "null" && token.trim() !== "";
+
+    if (!isLoggedIn) {
+      // // Lưu trang đích để quay lại sau
+      // localStorage.setItem("redirect_after_login", window.location.pathname);
+
+      // Chuyển hướng
+      router.push("/customer/sign-in");
+    } else {
+      // Đã đăng nhập -> Chuyển đến trang chọn dịch vụ
+      router.push("/customer/list-services/service-type");
+    }
   };
 
   return (
@@ -138,19 +84,14 @@ function ServiceCard({ service }: { service: ServiceType }) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 to-transparent" />
 
-        {/* Badges */}
-        <div className="absolute top-4 left-4 flex gap-2">
-          <div className="w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-xl shadow-sm">
-            {service.icon}
-          </div>
-        </div>
+        {/* PHẦN ĐÃ BỎ ICON: Chỉ giữ lại badge PHỔ BIẾN nếu có */}
         {service.popular && (
           <div className="absolute top-4 right-4 px-3 py-1 bg-rose-500 text-white text-xs font-bold rounded-full shadow-sm">
             PHỔ BIẾN
           </div>
         )}
 
-        {/* Price Tag (Nằm đè lên hình) */}
+        {/* Price Tag */}
         <div className="absolute bottom-4 left-4 right-4">
           <span className="inline-block px-4 py-1.5 bg-amber-400 text-stone-900 font-bold text-sm rounded-full shadow-md">
             {service.price}
@@ -206,6 +147,28 @@ function ServiceCard({ service }: { service: ServiceType }) {
 
 /* ================== Main Page Component ================== */
 export default function ServicesPage() {
+  const [services, setServices] = useState<ServiceType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 2. Gọi API từ Backend C#
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await fetch("https://localhost:7095/api/dichvu");
+        if (response.ok) {
+          const data = await response.json();
+          setServices(data);
+        }
+      } catch (error) {
+        console.error("Lỗi lấy dữ liệu dịch vụ:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   return (
     <div className="min-h-screen bg-stone-50 pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -229,18 +192,24 @@ export default function ServicesPage() {
           </p>
         </motion.div>
 
-        {/* Services Grid */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
-          {services.map((service) => (
-            <ServiceCard key={service.id} service={service} />
-          ))}
-        </motion.div>
+        {/* Hiển thị Loading hoặc Grid dữ liệu */}
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <CircularProgress color="inherit" className="text-amber-500" />
+          </div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
+            {services.map((service) => (
+              <ServiceCard key={service.id} service={service} />
+            ))}
+          </motion.div>
+        )}
       </div>
     </div>
   );

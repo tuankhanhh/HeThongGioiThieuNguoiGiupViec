@@ -3,13 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// MUI Icons
-import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
-import ChildCareIcon from "@mui/icons-material/ChildCare";
-import ElderlyIcon from "@mui/icons-material/Elderly";
-import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
-import ChairIcon from "@mui/icons-material/Chair";
+// MUI Icons (Giữ lại vài icon làm fallback nếu API không có hình)
+import MiscellaneousServicesIcon from "@mui/icons-material/MiscellaneousServices";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -17,52 +12,27 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import BookingStepper from "@/components/componentsCustomer/BookingStepper";
 import Swal from "sweetalert2";
 
-// ---------------- DATA ----------------
-// Lưu ý: ID ở đây phải khớp hoàn toàn với MOCK_SERVICES_DB ở trang sau
-const servicesData = [
-  {
-    id: "cleaning",
-    title: "Dọn dẹp",
-    desc: "Vệ sinh nhà cửa, quét dọn và sắp xếp không gian sống ngăn nắp.",
-    icon: <CleaningServicesIcon />,
-  },
-  {
-    id: "cooking",
-    title: "Nấu ăn",
-    desc: "Chuẩn bị bữa cơm gia đình ấm cúng với thực đơn theo yêu cầu.",
-    icon: <RestaurantIcon />,
-  },
-  {
-    id: "childcare",
-    title: "Chăm sóc trẻ",
-    desc: "Giữ trẻ, chơi cùng bé và hỗ trợ các hoạt động giáo dục sớm.",
-    icon: <ChildCareIcon />,
-  },
-  {
-    id: "eldercare",
-    title: "Chăm sóc người già",
-    desc: "Hỗ trợ sinh hoạt, bầu bạn và theo dõi sức khỏe cho người cao tuổi.",
-    icon: <ElderlyIcon />,
-  },
-  {
-    id: "sofa-cleaning",
-    title: "Giặt sofa & nệm",
-    desc: "Sử dụng máy móc chuyên dụng để làm sạch sâu.",
-    icon: <ChairIcon />,
-  },
-  {
-    id: "combo",
-    title: "Tổng vệ sinh",
-    desc: "Làm sạch sâu mọi ngóc ngách cho nhà mới hoặc dịp lễ Tết.",
-    icon: <AllInclusiveIcon />,
-  },
-];
+// ---------------- TYPES ----------------
+// Khai báo kiểu dữ liệu khớp với JSON từ Backend trả về
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  image: string;
+  popular: boolean;
+  features: string[];
+}
 
 // ---------------- COMPONENT ----------------
 export default function ServiceSelection() {
   const router = useRouter();
 
-  // ✅ Khởi tạo state trực tiếp từ localStorage để giữ trạng thái khi back/forward
+  // State lưu dữ liệu từ API
+  const [servicesData, setServicesData] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Khởi tạo state trực tiếp từ localStorage để giữ trạng thái khi back/forward
   const [selectedServices, setSelectedServices] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("booking_services");
@@ -74,25 +44,51 @@ export default function ServiceSelection() {
         }
       }
     }
-    return []; // Mặc định để trống để người dùng tự chọn
+    return [];
   });
 
-  // ✅ Lưu vào localStorage khi có sự thay đổi
+  // Lưu vào localStorage khi có sự thay đổi
   useEffect(() => {
     localStorage.setItem("booking_services", JSON.stringify(selectedServices));
   }, [selectedServices]);
 
+  // ---------------- CALL API ----------------
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        // THAY ĐỔI URL DƯỚI ĐÂY THÀNH DOMAIN API THỰC TẾ CỦA BẠN
+        const response = await fetch("https://localhost:7095/api/dichvu");
+
+        if (!response.ok) {
+          throw new Error("Không thể tải dữ liệu dịch vụ");
+        }
+
+        const data: Service[] = await response.json();
+        setServicesData(data);
+      } catch (error) {
+        console.error("Lỗi fetch services:", error);
+        Swal.fire({
+          title: "Lỗi kết nối",
+          text: "Không thể tải danh sách dịch vụ lúc này. Vui lòng thử lại sau.",
+          icon: "error",
+          confirmButtonColor: "#0d7660",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   // ---------------- SELECT SERVICE ----------------
   const handleSelect = (id: string) => {
     setSelectedServices((prev) => {
-      // 1. Nếu đã chọn rồi thì bỏ chọn
       if (prev.includes(id)) {
-        // Khi thay đổi dịch vụ, nên xóa lịch cũ ở trang 2 để tránh sai lệch dữ liệu
         localStorage.removeItem("booking_workdays");
         return prev.filter((item) => item !== id);
       }
 
-      // 2. Giới hạn tối đa 2 dịch vụ
       if (prev.length >= 2) {
         Swal.fire({
           title: "Giới hạn dịch vụ",
@@ -104,7 +100,6 @@ export default function ServiceSelection() {
         return prev;
       }
 
-      // 3. Chọn mới: Xóa lịch làm việc cũ vì bộ dịch vụ đã thay đổi
       localStorage.removeItem("booking_workdays");
       return [...prev, id];
     });
@@ -141,63 +136,88 @@ export default function ServiceSelection() {
           </p>
         </div>
 
-        {/* GRID DỊCH VỤ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {servicesData.map((service) => {
-            const isSelected = selectedServices.includes(service.id);
-            const isLimitReached = !isSelected && selectedServices.length >= 2;
+        {/* LOADING STATE */}
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0d7660]"></div>
+          </div>
+        ) : (
+          /* GRID DỊCH VỤ */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {servicesData.map((service) => {
+              const isSelected = selectedServices.includes(service.id);
+              const isLimitReached =
+                !isSelected && selectedServices.length >= 2;
 
-            return (
-              <div
-                key={service.id}
-                onClick={() => {
-                  if (!isLimitReached || isSelected) {
-                    handleSelect(service.id);
-                  }
-                }}
-                className={`relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border
-                ${
-                  isSelected
-                    ? "bg-[#9ff1d7] border-[#0d7660] shadow-md transform scale-[1.02]"
-                    : isLimitReached
-                      ? "bg-gray-50 border-transparent opacity-60 grayscale-[0.5] cursor-not-allowed"
-                      : "bg-[#f3f7f6] border-transparent hover:bg-white hover:border-[#9ff1d7] shadow-sm hover:shadow-lg"
-                }`}
-              >
-                {/* Icon tích chọn */}
-                {isSelected && (
-                  <CheckCircleIcon
-                    className="absolute top-4 right-4 text-[#0d7660]"
-                    fontSize="small"
-                  />
-                )}
-
-                {/* Icon dịch vụ */}
+              return (
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors
+                  key={service.id}
+                  onClick={() => {
+                    if (!isLimitReached || isSelected) {
+                      handleSelect(service.id);
+                    }
+                  }}
+                  className={`relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border
                   ${
                     isSelected
-                      ? "text-[#0d7660] bg-white shadow-inner"
-                      : "text-[#0d7660] bg-[#e1ece8]"
+                      ? "bg-[#9ff1d7] border-[#0d7660] shadow-md transform scale-[1.02]"
+                      : isLimitReached
+                        ? "bg-gray-50 border-transparent opacity-60 grayscale-[0.5] cursor-not-allowed"
+                        : "bg-[#f3f7f6] border-transparent hover:bg-white hover:border-[#9ff1d7] shadow-sm hover:shadow-lg"
                   }`}
                 >
-                  {service.icon}
+                  {/* Icon tích chọn */}
+                  {isSelected && (
+                    <CheckCircleIcon
+                      className="absolute top-4 right-4 text-[#0d7660]"
+                      fontSize="small"
+                    />
+                  )}
+
+                  {/* Badge Phổ biến (Dựa vào API) */}
+                  {service.popular && (
+                    <div className="absolute top-4 left-4 bg-orange-100 text-orange-600 text-xs font-bold px-2 py-1 rounded-md">
+                      Hot
+                    </div>
+                  )}
+
+                  {/* Hình ảnh từ API (hoặc Icon fallback) */}
+                  <div
+                    className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors overflow-hidden mt-6
+                    ${isSelected ? "bg-white shadow-inner" : "bg-[#e1ece8]"}`}
+                  >
+                    {service.image ? (
+                      <img
+                        src={service.image}
+                        alt={service.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <MiscellaneousServicesIcon className="text-[#0d7660]" />
+                    )}
+                  </div>
+
+                  <h3 className="font-bold text-[17px] text-gray-900 mb-1">
+                    {service.title}
+                  </h3>
+
+                  {/* Giá tiền từ API */}
+                  <p className="text-[#0d7660] font-semibold text-sm mb-2">
+                    {service.price}
+                  </p>
+
+                  <p
+                    className={`text-[14px] leading-relaxed transition-colors line-clamp-3
+                    ${isSelected ? "text-gray-800" : "text-gray-500"}`}
+                  >
+                    {service.description}{" "}
+                    {/* Đã sửa từ desc thành description theo API */}
+                  </p>
                 </div>
-
-                <h3 className="font-bold text-[17px] text-gray-900 mb-2">
-                  {service.title}
-                </h3>
-
-                <p
-                  className={`text-[14px] leading-relaxed transition-colors
-                  ${isSelected ? "text-gray-800" : "text-gray-500"}`}
-                >
-                  {service.desc}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* THANH THAO TÁC PHÍA DƯỚI */}
         <div className="mt-10 bg-white rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center shadow-xl border border-gray-100">

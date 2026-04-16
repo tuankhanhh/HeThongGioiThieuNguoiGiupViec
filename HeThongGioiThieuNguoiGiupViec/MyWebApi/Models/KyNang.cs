@@ -16,6 +16,8 @@ public partial class KyNang
 
     [StringLength(50)]
     public string? TenKyNang { get; set; }
+    public string? MoTa { get; set; }      // Cột mới
+    public string? IconName { get; set; }  // Cột mới
 
     [InverseProperty("MaKyNangNavigation")]
     public virtual ICollection<KyNangNguoiGiupViec> KyNangNguoiGiupViecs { get; set; } = new List<KyNangNguoiGiupViec>();

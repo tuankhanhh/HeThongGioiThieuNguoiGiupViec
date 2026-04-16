@@ -111,12 +111,12 @@ const linkColumns: LinkColumn[] = [
   {
     title: "Homezy",
     links: [
-      { label: "Về chúng tôi", href: "/about" },
+      { label: "Về chúng tôi", href: "/customer/about" },
       { label: "Câu hỏi thường gặp", href: "/faq" },
-      { label: "Liên hệ", href: "/contact" },
+      { label: "Liên hệ", href: "/customer/contact" },
       { label: "Kênh người giúp việc", href: "/maid/sign-in" },
-      { label: "Kênh nhân viên", href: "/blog" },
-      { label: "Kênh quản trị viên", href: "/blog" },
+      { label: "Kênh nhân viên", href: "/staff/sign-in" },
+      { label: "Kênh quản trị viên", href: "/admin/sign-in" },
     ],
   },
   {

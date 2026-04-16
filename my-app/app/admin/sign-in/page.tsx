@@ -5,7 +5,7 @@ export default function DangNhap() {
   return (
     <>
       <Header />
-      <Login signUpHref="/maid/sign-up/phoneverify" roleType="MAID" />
+      <Login signUpHref="/admin/sign-up" roleType="ADMIN" />
       <Footer />
     </>
   );

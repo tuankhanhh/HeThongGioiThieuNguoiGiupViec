@@ -6,9 +6,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 // Định nghĩa kiểu cho Props
+type RoleType = "CUSTOMER" | "MAID" | "STAFF" | "ADMIN";
+
 interface LoginProps {
-  signUpHref?: string; // Đường dẫn đăng ký linh hoạt
-  roleType?: "CUSTOMER" | "MAID"; // Loại role mặc định khi vào trang
+  signUpHref?: string;
+  roleType: RoleType;
 }
 
 export default function Login({
@@ -22,25 +24,35 @@ export default function Login({
 
   const router = useRouter();
 
+  // 1. Mapping nhãn hiển thị (Giữ nguyên UI nhưng text thay đổi theo role)
+  const roleLabels: Record<RoleType, string> = {
+    CUSTOMER: "Khách hàng",
+    MAID: "Người giúp việc",
+    STAFF: "Nhân viên",
+    ADMIN: "Quản trị viên",
+  };
+
+  // 2. Mapping điều hướng sau khi login thành công dựa trên Role từ Token
+  const redirectMap: Record<string, string> = {
+    Customer: "/",
+    Custommer: "/", // Phòng trường hợp backend sai chính tả
+    Maid: "/maid",
+    Staff: "/Staff",
+    Admin: "/Admin",
+  };
+
   // ===== API LOGIN =====
   async function loginApi(soDienThoai: string, matKhau: string) {
-    // Lưu ý: Thay đổi localhost nếu chạy trên môi trường khác
     const res = await fetch("https://localhost:7095/api/User/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        soDienThoai,
-        matKhau,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ soDienThoai, matKhau }),
     });
 
     if (!res.ok) {
       const msg = await res.text();
       throw new Error(msg || "Đăng nhập thất bại");
     }
-
     return res.json();
   }
 
@@ -52,11 +64,10 @@ export default function Login({
     try {
       const data = await loginApi(phone, password);
 
-      // Lưu token vào localStorage
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
 
-      // Giải mã JWT lấy role
+      // Giải mã JWT
       const payload = JSON.parse(atob(data.accessToken.split(".")[1]));
       const roles =
         payload["role"] ||
@@ -65,14 +76,9 @@ export default function Login({
 
       const role = Array.isArray(roles) ? roles[0] : roles;
 
-      // Điều hướng dựa trên role (Đã sửa lỗi chính tả 'Custommer' -> 'Customer')
-      if (role === "Customer" || role === "Custommer") router.push("/");
-      else if (role === "Maid") router.push("/maid");
-      else if (role === "Staff") router.push("/Staff");
-      else if (role === "Admin") router.push("/Admin");
-      else {
-        router.push("/");
-      }
+      // Điều hướng dựa trên map đã định nghĩa
+      const targetPath = redirectMap[role] || "/";
+      router.push(targetPath);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
@@ -97,12 +103,11 @@ export default function Login({
             <p className="text-stone-500 text-sm">
               Đăng nhập với vai trò{" "}
               <span className="font-semibold text-amber-600">
-                {roleType === "CUSTOMER" ? "Khách hàng" : "Đối tác"}
+                {roleLabels[roleType]} {/* Hiển thị đúng nhãn cho 4 actor */}
               </span>
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Phone Field */}
             <div>
@@ -217,7 +222,6 @@ export default function Login({
               </div>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -227,18 +231,20 @@ export default function Login({
             </button>
           </form>
 
-          {/* Footer động */}
-          <div className="mt-8 text-center">
-            <p className="text-stone-500 text-sm">
-              Chưa có tài khoản?{" "}
-              <Link
-                href={signUpHref}
-                className="font-bold text-amber-500 hover:text-amber-600 transition-colors"
-              >
-                Đăng ký ngay
-              </Link>
-            </p>
-          </div>
+          {/* Footer động: Ẩn đăng ký nếu là Staff hoặc Admin */}
+          {(roleType === "CUSTOMER" || roleType === "MAID") && (
+            <div className="mt-8 text-center">
+              <p className="text-stone-500 text-sm">
+                Chưa có tài khoản?{" "}
+                <Link
+                  href={signUpHref}
+                  className="font-bold text-amber-500 hover:text-amber-600 transition-colors"
+                >
+                  Đăng ký ngay
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

@@ -8,38 +8,67 @@ import OrderSummary, {
   DayOrder,
 } from "@/components/componentsCustomer/OrderSumary";
 import { useRouter } from "next/navigation";
+import Swal from "sweetalert2"; // Thêm thư viện thông báo
 
 const BookingPage = () => {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [workDays, setWorkDays] = useState<DayOrder[]>([]);
 
+  // State lưu trữ địa chỉ và ghi chú
+  const [address, setAddress] = useState("");
+  const [note, setNote] = useState("");
+
   // 1. Lấy dữ liệu từ localStorage khi component mounted
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
-    const saved = localStorage.getItem("booking_workdays");
-    if (saved) {
+    const savedWorkDays = localStorage.getItem("booking_workdays");
+
+    // Tải lại địa chỉ và ghi chú nếu người dùng quay lại từ trang thanh toán
+    const savedAddress = localStorage.getItem("booking_address");
+    const savedNote = localStorage.getItem("booking_note");
+
+    if (savedAddress) setAddress(savedAddress);
+    if (savedNote) setNote(savedNote);
+
+    if (savedWorkDays) {
       try {
-        setWorkDays(JSON.parse(saved));
+        setWorkDays(JSON.parse(savedWorkDays));
       } catch (error) {
         console.error("Lỗi đọc dữ liệu từ localStorage", error);
       }
     } else {
-      // Nếu không có dữ liệu, quay lại trang chọn thời gian
       router.push("/customer/list-services/time-selection");
     }
   }, [router]);
+
+  // 2. Xử lý khi nhấn nút Tiếp theo
+  const handleNext = () => {
+    if (!address.trim()) {
+      Swal.fire({
+        title: "Thiếu thông tin",
+        text: "Vui lòng nhập địa điểm thực hiện dịch vụ.",
+        icon: "warning",
+        confirmButtonColor: "#0d7660",
+      });
+      return;
+    }
+
+    // Lưu vào localStorage để trang Payment sử dụng
+    localStorage.setItem("booking_address", address);
+    localStorage.setItem("booking_note", note);
+
+    router.push("/customer/list-services/payment");
+  };
 
   if (!isMounted) return null;
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-10 px-4 md:px-20 font-sans text-[#2D4646]">
-      {/* 1. Stepper - Bước 2: Thông tin địa chỉ */}
       <BookingStepper activeStep={2} />
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* 2. Left Section - Form nhập liệu */}
         <div className="lg:col-span-8">
           <h1 className="text-3xl font-bold mb-4 text-[#1A3131]">
             Hoàn tất chi tiết yêu cầu
@@ -53,22 +82,27 @@ const BookingPage = () => {
             {/* Trường Địa điểm */}
             <div className="space-y-2">
               <label className="text-xs font-black text-[#00675B] uppercase tracking-widest">
-                Địa điểm thực hiện
+                Địa điểm thực hiện <span className="text-red-500">*</span>
               </label>
               <TextField
                 fullWidth
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
                 placeholder="Số nhà, tên đường, phường/xã..."
                 sx={{
                   bgcolor: "#f3f7f6",
                   "& fieldset": { border: "none" },
                   borderRadius: "12px",
                 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LocationOn className="text-[#0d7660]" />
-                    </InputAdornment>
-                  ),
+                // ĐỔI SANG DÙNG slotProps Ở ĐÂY 👇
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LocationOn className="text-[#0d7660]" />
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
             </div>
@@ -82,6 +116,8 @@ const BookingPage = () => {
                 fullWidth
                 multiline
                 rows={4}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
                 placeholder="Chia sẻ thêm về tình trạng cụ thể hoặc các chỉ dẫn đường đi..."
                 sx={{
                   bgcolor: "#f3f7f6",
@@ -94,11 +130,10 @@ const BookingPage = () => {
           </div>
         </div>
 
-        {/* 3. Right Section - Bản tóm tắt đồng bộ dữ liệu */}
         <div className="lg:col-span-4">
           <OrderSummary
             orders={workDays}
-            onNext={() => router.push("/customer/list-services/payment")}
+            onNext={handleNext} // Gắn hàm xử lý vào nút bấm
           />
         </div>
       </div>

@@ -20,17 +20,18 @@ public partial class DonDat
 
     [StringLength(5)]
     [Unicode(false)]
-    public string MaNhanVien { get; set; } = null!;
+    public string? MaNhanVien { get; set; }
 
     [StringLength(200)]
     public string? DiaChi { get; set; }
-
+    [StringLength(100)]
+    public string? GhiChu { get; set; }
     public int? SoNgay { get; set; }
 
     [Column(TypeName = "decimal(10, 2)")]
     public decimal? TongTien { get; set; }
 
-    public DateOnly? NgayDat { get; set; }
+    public DateTime? NgayDat { get; set; }
 
     [InverseProperty("MaDonNavigation")]
     public virtual ICollection<DanhGium> DanhGia { get; set; } = new List<DanhGium>();

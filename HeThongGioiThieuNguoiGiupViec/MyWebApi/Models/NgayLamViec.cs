@@ -20,9 +20,11 @@ public partial class NgayLamViec
 
     [StringLength(5)]
     [Unicode(false)]
-    public string MaNguoiGiupViec { get; set; } = null!;
+    public string? MaNguoiGiupViec { get; set; }
 
     public DateOnly? NgayLam { get; set; }
+
+    public TimeOnly? GioBatDau { get; set; }
 
     [InverseProperty("MaNgayLamViecNavigation")]
     public virtual ICollection<DonDatDichVuNgayLamViec> DonDatDichVuNgayLamViecs { get; set; } = new List<DonDatDichVuNgayLamViec>();

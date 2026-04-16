@@ -16,83 +16,38 @@ import OrderSummary, {
 } from "@/components/componentsCustomer/OrderSumary";
 import Swal from "sweetalert2";
 
-// ---------------- DATA MAPPING ----------------
-const MOCK_SERVICES_DB: Record<string, { name: string; pricePerHour: number }> =
-  {
-    cleaning: { name: "Dọn dẹp nhà cửa", pricePerHour: 100000 },
-    cooking: { name: "Nấu ăn tại gia", pricePerHour: 120000 },
-    childcare: { name: "Chăm sóc trẻ em", pricePerHour: 150000 },
-    eldercare: { name: "Chăm sóc người già", pricePerHour: 150000 },
-    "sofa-cleaning": { name: "Giặt sofa & nệm", pricePerHour: 200000 },
-    combo: { name: "Tổng vệ sinh", pricePerHour: 250000 },
-  };
+// ---------------- TYPES ----------------
+interface ApiService {
+  id: string;
+  title: string;
+  pricePerHour: number; // Backend phải trả về trường này là số (ví dụ: 100000)
+}
 
 export default function TimeSelectionContent() {
   const router = useRouter();
 
-  // FIX: Thêm state để kiểm tra mounted
+  // Kiểm tra mounted để tránh lỗi hydration
   const [isMounted, setIsMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // State lưu trữ dữ liệu dịch vụ từ API (thay thế MOCK_SERVICES_DB)
+  const [servicesDict, setServicesDict] = useState<
+    Record<string, { name: string; pricePerHour: number }>
+  >({});
+
+  const [savedServiceIds, setSavedServiceIds] = useState<string[]>([]);
+  const [selectedWorkDays, setSelectedWorkDays] = useState<DayOrder[]>([]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
-  }, []);
 
-  //  1. Lấy danh sách ID dịch vụ đã chọn từ trang 1
-  const [savedServiceIds] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const services = localStorage.getItem("booking_services");
-      try {
-        const parsed = services ? JSON.parse(services) : [];
-        return parsed.length > 0 ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+    // Lấy ID dịch vụ đã chọn từ localStorage
+    const services = localStorage.getItem("booking_services");
+    const parsedIds = services ? JSON.parse(services) : [];
+    setSavedServiceIds(parsedIds);
 
-  //  2. Quản lý danh sách các ngày làm việc (Mặc định chọn ngày hôm nay)
-  const [selectedWorkDays, setSelectedWorkDays] = useState<DayOrder[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("booking_workdays");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        } catch {
-          /* ignore */
-        }
-      }
-
-      const todayStr = format(new Date(), "yyyy-MM-dd");
-      const rawServices = localStorage.getItem("booking_services");
-      const currentIds = rawServices ? JSON.parse(rawServices) : [];
-
-      const defaultServices = currentIds.map((id: string) => {
-        const info = MOCK_SERVICES_DB[id];
-        return {
-          id,
-          name: info?.name || "Dịch vụ",
-          duration: 2,
-          price: (info?.pricePerHour || 0) * 2,
-        };
-      });
-
-      return [
-        {
-          executionDate: todayStr,
-          startTime: "08:00",
-          services: defaultServices,
-        },
-      ];
-    }
-    return [];
-  });
-
-  //  3. Kiểm tra nếu chưa chọn dịch vụ ở trang 1 thì yêu cầu quay lại
-  useEffect(() => {
-    if (isMounted && savedServiceIds.length === 0) {
+    // Nếu chưa chọn gì ở trang 1 thì báo lỗi và quay lại
+    if (parsedIds.length === 0) {
       Swal.fire({
         title: "Chưa chọn dịch vụ",
         text: "Vui lòng chọn loại dịch vụ bạn cần trước khi chọn thời gian.",
@@ -101,12 +56,92 @@ export default function TimeSelectionContent() {
       }).then(() => {
         router.push("/customer/list-services");
       });
+      return;
     }
-  }, [savedServiceIds, router, isMounted]);
 
-  //  4. Đồng bộ localStorage khi thay đổi lịch làm việc
+    // GỌI API LẤY DANH SÁCH DỊCH VỤ ĐỂ LẤY GIÁ
+    const fetchServices = async () => {
+      try {
+        // THAY URL BẰNG API THẬT CỦA BẠN
+        const response = await fetch("https://localhost:7095/api/dichvu");
+        if (!response.ok) throw new Error("Lỗi tải dữ liệu");
+
+        const data: ApiService[] = await response.json();
+
+        // Chuyển array từ API thành Dictionary để dễ tra cứu giống MOCK_SERVICES_DB cũ
+        const dict: Record<string, { name: string; pricePerHour: number }> = {};
+        data.forEach((item) => {
+          dict[item.id] = {
+            name: item.title,
+            pricePerHour: item.pricePerHour || 0, // Backup = 0 nếu API chưa có
+          };
+        });
+
+        setServicesDict(dict);
+
+        // SAU KHI CÓ DATA TỪ API, KHỞI TẠO LỊCH LÀM VIỆC
+        const savedWorkdays = localStorage.getItem("booking_workdays");
+        if (savedWorkdays) {
+          try {
+            const parsedWorkdays = JSON.parse(savedWorkdays);
+            if (Array.isArray(parsedWorkdays) && parsedWorkdays.length > 0) {
+              // (Tùy chọn) Có thể map lại để cập nhật giá mới nhất từ API vào giỏ hàng cũ
+              const updatedOldWorkdays = parsedWorkdays.map((day) => ({
+                ...day,
+                services: day.services.map((svc: any) => ({
+                  ...svc,
+                  name: dict[svc.id]?.name || svc.name,
+                  price: (dict[svc.id]?.pricePerHour || 0) * svc.duration,
+                })),
+              }));
+              setSelectedWorkDays(updatedOldWorkdays);
+              setIsLoading(false);
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        // NẾU CHƯA CÓ LỊCH LƯU, TẠO MẶC ĐỊNH NGÀY HÔM NAY
+        const todayStr = format(new Date(), "yyyy-MM-dd");
+        const defaultServices = parsedIds.map((id: string) => {
+          const info = dict[id];
+          return {
+            id,
+            name: info?.name || "Dịch vụ",
+            duration: 2,
+            price: (info?.pricePerHour || 0) * 2,
+          };
+        });
+
+        setSelectedWorkDays([
+          {
+            executionDate: todayStr,
+            startTime: "08:00",
+            services: defaultServices,
+          },
+        ]);
+      } catch (error) {
+        console.error("Lỗi fetch services:", error);
+        Swal.fire({
+          title: "Lỗi kết nối",
+          text: "Không thể lấy thông tin giá dịch vụ. Vui lòng thử lại sau.",
+          icon: "error",
+          confirmButtonColor: "#0d7660",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Đồng bộ localStorage khi thay đổi lịch làm việc
   useEffect(() => {
-    if (isMounted) {
+    if (isMounted && selectedWorkDays.length > 0) {
       localStorage.setItem(
         "booking_workdays",
         JSON.stringify(selectedWorkDays),
@@ -115,9 +150,7 @@ export default function TimeSelectionContent() {
   }, [selectedWorkDays, isMounted]);
 
   // ---------------- LOGIC XỬ LÝ ----------------
-
   const handleDayClick = (day: Date) => {
-    // Chặn chọn các ngày trong quá khứ
     if (isBefore(day, startOfDay(new Date()))) return;
 
     const dateStr = format(day, "yyyy-MM-dd");
@@ -126,8 +159,6 @@ export default function TimeSelectionContent() {
     );
 
     if (isAlreadySelected) {
-      // Nếu người dùng click vào ngày đã chọn (có ý định bỏ chọn)
-      // KIỂM TRA: Nếu chỉ còn 1 ngày duy nhất thì KHÔNG cho phép xóa
       if (selectedWorkDays.length <= 1) {
         Swal.fire({
           title: "Thông báo",
@@ -135,17 +166,15 @@ export default function TimeSelectionContent() {
           icon: "info",
           confirmButtonColor: "#0d7660",
         });
-        return; // Dừng hàm tại đây, không cập nhật state
+        return;
       }
-
-      // Nếu có nhiều hơn 1 ngày, tiến hành lọc bỏ ngày vừa click
       setSelectedWorkDays(
         selectedWorkDays.filter((d) => d.executionDate !== dateStr),
       );
     } else {
-      // Logic thêm ngày mới (giữ nguyên như cũ của bạn)
+      // Dùng servicesDict (từ API) thay vì MOCK_SERVICES_DB
       const servicesForThisDay = savedServiceIds.map((id) => {
-        const info = MOCK_SERVICES_DB[id];
+        const info = servicesDict[id];
         return {
           id,
           name: info?.name || "Dịch vụ",
@@ -169,6 +198,7 @@ export default function TimeSelectionContent() {
       );
     }
   };
+
   const updateStartTime = (dateIdx: number, time: string) => {
     const updated = [...selectedWorkDays];
     const targetDate = parse(
@@ -201,7 +231,9 @@ export default function TimeSelectionContent() {
   ) => {
     const updated = [...selectedWorkDays];
     const service = updated[dateIdx].services[serviceIdx];
-    const pricePerHour = MOCK_SERVICES_DB[service.id]?.pricePerHour || 0;
+
+    // Dùng servicesDict (từ API) thay vì MOCK_SERVICES_DB
+    const pricePerHour = servicesDict[service.id]?.pricePerHour || 0;
 
     updated[dateIdx].services[serviceIdx] = {
       ...service,
@@ -216,8 +248,18 @@ export default function TimeSelectionContent() {
     (_, i) => `${(i + 6).toString().padStart(2, "0")}:00`,
   );
 
-  //  FIX: Trả về null hoặc skeleton nếu chưa mount để tránh lệch HTML
   if (!isMounted) return null;
+
+  // Hiển thị trạng thái Loading trong lúc đợi API trả về giá tiền
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#f8fbfb] flex flex-col items-center py-20">
+        <BookingStepper activeStep={1} />
+        <div className="animate-spin mt-20 rounded-full h-12 w-12 border-b-2 border-[#0d7660]"></div>
+        <p className="mt-4 text-gray-500">Đang tải cấu hình dịch vụ...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fbfb] py-10 px-4 font-sans text-gray-800">
@@ -247,31 +289,24 @@ export default function TimeSelectionContent() {
                     )}
                   onDayClick={handleDayClick}
                   locale={vi}
-                  // CẬP NHẬT Ở ĐÂY 👇
                   disabled={[
-                    { before: new Date() }, // Chặn ngày quá khứ
+                    { before: new Date() },
                     ...(selectedWorkDays.length <= 1
                       ? selectedWorkDays.map((d) =>
                           parse(d.executionDate, "yyyy-MM-dd", new Date()),
                         )
-                      : []), // Nếu còn 1 ngày, add ngày đó vào danh sách disabled
+                      : []),
                   ]}
                   modifiersStyles={{
-                    selected: {
-                      fontSize: "inherit", // giữ cỡ chữ
-                    },
-                    today: {
-                      color: "#0ea5e9",
-                    },
+                    selected: { fontSize: "inherit" },
+                    today: { color: "#0ea5e9" },
                   }}
                 />
               </div>
 
               <div
                 className="flex-1 space-y-4 max-h-[1000px] overflow-y-auto pr-2 custom-scrollbar"
-                style={{
-                  scrollbarGutter: "stable", // Đây là dòng quan trọng nhất
-                }}
+                style={{ scrollbarGutter: "stable" }}
               >
                 {selectedWorkDays.map((day, dIdx) => (
                   <div
@@ -293,13 +328,12 @@ export default function TimeSelectionContent() {
                             parse(day.executionDate, "yyyy-MM-dd", new Date()),
                           )
                         }
-                        // Thêm class opacity hoặc ẩn đi nếu chỉ còn 1 ngày
                         className={`${
                           selectedWorkDays.length <= 1
                             ? "opacity-20 cursor-not-allowed"
                             : "text-red-400 hover:text-red-600"
                         } transition-colors`}
-                        disabled={selectedWorkDays.length <= 1} // Disable click trực tiếp trên button
+                        disabled={selectedWorkDays.length <= 1}
                       >
                         <DeleteOutlineIcon
                           sx={{ cursor: "pointer", fontSize: "24px" }}
@@ -334,7 +368,7 @@ export default function TimeSelectionContent() {
                         {day.services.map((svc, sIdx) => (
                           <div
                             key={svc.id}
-                            className="flex items-center justify-between gap-4 bg-[#f3f7f6] p-3 rounded-xl border border-white "
+                            className="flex items-center justify-between gap-4 bg-[#f3f7f6] p-3 rounded-xl border border-white"
                           >
                             <span className="text-sm font-medium text-gray-700 ">
                               {svc.name}

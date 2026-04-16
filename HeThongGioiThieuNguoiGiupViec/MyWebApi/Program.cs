@@ -30,6 +30,7 @@ builder.Services.AddCors(options =>
 
 
 // Custom Services
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IAuthService, AuthenticationService>();
 builder.Services.AddScoped<ITokenService, TokenService>(); // Service tạo JWT token
 builder.Services.AddScoped<IPasswordService, PasswordService>(); // Service hash password
@@ -82,7 +83,8 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser());
 });
 var app = builder.Build();
-
+// Thêm dòng này để server cho phép truy cập tệp trong wwwroot
+app.UseStaticFiles();
 
 
 // ===== ĐĂNG KÝ MIDDLEWARE =====

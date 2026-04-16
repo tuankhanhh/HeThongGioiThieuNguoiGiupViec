@@ -11,20 +11,29 @@ public partial class DichVu
 {
     [Key]
     [StringLength(5)]
-    [Unicode(false)]
+    [Unicode(false)] // Tương ứng với VARCHAR
     public string MaDichVu { get; set; } = null!;
 
     [StringLength(100)]
-    public string? TenDichVu { get; set; }
+    public string TenDichVu { get; set; } = null!; // NOT NULL trong SQL
 
-    [Column(TypeName = "decimal(10, 2)")]
+    [StringLength(500)]
+    public string? MoTa { get; set; }
+
+    [Column(TypeName = "decimal(18, 2)")]
     public decimal? GiaTheoGio { get; set; }
 
-    public bool? PhoBien { get; set; }
+    [StringLength(255)]
+    [Unicode(false)] // Tương ứng với VARCHAR
+    public string? HinhAnh { get; set; }
+
+
+    public bool? PhoBien { get; set; } // BIT trong SQL ánh xạ sang bool trong C#
 
     [StringLength(30)]
     public string? TrangThai { get; set; }
 
+    // Navigation properties (Các mối quan hệ)
     [InverseProperty("MaDichVuNavigation")]
     public virtual ICollection<DichVuThanhPhan> DichVuThanhPhans { get; set; } = new List<DichVuThanhPhan>();
 

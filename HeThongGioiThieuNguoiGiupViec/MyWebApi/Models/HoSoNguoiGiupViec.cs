@@ -18,17 +18,47 @@ public partial class HoSoNguoiGiupViec
     [Unicode(false)]
     public string MaNguoiGiupViec { get; set; } = null!;
 
+    [Column("SoCCCD")]
     [StringLength(12)]
     [Unicode(false)]
-    public string? SoCCCD { get; set; }
+    public string? SoCccd { get; set; }
 
-    public DateOnly? NgayCap { get; set; }
+    public DateOnly? NgaySinh { get; set; }
 
     [StringLength(100)]
-    public string? NoiCap { get; set; }
+    public string? GioiTinh { get; set; }
 
     [StringLength(200)]
     public string? KinhNghiem { get; set; }
+
+    [StringLength(200)]
+    public string? MoTaChiTietKinhNghiem { get; set; }
+
+    [StringLength(100)]
+    public string? TenNguoiThan { get; set; }
+
+    [Column("SDTNguoiThan")]
+    [StringLength(10)]
+    [Unicode(false)]
+    public string? SdtnguoiThan { get; set; }
+
+    [Column("AnhCCCDMatTruoc")]
+    [StringLength(255)]
+    [Unicode(false)]
+    public string? AnhCccdmatTruoc { get; set; }
+
+    [Column("AnhCCCDMatSau")]
+    [StringLength(255)]
+    [Unicode(false)]
+    public string? AnhCccdmatSau { get; set; }
+
+    [StringLength(255)]
+    [Unicode(false)]
+    public string? AnhChanDung { get; set; }
+
+    [StringLength(255)]
+    [Unicode(false)]
+    public string? GiayXacNhanCuTru { get; set; }
 
     [StringLength(50)]
     public string? TrangThaiXacMinh { get; set; }

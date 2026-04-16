@@ -24,10 +24,12 @@ export default function SuccessPage() {
         const parsedData = JSON.parse(saved);
         setWorkDays(parsedData);
 
-        // Tùy chọn: Dọn dẹp localStorage sau khi đã load dữ liệu vào state
-        // Điều này giúp đơn hàng tiếp theo bắt đầu từ trạng thái trống.
-        // localStorage.removeItem("booking_workdays");
-        // localStorage.removeItem("booking_services");
+        // --- XỬ LÝ KHI THÀNH CÔNG ---
+        // Xóa các dữ liệu tạm liên quan đến đơn hàng này
+        localStorage.removeItem("booking_services");
+        localStorage.removeItem("booking_workdays");
+        localStorage.removeItem("booking_address");
+        localStorage.removeItem("booking_note");
       } catch (error) {
         console.error("Lỗi dữ liệu:", error);
       }
