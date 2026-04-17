@@ -8,6 +8,7 @@ namespace MyWebApi.Service
     {
         Task<LoginResponse> LoginAsync(LoginRequest request);
         Task<LoginResponse> RegisterAsync(RegisterRequest request);
+        Task<LoginResponse> RegisterAsyncMaid(RegisterRequest request);
         Task<LoginResponse> RefreshTokenAsync(RefreshTokenRequest request);
         Task<bool> AssignRoleToUserAsync(string maNguoiDung, string roleName);
     }
@@ -85,6 +86,41 @@ namespace MyWebApi.Service
             await _context.SaveChangesAsync();
 
             await AssignRoleToUserAsync(newUser.MaNguoiDung, "Customer");
+
+            return await LoginAsync(new LoginRequest
+            {
+                SoDienThoai = request.SoDienThoai,
+                MatKhau = request.MatKhau
+            });
+        }
+
+        public async Task<LoginResponse> RegisterAsyncMaid(RegisterRequest request)
+        {
+            if (await _context.NguoiDungs.AnyAsync(u => u.SoDienThoai == request.SoDienThoai))
+            {
+                throw new InvalidOperationException("SĐT đã tồn tại");
+            }
+            if (await _context.NguoiDungs.AnyAsync(u => u.Email == request.Email))
+            {
+                throw new InvalidOperationException("Email đã tồn tại");
+            }
+            var hashedPassword = _passwordService.HashPassword(request.MatKhau);
+
+            var newUser = new NguoiDung
+            {
+                MaNguoiDung = Guid.NewGuid().ToString().Substring(0, 5),
+                MatKhau = hashedPassword,
+                HoTen = request.HoTen,
+                Email = request.Email,
+                SoDienThoai = request.SoDienThoai,
+                TrangThai = true,
+                NgayTao = DateTime.UtcNow
+            };
+
+            _context.NguoiDungs.Add(newUser);
+            await _context.SaveChangesAsync();
+
+            await AssignRoleToUserAsync(newUser.MaNguoiDung, "Maid");
 
             return await LoginAsync(new LoginRequest
             {

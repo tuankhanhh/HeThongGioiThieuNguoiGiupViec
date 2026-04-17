@@ -1,12 +1,13 @@
 import { create } from "zustand";
 
+interface SkillParams {
+  id: string;
+  name: string;
+}
+
 // 1. Khai báo Type cho toàn bộ dữ liệu hồ sơ
 interface RegistrationState {
-  // --- DỮ LIỆU ---
-  step1_phone: string;
-
   step2_personal: {
-    fullName: string;
     dob: string;
     gender: string;
     idCard: string;
@@ -23,13 +24,12 @@ interface RegistrationState {
   };
 
   step4_skills: {
-    selectedSkills: string[];
+    selectedSkills: SkillParams[];
     experienceYears: string;
     experienceDesc: string;
   };
 
   // --- ACTIONS (Hàm cập nhật dữ liệu) ---
-  updatePhone: (phone: string) => void;
   updatePersonal: (data: Partial<RegistrationState["step2_personal"]>) => void;
   updateDocs: (
     field: keyof RegistrationState["step3_docs"],
@@ -41,9 +41,7 @@ interface RegistrationState {
 
 // 2. Giá trị mặc định ban đầu
 const initialState = {
-  step1_phone: "",
   step2_personal: {
-    fullName: "",
     dob: "",
     gender: "",
     idCard: "",
@@ -68,7 +66,7 @@ const initialState = {
 export const useRegistrationStore = create<RegistrationState>((set) => ({
   ...initialState,
 
-  updatePhone: (phone) => set({ step1_phone: phone }),
+  // Cập nhật thông tin tài khoản Bước 1
 
   // Dùng toán tử spread (...) để gộp dữ liệu mới vào dữ liệu cũ
   updatePersonal: (data) =>

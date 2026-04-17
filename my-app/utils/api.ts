@@ -1,95 +1,54 @@
-// 1. Định nghĩa các Interface cơ bản
-type QueryParams = Record<string, string | number | boolean | undefined>;
+import queryString from "query-string";
 
-interface RequestOptions extends RequestInit {
-  params?: QueryParams;
-}
+// Lấy Base URL từ biến môi trường
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-// 2. Lấy Base URL từ biến môi trường
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+export const sendRequest = async <T>(props: IRequest): Promise<T> => {
+  const {
+    url,
+    method,
+    body,
+    queryParams = {},
+    useCredentials = false,
+    headers = {},
+    nextOption = {},
+  } = props;
 
-// 3. Hàm xử lý Query String
-const buildQueryString = (params?: QueryParams): string => {
-  if (!params) return "";
+  // 1. Xử lý URL: Kết hợp Base URL nếu truyền vào url tương đối
+  const fullUrl = url.startsWith("http")
+    ? url
+    : `${BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
 
-  const searchParams = new URLSearchParams();
+  // 2. Xử lý Query Params
+  const finalUrl =
+    Object.keys(queryParams).length > 0
+      ? `${fullUrl}?${queryString.stringify(queryParams)}`
+      : fullUrl;
 
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      searchParams.append(key, String(value));
-    }
-  });
+  const options: RequestInit = {
+    method: method,
+    headers: new Headers({
+      "content-type": "application/json",
+      ...headers,
+    }),
+    body: body ? JSON.stringify(body) : null,
+    ...nextOption,
+  };
 
-  const queryString = searchParams.toString();
-  return queryString ? `?${queryString}` : "";
+  if (useCredentials) options.credentials = "include";
+
+  // 3. Thực thi Request bằng async/await cho sạch sẽ
+  const res = await fetch(finalUrl, options);
+
+  if (res.ok) {
+    return (await res.json()) as T;
+  } else {
+    const json = await res.json();
+    // Trả về một object lỗi có cấu trúc
+    return {
+      statusCode: res.status,
+      message: json?.message ?? "Có lỗi xảy ra",
+      error: json?.error ?? "Lỗi không xác định",
+    } as T;
+  }
 };
-
-// 4. API Service chính
-export const apiService = {
-  async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { params, ...customConfig } = options;
-
-    // Tạo URL hoàn chỉnh với Query String
-    const url = `${BASE_URL}${endpoint}${buildQueryString(params)}`;
-
-    // Tự động lấy token từ localStorage (chỉ chạy ở phía Client)
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("accessToken")
-        : null;
-
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...customConfig.headers,
-    };
-
-    const config: RequestInit = {
-      ...customConfig,
-      headers,
-    };
-
-    try {
-      const response = await fetch(url, config);
-
-      // Xử lý lỗi HTTP (401, 403, 500...)
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Lỗi HTTP: ${response.status}`);
-      }
-
-      // Nếu API không trả về nội dung (204 No Content)
-      if (response.status === 204) return {} as T;
-
-      return (await response.json()) as T;
-    } catch (error: unknown) {
-      if (error instanceof Error) throw error;
-      throw new Error("Đã xảy ra lỗi không xác định");
-    }
-  },
-
-  // Các phương thức rút gọn
-  get<T>(endpoint: string, params?: QueryParams) {
-    return this.request<T>(endpoint, { method: "GET", params });
-  },
-
-  post<T, D>(endpoint: string, data: D) {
-    return this.request<T>(endpoint, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  put<T, D>(endpoint: string, data: D) {
-    return this.request<T>(endpoint, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  },
-
-  delete<T>(endpoint: string) {
-    return this.request<T>(endpoint, { method: "DELETE" });
-  },
-};
-
-export default apiService;

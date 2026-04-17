@@ -5,7 +5,7 @@ import {
   Button,
   ThemeProvider,
   createTheme,
-  InputAdornment,
+  InputAdornment, // Có thể bỏ dòng này nếu không dùng đến
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -44,12 +44,30 @@ export default function DocumentUploadStep() {
     {},
   );
 
-  // Cleanup: Giải phóng các URL blob khi component unmount
+  // 3. Khôi phục preview khi component render lại (VD: User bấm "Quay lại" từ bước sau)
   useEffect(() => {
+    const initialPreviews: Record<string, string> = {};
+    let hasFiles = false;
+
+    // Duyệt qua các file đã lưu trong Zustand, nếu có thì tạo URL hiển thị
+    (Object.keys(step3_docs) as DocField[]).forEach((key) => {
+      const file = step3_docs[key];
+      if (file && file.type.startsWith("image/")) {
+        initialPreviews[key] = URL.createObjectURL(file);
+        hasFiles = true;
+      }
+    });
+
+    if (hasFiles) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalPreviews(initialPreviews);
+    }
+
+    // Cleanup: Giải phóng các URL blob khi component unmount
     return () => {
-      Object.values(localPreviews).forEach((url) => URL.revokeObjectURL(url));
+      Object.values(initialPreviews).forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [localPreviews]);
+  }, []); // Chỉ chạy 1 lần khi Mount
 
   // Handler xử lý chọn file
   const handleFileChange =
@@ -57,17 +75,33 @@ export default function DocumentUploadStep() {
       if (e.target.files && e.target.files.length > 0) {
         const selectedFile = e.target.files[0];
 
-        // 3. Cập nhật FILE GỐC vào store Zustand
+        // Validate: Kiểm tra dung lượng (Tối đa 5MB = 5 * 1024 * 1024 bytes)
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        if (selectedFile.size > MAX_FILE_SIZE) {
+          alert(
+            `File ${selectedFile.name} vượt quá 5MB. Vui lòng chọn file nhỏ hơn!`,
+          );
+          e.target.value = ""; // Reset input
+          return;
+        }
+
+        // Cập nhật FILE GỐC vào store Zustand
         updateDocs(field, selectedFile);
 
-        // 4. Cập nhật PREVIEW URL cục bộ (chỉ cho ảnh)
+        // Cập nhật PREVIEW URL cục bộ (chỉ cho ảnh)
         if (selectedFile.type.startsWith("image/")) {
           const objectUrl = URL.createObjectURL(selectedFile);
-          setLocalPreviews((prev) => ({ ...prev, [field]: objectUrl }));
+
+          setLocalPreviews((prev) => {
+            // Xóa URL cũ để tránh rò rỉ bộ nhớ
+            if (prev[field]) URL.revokeObjectURL(prev[field]);
+            return { ...prev, [field]: objectUrl };
+          });
         } else {
           // Reset preview nếu là PDF hoặc file khác
           setLocalPreviews((prev) => {
             const next = { ...prev };
+            if (next[field]) URL.revokeObjectURL(next[field]); // Clear bộ nhớ
             delete next[field];
             return next;
           });
@@ -84,7 +118,7 @@ export default function DocumentUploadStep() {
   ) => {
     const file = step3_docs[field]; // Đọc file từ store
     const previewUrl = localPreviews[field]; // Đọc preview từ state cục bộ
-    const isUploaded = file !== null;
+    const isUploaded = file !== null && file !== undefined;
     const isPdf = file?.type === "application/pdf";
 
     return (
@@ -170,7 +204,7 @@ export default function DocumentUploadStep() {
         <div className="max-w-4xl w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-8 md:p-12">
             <div className="mb-12">
-              <RegistrationStepper activeStep={2} />
+              <RegistrationStepper activeStep={1} />
             </div>
 
             <div className="mb-10">

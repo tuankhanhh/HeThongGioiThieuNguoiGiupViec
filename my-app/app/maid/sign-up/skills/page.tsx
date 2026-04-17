@@ -73,11 +73,17 @@ export default function SkillsAndExperienceStep() {
     fetchSkills();
   }, []);
 
-  const toggleSkill = (skillId: string) => {
+  const toggleSkill = (skill: { id: string; title: string }) => {
     const currentSkills = step4_skills.selectedSkills;
-    const newSkills = currentSkills.includes(skillId)
-      ? currentSkills.filter((id) => id !== skillId)
-      : [...currentSkills, skillId];
+
+    // Kiểm tra xem kỹ năng này đã được chọn chưa (tìm theo id)
+    const isAlreadySelected = currentSkills.some((s: any) => s.id === skill.id);
+
+    // Nếu đã chọn rồi thì lọc bỏ nó ra, nếu chưa thì thêm object mới vào
+    const newSkills = isAlreadySelected
+      ? currentSkills.filter((s: any) => s.id !== skill.id)
+      : [...currentSkills, { id: skill.id, name: skill.title }]; // Lưu ý: map 'title' từ DB sang 'name' trong store
+
     updateSkills({ selectedSkills: newSkills });
   };
 
@@ -97,7 +103,7 @@ export default function SkillsAndExperienceStep() {
         <div className="max-w-4xl w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-8 md:p-12">
             <div className="mb-12">
-              <RegistrationStepper activeStep={3} />
+              <RegistrationStepper activeStep={2} />
             </div>
 
             <div className="mb-10">
@@ -122,8 +128,8 @@ export default function SkillsAndExperienceStep() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {dbSkills.map((skill) => {
-                    const isSelected = step4_skills.selectedSkills.includes(
-                      skill.id,
+                    const isSelected = step4_skills.selectedSkills.some(
+                      (s: any) => s.id === skill.id,
                     );
                     // Lấy icon từ Map dựa trên tên DB trả về (iconKey)
                     const icon = ICON_MAP[skill.iconKey] || (
@@ -133,7 +139,9 @@ export default function SkillsAndExperienceStep() {
                     return (
                       <div
                         key={skill.id}
-                        onClick={() => toggleSkill(skill.id)}
+                        onClick={() =>
+                          toggleSkill({ id: skill.id, title: skill.title })
+                        }
                         className={`relative flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
                           isSelected
                             ? "border-emerald-700 bg-white shadow-sm"

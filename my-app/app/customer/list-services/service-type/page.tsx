@@ -56,7 +56,6 @@ export default function ServiceSelection() {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        // THAY ĐỔI URL DƯỚI ĐÂY THÀNH DOMAIN API THỰC TẾ CỦA BẠN
         const response = await fetch("https://localhost:7095/api/dichvu");
 
         if (!response.ok) {

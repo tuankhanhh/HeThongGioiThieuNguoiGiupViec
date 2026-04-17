@@ -1,159 +1,157 @@
-﻿using System.Text.Json;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using MyWebApi.DTO.Request;
 using MyWebApi.Models;
-using MyWebApi.Service; // Đảm bảo đúng namespace của Service
 
 namespace MyWebApi.Controllers
 {
     [Route("api/v1/maid")]
     [ApiController]
-    public class MaidController : ControllerBase
+    public class HoSoController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly IFileStorageService _fileStorage;
 
-        public MaidController(ApplicationDbContext context, IFileStorageService fileStorage)
+        public HoSoController(ApplicationDbContext context)
         {
             _context = context;
-            _fileStorage = fileStorage;
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> RegisterMaid([FromForm] HoSoRequest request)
+        [HttpPost("hoan-thien-ho-so")]
+        [Authorize]
+        public async Task<IActionResult> HoanThienHoSo([FromForm] HoSoRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+            var userIdFromToken =
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue("nameid") ??
+                User.FindFirstValue("sub");
+
+            if (string.IsNullOrEmpty(userIdFromToken) || userIdFromToken != request.MaNguoiGiupViec)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    success = false,
+                    message = "Token không hợp lệ hoặc không khớp người dùng."
+                });
+            }
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // 1. Lưu File và lấy URL
-                string? cccdFrontUrl = request.CccdFront != null ? await _fileStorage.UploadAsync(request.CccdFront) : null;
-                string? cccdBackUrl = request.CccdBack != null ? await _fileStorage.UploadAsync(request.CccdBack) : null;
-                string? portraitUrl = request.Portrait != null ? await _fileStorage.UploadAsync(request.Portrait) : null;
-                string? residenceUrl = request.Residence != null ? await _fileStorage.UploadAsync(request.Residence) : null;
-
-                // 2. Tạo ID tự động (Đã sửa lỗi query sai bảng)
-                string maNguoiDung = await GenerateIdVarchar5("ND", "NguoiDung", "MaNguoiDung");
-                string maHoSo = await GenerateIdVarchar5("HS", "HoSoNguoiGiupViec", "MaHoSo");
-
-                // 3. Thêm NguoiDung
-                var nguoiDung = new NguoiDung
+                var nguoiDung = await _context.NguoiDungs.FindAsync(userIdFromToken);
+                if (nguoiDung == null)
                 {
-                    MaNguoiDung = maNguoiDung,
-                    HoTen = request.FullName,
-                    SoDienThoai = request.Phone,
-                    DiaChi = request.Address,
-                    TrangThai = true,
-                    NgayTao = DateTime.Now,
-                    AnhDaiDien = portraitUrl
-                };
-                _context.NguoiDungs.Add(nguoiDung);
-
-                // 4. Gán Vai Trò VT02 (Người giúp việc)
-                var userRole = new NguoiDungVaiTro
-                {
-                    MaNguoiDung = maNguoiDung,
-                    MaVaiTro = "VT02",
-                    NgayGan = DateTime.Now
-                };
-                _context.NguoiDungVaiTros.Add(userRole);
-
-                // 5. Thêm HoSoNguoiGiupViec
-                var hoSo = new HoSoNguoiGiupViec
-                {
-                    MaHoSo = maHoSo,
-                    MaNguoiGiupViec = maNguoiDung,
-                    SoCccd = request.IdCard,
-                    NgaySinh = request.Dob,
-                    GioiTinh = request.Gender,
-                    KinhNghiem = request.ExperienceYears,
-                    MoTaChiTietKinhNghiem = request.ExperienceDesc,
-                    TenNguoiThan = request.RelativeName,
-                    SdtnguoiThan = request.RelativePhone,
-                    AnhCccdmatTruoc = cccdFrontUrl,
-                    AnhCccdmatSau = cccdBackUrl,
-                    AnhChanDung = portraitUrl,
-                    GiayXacNhanCuTru = residenceUrl,
-                    TrangThaiXacMinh = "CHỜ DUYỆT"
-                };
-                _context.HoSoNguoiGiupViecs.Add(hoSo);
-
-                // 6. Xử lý Kỹ năng
-                if (!string.IsNullOrEmpty(request.Skills))
-                {
-                    var skillKeys = JsonSerializer.Deserialize<List<string>>(request.Skills);
-                    if (skillKeys != null)
+                    return NotFound(new
                     {
-                        foreach (var key in skillKeys)
-                        {
-                            _context.KyNangNguoiGiupViecs.Add(new KyNangNguoiGiupViec
-                            {
-                                MaHoSo = maHoSo,
-                                MaKyNang = GetMaKyNangRealId(key),
-                                NgayThem = DateTime.Now
-                            });
-                        }
-                    }
+                        success = false,
+                        message = "Không tìm thấy người dùng."
+                    });
                 }
 
+                if (!string.IsNullOrWhiteSpace(request.DiaChi))
+                {
+                    nguoiDung.DiaChi = request.DiaChi;
+                    _context.NguoiDungs.Update(nguoiDung);
+                }
+
+                string pathCccdTruoc = await SaveFileAsync(request.FileAnhCccdmatTruoc);
+                string pathCccdSau = await SaveFileAsync(request.FileAnhCccdmatSau);
+                string pathChanDung = await SaveFileAsync(request.FileAnhChanDung);
+                string pathCuTru = await SaveFileAsync(request.FileAnhGiayXacNhanCuTru);
+
+                // MaHoSo dài 5 ký tự, ví dụ: HS001, HS123
+                string newMaHoSo = await GenerateMaHoSoAsync();
+
+                var hoSoMoi = new HoSoNguoiGiupViec
+                {
+                    MaHoSo = newMaHoSo,
+                    MaNguoiGiupViec = userIdFromToken,
+                    SoCccd = request.SoCccd,
+                    NgaySinh = request.NgaySinh,
+                    GioiTinh = request.GioiTinh,
+                    KinhNghiem = request.KinhNghiem,
+                    MoTaChiTietKinhNghiem = request.MoTaChiTietKinhNghiem,
+                    TenNguoiThan = request.TenNguoiThan,
+                    SdtnguoiThan = request.SdtnguoiThan,
+                    AnhCccdmatTruoc = pathCccdTruoc,
+                    AnhCccdmatSau = pathCccdSau,
+                    AnhChanDung = pathChanDung,
+                    GiayXacNhanCuTru = pathCuTru,
+                    TrangThaiXacMinh = "Chờ duyệt"
+                };
+
+                await _context.HoSoNguoiGiupViecs.AddAsync(hoSoMoi);
                 await _context.SaveChangesAsync();
+
+                if (request.DanhSachMaKyNang != null && request.DanhSachMaKyNang.Any())
+                {
+                    var distinctSkills = request.DanhSachMaKyNang.Distinct().ToList();
+
+                    var danhSachKyNang = distinctSkills.Select(maKyNang => new KyNangNguoiGiupViec
+                    {
+                        MaHoSo = newMaHoSo,
+                        MaKyNang = maKyNang,
+                        NgayThem = DateTime.Now
+                    }).ToList();
+
+                    await _context.KyNangNguoiGiupViecs.AddRangeAsync(danhSachKyNang);
+                    await _context.SaveChangesAsync();
+                }
+
                 await transaction.CommitAsync();
 
-                return Ok(new { success = true, message = "Đăng ký thành công!", maHoSo });
+                return Ok(new
+                {
+                    success = true,
+                    message = "Hoàn tất hồ sơ thành công!"
+                });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return StatusCode(500, new { success = false, message = "Lỗi hệ thống", detail = ex.InnerException?.Message ?? ex.Message });
-            }
-        }
 
-        // --- HELPER METHODS ---
-
-        private async Task<string> GenerateIdVarchar5(string prefix, string tableName, string columnName)
-        {
-            try
-            {
-                // Thêm "AS [Value]" để EF Core có thể map vào kiểu string
-                var lastId = await _context.Database
-                    .SqlQueryRaw<string>($"SELECT TOP 1 {columnName} AS [Value] FROM {tableName} ORDER BY {columnName} DESC")
-                    .FirstOrDefaultAsync();
-
-                if (string.IsNullOrEmpty(lastId))
-                    return prefix + "001";
-
-                // Cắt bỏ phần chữ (prefix), lấy phần số và tăng thêm 1
-                // Ví dụ: ND005 -> lấy 005 -> thành 6 -> kết quả ND006
-                string numericPart = lastId.Replace(prefix, "");
-                if (int.TryParse(numericPart, out int currentNumber))
+                return StatusCode(500, new
                 {
-                    return prefix + (currentNumber + 1).ToString("D3");
-                }
-
-                return prefix + "001";
-            }
-            catch (Exception)
-            {
-                // Nếu có lỗi (ví dụ bảng chưa có dữ liệu), mặc định trả về 001
-                return prefix + "001";
+                    success = false,
+                    message = "Đã xảy ra lỗi khi lưu hồ sơ.",
+                    detail = ex.Message
+                });
             }
         }
 
-        private string GetMaKyNangRealId(string key)
+        private async Task<string> SaveFileAsync(IFormFile? file)
         {
-            return key switch
+            if (file == null || file.Length == 0)
+                return string.Empty;
+
+            var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+            if (!Directory.Exists(uploadFolder))
+                Directory.CreateDirectory(uploadFolder);
+
+            var safeFileName = Path.GetFileName(file.FileName);
+            var uniqueFileName = $"{Guid.NewGuid()}_{safeFileName}";
+            var filePath = Path.Combine(uploadFolder, uniqueFileName);
+
+            using var fileStream = new FileStream(filePath, FileMode.Create);
+            await file.CopyToAsync(fileStream);
+
+            return "/uploads/" + uniqueFileName;
+        }
+
+        private async Task<string> GenerateMaHoSoAsync()
+        {
+            // Sinh mã 5 ký tự: HS001 -> HS999
+            // Nếu đã tồn tại thì sinh lại
+            string maHoSo;
+            do
             {
-                "cleaning" => "KN001",
-                "cooking" => "KN002",
-                "childcare" => "KN003",
-                "eldercare" => "KN004",
-                "laundry" => "KN005",
-                _ => "KN006"
-            };
+                maHoSo = "HS" + Random.Shared.Next(100, 1000); // 5 ký tự
+            }
+            while (await _context.HoSoNguoiGiupViecs.AnyAsync(x => x.MaHoSo == maHoSo));
+
+            return maHoSo;
         }
     }
 }

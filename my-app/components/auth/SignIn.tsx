@@ -36,7 +36,7 @@ export default function Login({
   const redirectMap: Record<string, string> = {
     Customer: "/",
     Custommer: "/", // Phòng trường hợp backend sai chính tả
-    Maid: "/maid",
+    Maid: "/maid/sign-up/generalinfo",
     Staff: "/Staff",
     Admin: "/Admin",
   };
@@ -181,7 +181,7 @@ export default function Login({
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-600"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer transition-colors"
                 >
                   {showPassword ? (
                     <svg
@@ -225,7 +225,7 @@ export default function Login({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+              className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2 cursor-pointer"
             >
               {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>

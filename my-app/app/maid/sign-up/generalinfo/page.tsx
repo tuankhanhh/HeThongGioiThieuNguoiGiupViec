@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Button,
   OutlinedInput,
@@ -16,14 +16,13 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import WcIcon from "@mui/icons-material/Wc";
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
-import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined"; // Import lại Icon Địa chỉ
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import RegistrationStepper from "@/components/componentsMaid/Stepper";
 import Link from "next/link";
 
-// 1. Import store Zustand
+// Import store Zustand
 import { useRegistrationStore } from "@/store/useRegistrationStore";
 
 // Custom Theme MUI
@@ -59,24 +58,50 @@ const theme = createTheme({
 });
 
 export default function RegistrationForm() {
-  // 2. Lấy dữ liệu và hàm cập nhật từ Store thay vì dùng useState cục bộ
   const step2_personal = useRegistrationStore((state) => state.step2_personal);
   const updatePersonal = useRegistrationStore((state) => state.updatePersonal);
 
-  // Handler cho các input Text (OutlinedInput)
+  const [userName, setUserName] = useState<string>("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      try {
+        const base64Url = token.split(".")[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = decodeURIComponent(
+          window
+            .atob(base64)
+            .split("")
+            .map(function (c) {
+              return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join(""),
+        );
+
+        const decodedToken = JSON.parse(jsonPayload);
+        const extractedName = decodedToken.fullName || decodedToken.name;
+
+        if (extractedName) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setUserName(extractedName);
+        }
+      } catch (error) {
+        console.error("Không thể giải mã token:", error);
+      }
+    }
+  }, []);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-    // Đẩy dữ liệu thẳng vào store
-    updatePersonal({ [name]: value });
+    updatePersonal({ [name]: value } as any);
   };
 
-  // Handler RIÊNG cho Select component
   const handleSelectChange = (e: SelectChangeEvent<string>) => {
     const { name, value } = e.target;
-    // Đẩy dữ liệu thẳng vào store
-    updatePersonal({ [name]: value });
+    updatePersonal({ [name]: value } as any);
   };
 
   return (
@@ -85,10 +110,9 @@ export default function RegistrationForm() {
         <div className="max-w-4xl w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-8 md:p-12">
             <div className="mb-12">
-              <RegistrationStepper activeStep={1} />
+              <RegistrationStepper activeStep={0} />
             </div>
 
-            {/* Form Header */}
             <div className="text-center mb-10">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
                 Thông tin cá nhân
@@ -98,9 +122,8 @@ export default function RegistrationForm() {
               </p>
             </div>
 
-            {/* Form Fields */}
             <div className="space-y-6">
-              {/* Row 1 */}
+              {/* Row 1: Họ tên & Ngày sinh */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -109,12 +132,13 @@ export default function RegistrationForm() {
                   <OutlinedInput
                     fullWidth
                     name="fullName"
-                    value={step2_personal.fullName} // Đọc từ store
-                    onChange={handleInputChange}
-                    placeholder="VD: Nguyen Van A"
+                    value={userName}
+                    readOnly
+                    placeholder="Đang tải dữ liệu..."
+                    className="bg-gray-200 text-gray-600 cursor-not-allowed"
                     startAdornment={
                       <InputAdornment position="start">
-                        <PersonOutlineIcon className="text-gray-500" />
+                        <PersonOutlineIcon className="text-gray-400" />
                       </InputAdornment>
                     }
                   />
@@ -126,8 +150,8 @@ export default function RegistrationForm() {
                   <OutlinedInput
                     fullWidth
                     type="date"
-                    name="dob"
-                    value={step2_personal.dob} // Đọc từ store
+                    name="dob" // Đảm bảo trùng khớp với Store (hoặc đổi thành ngaySinh)
+                    value={step2_personal.dob}
                     onChange={handleInputChange}
                     startAdornment={
                       <InputAdornment position="start">
@@ -141,7 +165,7 @@ export default function RegistrationForm() {
                 </div>
               </div>
 
-              {/* Row 2 */}
+              {/* Row 2: Giới tính & Số CCCD */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -150,7 +174,7 @@ export default function RegistrationForm() {
                   <FormControl fullWidth variant="outlined">
                     <Select
                       name="gender"
-                      value={step2_personal.gender} // Đọc từ store
+                      value={step2_personal.gender}
                       onChange={handleSelectChange}
                       displayEmpty
                       renderValue={
@@ -181,9 +205,10 @@ export default function RegistrationForm() {
                   <OutlinedInput
                     fullWidth
                     name="idCard"
-                    value={step2_personal.idCard} // Đọc từ store
+                    value={step2_personal.idCard}
                     onChange={handleInputChange}
-                    placeholder="VD: 123245678991"
+                    placeholder="VD: 012345678912"
+                    inputProps={{ maxLength: 12 }}
                     startAdornment={
                       <InputAdornment position="start">
                         <BadgeOutlinedIcon className="text-gray-500" />
@@ -193,17 +218,17 @@ export default function RegistrationForm() {
                 </div>
               </div>
 
-              {/* Row 3 */}
+              {/* THÊM LẠI: Row 3 - Địa chỉ */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Địa chỉ hiện tại
                 </label>
                 <OutlinedInput
                   fullWidth
-                  name="address"
-                  value={step2_personal.address} // Đọc từ store
+                  name="address" // Đảm bảo khai báo lại "address" trong Zustand Store
+                  value={step2_personal.address}
                   onChange={handleInputChange}
-                  placeholder="VD: Đà Nẵng"
+                  placeholder="Nhập địa chỉ cư trú của bạn (VD: 123 Lê Lợi, Quận 1, TP.HCM)"
                   startAdornment={
                     <InputAdornment position="start">
                       <LocationOnOutlinedIcon className="text-gray-500" />
@@ -219,7 +244,7 @@ export default function RegistrationForm() {
                 </h3>
               </div>
 
-              {/* Row 4 */}
+              {/* Row 4: Người thân */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -228,9 +253,9 @@ export default function RegistrationForm() {
                   <OutlinedInput
                     fullWidth
                     name="relativeName"
-                    value={step2_personal.relativeName} // Đọc từ store
+                    value={step2_personal.relativeName}
                     onChange={handleInputChange}
-                    placeholder="VD: Tuan Khanh"
+                    placeholder="VD: Nguyễn Văn B"
                     startAdornment={
                       <InputAdornment position="start">
                         <WcIcon className="text-gray-500" />
@@ -245,9 +270,10 @@ export default function RegistrationForm() {
                   <OutlinedInput
                     fullWidth
                     name="relativePhone"
-                    value={step2_personal.relativePhone} // Đọc từ store
+                    value={step2_personal.relativePhone}
                     onChange={handleInputChange}
                     placeholder="VD: 0900009991"
+                    inputProps={{ maxLength: 10 }}
                     className="[&>fieldset]:border-emerald-300"
                     startAdornment={
                       <InputAdornment position="start">
@@ -261,16 +287,7 @@ export default function RegistrationForm() {
 
             {/* Actions */}
             <div className="mt-12 flex justify-between items-center pt-6 border-t border-gray-100">
-              <Link href="/maid/sign-up/phoneverify">
-                <Button
-                  variant="outlined"
-                  startIcon={<ArrowBackIcon />}
-                  className="text-gray-700 border-gray-300 hover:bg-gray-50 px-6 py-2.5 normal-case rounded-lg font-semibold"
-                >
-                  Quay lại
-                </Button>
-              </Link>
-
+              <div></div>
               <Link href="/maid/sign-up/document">
                 <Button
                   variant="contained"

@@ -54,6 +54,21 @@ namespace MyWebApi.Controllers
             }
         }
 
+        [HttpPost("registerMaid")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RegisterMaid(RegisterRequest request)
+        {
+            try
+            {
+                var response = await _authService.RegisterAsyncMaid(request);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         // ================= REFRESH TOKEN =================
         [HttpPost("refresh-token")]
         [AllowAnonymous]

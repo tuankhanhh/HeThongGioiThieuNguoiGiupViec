@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
-
+import { useRouter } from "next/navigation";
 // ==========================================
 // 1. DATA & INTERFACES
 // ==========================================
@@ -40,7 +40,6 @@ const steps = [
       "Đánh giá dịch vụ và thanh toán an toàn qua ứng dụng sau khi hoàn thành.",
   },
 ];
-
 // ==========================================
 // 2. HELPER COMPONENT (StepItem)
 // ==========================================
@@ -171,7 +170,16 @@ export default function StepList() {
 
     return () => observer.disconnect();
   }, []);
+  const router = useRouter();
+  //Kiểm tra đăng nhập
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const token = localStorage.getItem("accessToken");
 
+    if (!token) {
+      e.preventDefault(); // chặn Link
+      router.push("/customer/sign-in"); // chuyển sang trang đăng nhập
+    }
+  };
   return (
     <section className="py-20 bg-white" id="how-it-works">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -247,7 +255,8 @@ export default function StepList() {
             </p>
           </div>
           <Link
-            href="/khachhang/dangnhap"
+            href="/customer/list-services"
+            onClick={handleClick}
             className={`flex-shrink-0 px-8 py-3.5 rounded-2xl bg-white text-amber-600 font-bold text-lg hover:bg-amber-50 transition-all duration-700 delay-300 shadow-lg ${
               isCtaVisible
                 ? "opacity-100 translate-x-0"

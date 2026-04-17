@@ -1,30 +1,34 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
 
 namespace MyWebApi.DTO.Request
 {
     public class HoSoRequest
     {
-        // Thông tin NguoiDung
-        [Required] public string Phone { get; set; } = null!;
-        [Required] public string FullName { get; set; } = null!;
-        public string? Address { get; set; }
+        public string MaNguoiGiupViec { get; set; } = null!;
 
-        // Thông tin HoSoNguoiGiupViec
-        public DateOnly? Dob { get; set; } // Map tự động từ "yyyy-MM-dd" của React
-        public string? Gender { get; set; }
-        public string? IdCard { get; set; }
-        public string? RelativeName { get; set; }
-        public string? RelativePhone { get; set; }
-        public string? ExperienceYears { get; set; }
-        public string? ExperienceDesc { get; set; }
+        public string? SoCccd { get; set; }
 
-        // Kỹ năng (Chuỗi JSON: "[\"cleaning\", \"cooking\"]")
-        public string? Skills { get; set; }
+        // DateOnly sẽ bind từ chuỗi yyyy-MM-dd
+        public DateOnly? NgaySinh { get; set; }
 
-        // File upload (Có thể null nếu không bắt buộc)
-        public IFormFile? CccdFront { get; set; }
-        public IFormFile? CccdBack { get; set; }
-        public IFormFile? Portrait { get; set; }
-        public IFormFile? Residence { get; set; }
+        public string? GioiTinh { get; set; }
+
+        public string? DiaChi { get; set; }
+
+        public string? TenNguoiThan { get; set; }
+
+        public string? SdtnguoiThan { get; set; }
+
+        // Entity của bạn là string
+        public string? KinhNghiem { get; set; }
+
+        public string? MoTaChiTietKinhNghiem { get; set; }
+
+        public List<string> DanhSachMaKyNang { get; set; } = new();
+
+        public IFormFile? FileAnhCccdmatTruoc { get; set; }
+        public IFormFile? FileAnhCccdmatSau { get; set; }
+        public IFormFile? FileAnhChanDung { get; set; }
+        public IFormFile? FileAnhGiayXacNhanCuTru { get; set; }
     }
 }

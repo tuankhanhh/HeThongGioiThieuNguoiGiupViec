@@ -44,30 +44,30 @@ function ServiceCard({ service }: { service: ServiceType }) {
   const router = useRouter();
 
   const handleBooking = () => {
-    // 1. Kiểm tra môi trường browser để tránh lỗi undefined
     if (typeof window === "undefined") return;
 
-    // 2. Lưu ID dịch vụ
-    localStorage.setItem("booking_services", JSON.stringify([service.id]));
-
-    // 3. LẤY TOKEN ĐÚNG TÊN KEY LÀ "accessToken"
     const token = localStorage.getItem("accessToken");
-    console.log("Current Token:", token);
 
-    // 4. Kiểm tra thêm: Token có hợp lệ không
-    const isLoggedIn =
-      token && token !== "undefined" && token !== "null" && token.trim() !== "";
+    const isValidToken = (token: string) => {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return payload.exp * 1000 > Date.now();
+      } catch {
+        return false;
+      }
+    };
+
+    const isLoggedIn = token && isValidToken(token);
 
     if (!isLoggedIn) {
-      // // Lưu trang đích để quay lại sau
-      // localStorage.setItem("redirect_after_login", window.location.pathname);
-
-      // Chuyển hướng
+      localStorage.setItem("redirect_after_login", window.location.pathname);
       router.push("/customer/sign-in");
-    } else {
-      // Đã đăng nhập -> Chuyển đến trang chọn dịch vụ
-      router.push("/customer/list-services/service-type");
+      return;
     }
+
+    // chỉ lưu khi đã login
+    localStorage.setItem("booking_services", JSON.stringify([service.id]));
+    router.push("/customer/list-services/service-type");
   };
 
   return (

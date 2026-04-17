@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ReactNode, useRef, useState, useEffect } from "react";
 
 // ==========================================
@@ -269,8 +270,8 @@ export default function ServiceList({ limit }: ServiceListProps) {
 
         {/* CTA */}
         <div className="text-center mt-10">
-          <a
-            href="/services"
+          <Link
+            href="/customer/list-services"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-stone-300 text-stone-600 font-semibold hover:border-amber-400 hover:text-amber-600 transition-colors duration-200"
           >
             Xem tất cả dịch vụ
@@ -287,7 +288,7 @@ export default function ServiceList({ limit }: ServiceListProps) {
                 d="M9 5l7 7-7 7"
               />
             </svg>
-          </a>
+          </Link>
         </div>
       </div>
     </section>

@@ -32,7 +32,7 @@ interface RegistrationStepperProps {
   activeStep: number;
 }
 
-const steps = ["Xác thực SĐT", "Thông tin", "Giấy tờ", "Kỹ năng", "Gửi hồ sơ"];
+const steps = ["Thông tin", "Giấy tờ", "Kỹ năng", "Gửi hồ sơ"];
 
 const RegistrationStepper: React.FC<RegistrationStepperProps> = ({
   activeStep,
