@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   TextField,
   Button,
@@ -15,8 +15,10 @@ import {
   Box,
   Divider,
   SelectChangeEvent,
+  CircularProgress,
+  InputLabel,
 } from "@mui/material";
-import Grid from "@mui/material/Grid"; // Sử dụng Grid2 cho MUI v6 tối ưu hơn
+import Grid from "@mui/material/Grid";
 import {
   Save,
   ContactPhone,
@@ -24,49 +26,108 @@ import {
   PersonOutline,
 } from "@mui/icons-material";
 
-const SKILLS_LIST = [
-  "Nấu ăn",
-  "Chăm sóc trẻ em",
-  "Chăm sóc người già",
-  "Dọn dẹp nhà cửa",
-  "Giặt ủi",
-  "Chăm sóc thú cưng",
-  "Sửa chữa điện nước cơ bản",
-];
+// Khai báo Interface cho dữ liệu Kỹ năng từ API
+interface SkillItem {
+  id: string;
+  title: string;
+  desc?: string;
+  iconKey?: string;
+}
 
 interface WorkerProfile {
-  avatar: string;
-  workerId: string;
-  fullName: string;
-  phone: string;
+  maNguoiDung: string;
+  hoTen: string;
+  soDienThoai: string;
   email: string;
-  address: string;
-  skills: string[];
-  experience: string;
-  emergencyContact: string;
-  emergencyPhone: string;
+  diaChi: string;
+  anhChanDung: string;
+  kinhNghiem: string;
+  moTaChiTietKinhNghiem: string;
+  tenNguoiThan: string;
+  sdtnguoiThan: string;
+  danhSachKyNang: string[];
 }
 
 export default function ProfileUpdate() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+
+  // Thêm state để chứa danh sách kỹ năng từ API
+  const [skillsList, setSkillsList] = useState<SkillItem[]>([]);
+
   const [profile, setProfile] = useState<WorkerProfile>({
-    avatar: "https://i.pravatar.cc/150?u=giupviecpro",
-    workerId: "GV999",
-    fullName: "Nguyễn Thị Tuyết Mai",
-    phone: "0901 234 567",
-    email: "tuyetmai.worker@gmail.com",
-    address: "48 Cao Thắng, Quận Hải Châu, Đà Nẵng",
-    skills: ["Dọn dẹp nhà cửa", "Nấu ăn"],
-    experience:
-      "3 năm giúp việc gia đình tại chung cư, có chứng chỉ nấu ăn cơ bản.",
-    emergencyContact: "Trần Văn Hùng",
-    emergencyPhone: "0988 777 666",
+    maNguoiDung: "",
+    hoTen: "",
+    soDienThoai: "",
+    email: "",
+    diaChi: "",
+    anhChanDung: "",
+    kinhNghiem: "Chưa có kinh nghiệm",
+    moTaChiTietKinhNghiem: "",
+    tenNguoiThan: "",
+    sdtnguoiThan: "",
+    danhSachKyNang: [],
   });
 
+  // Gọi đồng thời API Profile và API Skills
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        const baseUrl = "https://localhost:7095";
+
+        const [profileRes, skillsRes] = await Promise.all([
+          fetch(`${baseUrl}/api/v1/maid/profile`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${baseUrl}/api/KyNang/skills`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }),
+        ]);
+
+        if (skillsRes.ok) {
+          const skillsData: SkillItem[] = await skillsRes.json();
+          setSkillsList(skillsData);
+        }
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setProfile(profileData);
+        }
+      } catch (error) {
+        console.error("Lỗi kết nối API:", error);
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchAllData();
+  }, []);
+
+  // --- CẬP NHẬT: Lọc chỉ cho phép nhập số cho trường sdtnguoiThan ---
   const handleTextChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-    setProfile((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "sdtnguoiThan") {
+      // Dùng regex thay thế tất cả ký tự không phải số (0-9) thành chuỗi rỗng
+      const onlyNums = value.replace(/[^0-9]/g, "");
+
+      // Giới hạn tối đa 10 số (phòng hờ trường hợp người dùng copy-paste chuỗi dài)
+      if (onlyNums.length <= 10) {
+        setProfile((prev) => ({ ...prev, [name]: onlyNums }));
+      }
+    } else {
+      setProfile((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSkillChange = (event: SelectChangeEvent<string[]>) => {
@@ -75,15 +136,87 @@ export default function ProfileUpdate() {
     } = event;
     setProfile((prev) => ({
       ...prev,
-      skills: typeof value === "string" ? value.split(",") : value,
+      danhSachKyNang: typeof value === "string" ? value.split(",") : value,
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log("Submit Data:", profile);
-    alert("Cập nhật thông tin thành công!");
+  const handleExperienceChange = (event: SelectChangeEvent<string>) => {
+    setProfile((prev) => ({ ...prev, kinhNghiem: event.target.value }));
   };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // --- CẬP NHẬT: Kiểm tra độ dài trước khi gọi API ---
+    if (profile.sdtnguoiThan.length > 0 && profile.sdtnguoiThan.length !== 10) {
+      alert("Số điện thoại khẩn cấp phải bao gồm đúng 10 chữ số!");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
+        return;
+      }
+
+      const payload = {
+        TenNguoiThan: profile.tenNguoiThan,
+        SdtnguoiThan: profile.sdtnguoiThan,
+        KinhNghiem: profile.kinhNghiem,
+        MoTaChiTietKinhNghiem: profile.moTaChiTietKinhNghiem,
+        DanhSachMaKyNang: profile.danhSachKyNang.map(
+          (skill) => skill.split(" - ")[0],
+        ),
+      };
+
+      const response = await fetch(
+        "https://localhost:7095/api/v1/maid/update-profile",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Lỗi cập nhật hồ sơ");
+      }
+
+      alert("Cập nhật thông tin thành công!");
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isFetching) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Biến kiểm tra lỗi hiển thị UI cho số điện thoại
+  const isPhoneError =
+    profile.sdtnguoiThan.length > 0 && profile.sdtnguoiThan.length !== 10;
 
   return (
     <Box sx={{ minHeight: "100vh", py: 4, px: 2 }}>
@@ -102,18 +235,13 @@ export default function ProfileUpdate() {
         <Box sx={{ p: 4, textAlign: "center", bgcolor: "#fff" }}>
           <Typography
             variant="h4"
-            sx={{
-              fontWeight: 700,
-              color: "#000000",
-              mb: 3,
-            }}
+            sx={{ fontWeight: 700, color: "#000000", mb: 3 }}
           >
             HỒ SƠ CÁ NHÂN
           </Typography>
-          {/* Avatar Section */}
           <Box sx={{ position: "relative", display: "inline-block", mb: 2 }}>
             <Avatar
-              src={profile.avatar}
+              src={profile.anhChanDung}
               sx={{
                 width: 120,
                 height: 120,
@@ -123,10 +251,10 @@ export default function ProfileUpdate() {
             />
           </Box>
           <Typography variant="h5" sx={{ fontWeight: 700, color: "#000000" }}>
-            {profile.fullName}
+            {profile.hoTen}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Mã số: {profile.workerId}
+            Mã số: {profile.maNguoiDung}
           </Typography>
         </Box>
 
@@ -141,7 +269,7 @@ export default function ProfileUpdate() {
               gap: 4,
             }}
           >
-            {/* Section 1: Thông tin cơ bản (Read-only) */}
+            {/* Section 1: Thông tin cơ bản */}
             <Box>
               <SectionHeader
                 icon={<PersonOutline fontSize="small" />}
@@ -151,20 +279,18 @@ export default function ProfileUpdate() {
                 <Grid size={12}>
                   <TextField
                     label="Họ và tên"
-                    value={profile.fullName}
+                    value={profile.hoTen}
                     fullWidth
                     disabled
-                    variant="outlined"
                     sx={disabledFieldStyle}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Số điện thoại"
-                    value={profile.phone}
+                    value={profile.soDienThoai}
                     fullWidth
                     disabled
-                    variant="outlined"
                     sx={disabledFieldStyle}
                   />
                 </Grid>
@@ -174,24 +300,22 @@ export default function ProfileUpdate() {
                     value={profile.email}
                     fullWidth
                     disabled
-                    variant="outlined"
                     sx={disabledFieldStyle}
                   />
                 </Grid>
                 <Grid size={12}>
                   <TextField
                     label="Địa chỉ thường trú"
-                    value={profile.address}
+                    value={profile.diaChi}
                     fullWidth
                     disabled
-                    variant="outlined"
                     sx={disabledFieldStyle}
                   />
                 </Grid>
               </Grid>
             </Box>
 
-            {/* Section 2: Kỹ năng & Kinh nghiệm (Editable) */}
+            {/* Section 2: Kỹ năng & Kinh nghiệm */}
             <Box>
               <SectionHeader
                 icon={<Engineering fontSize="small" />}
@@ -207,8 +331,8 @@ export default function ProfileUpdate() {
                   </Typography>
                   <Select
                     multiple
-                    name="skills"
-                    value={profile.skills}
+                    name="danhSachKyNang"
+                    value={profile.danhSachKyNang}
                     onChange={handleSkillChange}
                     input={<OutlinedInput sx={{ borderRadius: 3 }} />}
                     renderValue={(selected) => (
@@ -216,7 +340,7 @@ export default function ProfileUpdate() {
                         {selected.map((value) => (
                           <Chip
                             key={value}
-                            label={value}
+                            label={value.split(" - ")[1] || value}
                             size="small"
                             sx={{
                               borderRadius: 1.5,
@@ -229,23 +353,49 @@ export default function ProfileUpdate() {
                       </Box>
                     )}
                   >
-                    {SKILLS_LIST.map((skill) => (
-                      <MenuItem key={skill} value={skill}>
-                        {skill}
-                      </MenuItem>
-                    ))}
+                    {skillsList.map((skill) => {
+                      const skillString = `${skill.id} - ${skill.title}`;
+                      return (
+                        <MenuItem key={skill.id} value={skillString}>
+                          {skillString}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth sx={inputFieldStyle}>
+                  <InputLabel id="kinh-nghiem-label">
+                    Thời gian kinh nghiệm
+                  </InputLabel>
+                  <Select
+                    labelId="kinh-nghiem-label"
+                    id="kinh-nghiem-select"
+                    name="kinhNghiem"
+                    value={profile.kinhNghiem}
+                    label="Thời gian kinh nghiệm"
+                    onChange={handleExperienceChange}
+                    displayEmpty
+                  >
+                    <MenuItem value="Chưa có kinh nghiệm">
+                      Chưa có kinh nghiệm
+                    </MenuItem>
+                    <MenuItem value="Dưới 1 năm">Dưới 1 năm</MenuItem>
+                    <MenuItem value="1 - 3 năm">1 - 3 năm</MenuItem>
+                    <MenuItem value="3 - 5 năm">3 - 5 năm</MenuItem>
+                    <MenuItem value="Trên 5 năm">Trên 5 năm</MenuItem>
                   </Select>
                 </FormControl>
 
                 <TextField
-                  label="Kinh nghiệm làm việc"
-                  name="experience"
-                  value={profile.experience}
+                  label="Mô tả chi tiết kinh nghiệm"
+                  name="moTaChiTietKinhNghiem"
+                  value={profile.moTaChiTietKinhNghiem}
                   onChange={handleTextChange}
                   multiline
                   rows={4}
                   fullWidth
-                  placeholder="Mô tả kinh nghiệm của bạn..."
+                  placeholder="Mô tả chi tiết các công việc bạn từng làm..."
                   sx={inputFieldStyle}
                 />
               </Box>
@@ -261,8 +411,8 @@ export default function ProfileUpdate() {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="Tên người liên hệ"
-                    name="emergencyContact"
-                    value={profile.emergencyContact}
+                    name="tenNguoiThan"
+                    value={profile.tenNguoiThan}
                     onChange={handleTextChange}
                     fullWidth
                     required
@@ -270,14 +420,24 @@ export default function ProfileUpdate() {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
+                  {/* --- CẬP NHẬT: Thêm inputProps và error handling --- */}
                   <TextField
                     label="SĐT khẩn cấp"
-                    name="emergencyPhone"
-                    value={profile.emergencyPhone}
+                    name="sdtnguoiThan"
+                    value={profile.sdtnguoiThan}
                     onChange={handleTextChange}
                     fullWidth
                     required
                     sx={inputFieldStyle}
+                    // Thay inputProps bằng slotProps.htmlInput
+                    slotProps={{
+                      htmlInput: {
+                        maxLength: 10,
+                        inputMode: "numeric" as const,
+                      },
+                    }}
+                    error={isPhoneError}
+                    helperText={isPhoneError ? "Vui lòng nhập đủ 10 số" : ""}
                   />
                 </Grid>
               </Grid>
@@ -288,7 +448,14 @@ export default function ProfileUpdate() {
               type="submit"
               variant="contained"
               fullWidth
-              startIcon={<Save />}
+              disabled={isLoading || isPhoneError} // Chặn bấm nếu SĐT đang bị lỗi
+              startIcon={
+                isLoading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <Save />
+                )
+              }
               sx={{
                 py: 1.5,
                 borderRadius: 3,
@@ -301,7 +468,7 @@ export default function ProfileUpdate() {
                 mt: 2,
               }}
             >
-              Cập nhật hồ sơ
+              {isLoading ? "Đang cập nhật..." : "Cập nhật hồ sơ"}
             </Button>
           </Box>
         </form>
@@ -310,7 +477,7 @@ export default function ProfileUpdate() {
   );
 }
 
-// Sub-component cho Header các mục
+// Sub-components & Styles
 const SectionHeader = ({
   icon,
   title,
@@ -336,7 +503,6 @@ const SectionHeader = ({
   </Box>
 );
 
-// Styles cho các input
 const disabledFieldStyle = {
   "& .MuiOutlinedInput-root": {
     borderRadius: 3,

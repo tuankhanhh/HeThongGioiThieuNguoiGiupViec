@@ -11,9 +11,11 @@ function CompanyInfo() {
         <div className="w-9 h-9 rounded-xl bg-amber-400 flex items-center justify-center text-white font-bold text-lg">
           H
         </div>
-        <span className="text-white font-bold text-xl font-display">
-          Homezy
-        </span>
+        <Link href="/">
+          <span className="text-white font-bold text-xl font-display cursor-pointer">
+            Homezy
+          </span>
+        </Link>
       </div>
 
       <p className="text-stone-400 text-sm leading-relaxed max-w-xs">

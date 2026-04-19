@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation"; // Thêm usePathname
+import { useRouter, usePathname } from "next/navigation";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [openAvatar, setOpenAvatar] = useState(false);
-  const [user, setUser] = useState<{ avatar: string } | null>(null);
+  // Cập nhật type của state user để chứa thêm role
+  const [user, setUser] = useState<{ avatar: string; role: string } | null>(
+    null,
+  );
   const [isMounted, setIsMounted] = useState(false);
 
   const router = useRouter();
-  const pathname = usePathname(); // Lấy đường dẫn hiện tại
+  const pathname = usePathname();
   const avatarRef = useRef<HTMLDivElement>(null);
 
   const primaryColor = "#009966";
@@ -23,8 +26,30 @@ export default function Header() {
     setIsMounted(true);
     const token = localStorage.getItem("accessToken");
     const avatar = localStorage.getItem("avatar");
+
     if (token) {
-      setUser({ avatar: avatar || "/avatar.png" });
+      try {
+        // Giải mã JWT để lấy Role giống như cách làm bên trang Login
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const roles =
+          payload["role"] ||
+          payload["roles"] ||
+          payload[
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+          ];
+
+        const userRole = Array.isArray(roles) ? roles[0] : roles;
+
+        // Lưu thông tin avatar và role vào state
+        setUser({
+          avatar: avatar || "/avatar.png",
+          role: userRole,
+        });
+      } catch (error) {
+        console.error("Lỗi giải mã token:", error);
+        // Fallback nếu token lỗi nhưng vẫn còn lưu (để không bị văng lỗi UI)
+        setUser({ avatar: avatar || "/avatar.png", role: "" });
+      }
     }
 
     const handleScroll = () => {
@@ -56,7 +81,6 @@ export default function Header() {
     router.push("/");
   };
 
-  // Danh sách menu dùng chung
   const navLinks = [
     { name: "Trang chủ", path: "/" },
     { name: "Dịch vụ", path: "/customer/list-services" },
@@ -87,7 +111,7 @@ export default function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex gap-8 font-medium">
           {navLinks.map((item) => {
-            const isActive = pathname === item.path; // Kiểm tra trang hiện tại
+            const isActive = pathname === item.path;
             return (
               <Link
                 key={item.name}
@@ -96,7 +120,6 @@ export default function Header() {
                 style={{ color: isActive ? primaryColor : secondaryColor }}
               >
                 {item.name}
-                {/* Gạch chân: luôn hiện nếu isActive, nếu không thì hiện khi hover */}
                 <span
                   className={`absolute bottom-0 left-0 h-[3px] transition-all duration-300 rounded-full ${
                     isActive ? "w-full" : "w-0 group-hover:w-full"
@@ -138,16 +161,28 @@ export default function Header() {
                 />
                 {openAvatar && (
                   <div className="absolute right-0 mt-3 w-52 bg-white shadow-xl rounded-xl border py-2 animate-in fade-in zoom-in duration-200">
-                    <Link
-                      href="/customer/orders"
-                      className={`block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0] transition-colors ${pathname === "/customer/orders" ? "text-[#009966]" : "text-black"}`}
-                      onClick={() => {
-                        setOpenAvatar(false);
-                        setIsMenuOpen(false);
-                      }}
-                    >
-                      Lịch sử đơn đặt dịch vụ
-                    </Link>
+                    {/* KIỂM TRA ROLE ĐỂ HIỂN THỊ NÚT CHO CUSTOMER */}
+                    {user.role === "Customer" && (
+                      <Link
+                        href="/customer/orders"
+                        className={`block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0] transition-colors ${
+                          pathname === "/customer/orders"
+                            ? "text-[#009966]"
+                            : "text-black"
+                        }`}
+                        onClick={() => {
+                          setOpenAvatar(false);
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        Lịch sử đơn đặt dịch vụ
+                      </Link>
+                    )}
+                    {/* BẠN CÓ THỂ THÊM MENU CHO MAID/STAFF Ở ĐÂY TƯƠNG TỰ */}
+                    {/* {user.role === "Maid" && (
+                      <Link href="/maid/dashboard" className="...">Bảng điều khiển</Link>
+                    )} */}
+
                     <button
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50"
@@ -167,7 +202,9 @@ export default function Header() {
           style={{ color: isMenuOpen ? primaryColor : secondaryColor }}
         >
           <svg
-            className={`w-8 h-8 transition-transform duration-300 ${isMenuOpen ? "rotate-90" : ""}`}
+            className={`w-8 h-8 transition-transform duration-300 ${
+              isMenuOpen ? "rotate-90" : ""
+            }`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -186,7 +223,9 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`md:hidden bg-white border-t transition-all duration-300 ease-in-out overflow-hidden ${isMenuOpen ? "max-h-[600px] border-b shadow-lg" : "max-h-0"}`}
+        className={`md:hidden bg-white border-t transition-all duration-300 ease-in-out overflow-hidden ${
+          isMenuOpen ? "max-h-[600px] border-b shadow-lg" : "max-h-0"
+        }`}
       >
         <nav className="flex flex-col p-4 gap-1">
           {isMounted && user && (
@@ -199,7 +238,10 @@ export default function Header() {
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500">Xin chào,</span>
                 <span className="font-bold text-[#009966]">
-                  Thành viên Homezy
+                  {/* Hiển thị role động luôn cho ngầu */}
+                  {user.role === "Customer"
+                    ? "Khách hàng Homezy"
+                    : "Thành viên Homezy"}
                 </span>
               </div>
             </div>
@@ -211,7 +253,11 @@ export default function Header() {
               <Link
                 key={item.name}
                 href={item.path}
-                className={`px-4 py-3 rounded-xl font-semibold transition-colors ${isActive ? "bg-[#f0f9f0] text-[#009966]" : "text-black hover:bg-gray-50"}`}
+                className={`px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isActive
+                    ? "bg-[#f0f9f0] text-[#009966]"
+                    : "text-black hover:bg-gray-50"
+                }`}
                 onClick={() => setIsMenuOpen(false)}
                 style={{ color: isActive ? primaryColor : secondaryColor }}
               >
@@ -220,10 +266,15 @@ export default function Header() {
             );
           })}
 
-          {isMounted && user && (
+          {/* KIỂM TRA ROLE BÊN TRONG MOBILE MENU */}
+          {isMounted && user && user.role === "Customer" && (
             <Link
               href="/customer/orders"
-              className={`px-4 py-3 rounded-xl font-semibold transition-colors ${pathname === "/customer/orders" ? "bg-[#f0f9f0] text-[#009966]" : "text-black hover:bg-gray-50"}`}
+              className={`px-4 py-3 rounded-xl font-semibold transition-colors ${
+                pathname === "/customer/orders"
+                  ? "bg-[#f0f9f0] text-[#009966]"
+                  : "text-black hover:bg-gray-50"
+              }`}
               onClick={() => setIsMenuOpen(false)}
               style={{
                 color:
@@ -260,7 +311,7 @@ export default function Header() {
               ) : (
                 <button
                   onClick={handleLogout}
-                  className="w-full py-3.5 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100"
+                  className="w-full py-3.5 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 cursor-pointer transition-colors"
                 >
                   Đăng xuất
                 </button>

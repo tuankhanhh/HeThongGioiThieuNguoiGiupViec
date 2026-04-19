@@ -22,10 +22,8 @@ import {
   FormControl,
   InputLabel,
   SelectChangeEvent,
+  CircularProgress,
 } from "@mui/material";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import SaveIcon from "@mui/icons-material/Save";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 
@@ -38,17 +36,128 @@ interface DailyAvailability {
   [dateKey: string]: TimeRange[];
 }
 
+// Interface hứng dữ liệu từ Server
+interface ServerSchedule {
+  maLichRanh: string;
+  ngay: string; // YYYY-MM-DD
+  gioBatDau: string; // HH:mm:ss
+  gioKetThuc: string; // HH:mm:ss
+}
+
+// Cấu hình Base URL API của bạn
+const API_BASE_URL = "https://localhost:7095/api";
+
 export default function HelperAvailability() {
   const [isMounted, setIsMounted] = useState(false);
   const [activeDate, setActiveDate] = useState<Date | undefined>(new Date());
+
+  // State quản lý lịch đang thao tác (chưa lưu)
   const [availability, setAvailability] = useState<DailyAvailability>({});
 
+  // State quản lý lịch đã lưu trên Server
+  const [existingSchedule, setExistingSchedule] = useState<
+    Record<string, ServerSchedule[]>
+  >({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
+    fetchMySchedule(); // Gọi API lấy danh sách khi component mount
   }, []);
 
-  // Danh sách toàn bộ giờ chẵn trong ngày
+  // ==========================================
+  // API CALLS
+  // ==========================================
+  const getToken = () => localStorage.getItem("accessToken") || ""; // Thay bằng logic lấy token của bạn
+
+  // Lấy lịch rảnh từ Server
+  const fetchMySchedule = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/LichRanh/my-schedule`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data: ServerSchedule[] = await res.json();
+        // Nhom du lieu theo ngày để hiển thị dễ hơn
+        const grouped: Record<string, ServerSchedule[]> = {};
+        data.forEach((item) => {
+          if (!grouped[item.ngay]) grouped[item.ngay] = [];
+          grouped[item.ngay].push(item);
+        });
+        setExistingSchedule(grouped);
+      } else if (res.status === 404) {
+        setExistingSchedule({}); // Chưa có lịch
+      } else {
+        console.error("Lỗi khi lấy lịch rảnh");
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Lưu lịch rảnh mới lên Server
+  const handleSaveSchedule = async () => {
+    setIsSaving(true);
+    const token = getToken();
+
+    // Gom tất cả các khung giờ đang tạo thành mảng request
+    const requests: Promise<any>[] = [];
+
+    for (const [date, slots] of Object.entries(availability)) {
+      for (const slot of slots) {
+        const payload = {
+          ngay: date,
+          gioBatDau: `${slot.start}:00`, // Format chuẩn của TimeOnly
+          gioKetThuc: `${slot.end}:00`,
+        };
+        console.log(payload);
+
+        const req = fetch(`${API_BASE_URL}/LichRanh/dang-ky`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        requests.push(req);
+      }
+    }
+
+    try {
+      // Chạy toàn bộ các request tạo lịch rảnh
+      const responses = await Promise.all(requests);
+      const hasError = responses.some((res) => !res.ok);
+
+      if (hasError) {
+        alert(
+          "Có lỗi xảy ra hoặc trùng lặp với lịch cũ. Vui lòng kiểm tra lại!",
+        );
+      } else {
+        alert("Lưu lịch thành công!");
+        setAvailability({}); // Xóa nháp
+        fetchMySchedule(); // Load lại lịch từ server
+      }
+    } catch (error) {
+      console.error("Lỗi khi lưu:", error);
+      alert("Lỗi kết nối máy chủ");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ==========================================
+  // LOGIC XỬ LÝ FORM TẠO LỊCH (DRAFT)
+  // ==========================================
   const allHours = Array.from({ length: 25 }, (_, i) => {
     const hour = i < 10 ? `0${i}` : `${i}`;
     return `${hour}:00`;
@@ -71,14 +180,12 @@ export default function HelperAvailability() {
     const updatedSlots = [...currentDaySlots];
     updatedSlots[index] = { ...updatedSlots[index], [field]: value };
 
-    // Tự động điều chỉnh giờ kết thúc nếu giờ bắt đầu mới làm ca ngắn hơn 4 tiếng
     if (field === "start") {
       const startMin = toMinutes(value);
       const endMin = toMinutes(updatedSlots[index].end);
       if (endMin - startMin < 240) {
         const newEndMin = startMin + 240;
         if (newEndMin <= 1440) {
-          // Không quá 24:00
           const h = Math.floor(newEndMin / 60);
           updatedSlots[index].end = `${h < 10 ? `0${h}` : h}:00`;
         }
@@ -98,7 +205,7 @@ export default function HelperAvailability() {
 
   const toMinutes = (time: string) => {
     const [h, m] = time.split(":").map(Number);
-    return h * 60 + m;
+    return h * 60 + (m || 0);
   };
 
   const isOverlapping = () => {
@@ -113,15 +220,19 @@ export default function HelperAvailability() {
   if (!isMounted) return null;
 
   const overlapError = isOverlapping();
+  // Khóa nút lưu nếu đang lỗi trùng, đang save, hoặc chưa có nháp nào
+  const isSaveDisabled =
+    overlapError || isSaving || Object.keys(availability).length === 0;
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f1f5f9", py: 6 }}>
       <Container sx={{ maxWidth: "900px !important", px: { xs: 2, md: 4 } }}>
+        {/* ================= PHẦN TRÊN: TẠO LỊCH MỚI ================= */}
         <Box sx={{ mb: 5, display: "flex", flexDirection: "column", gap: 1 }}>
           <Typography
             sx={{ fontSize: "2rem", fontWeight: 700, color: "#0f172a" }}
           >
-            Thiết lập lịch rảnh
+            Thiết lập lịch rảnh mới
           </Typography>
         </Box>
 
@@ -172,7 +283,6 @@ export default function HelperAvailability() {
                   gap: 1.5,
                 }}
               >
-                {/* <CalendarMonthIcon sx={{ color: "#0284c7" }} /> */}
                 <Typography sx={{ fontWeight: 700, color: "#0369a1" }}>
                   Ngày: {activeDate ? format(activeDate, "dd/MM/yyyy") : "---"}
                 </Typography>
@@ -196,11 +306,9 @@ export default function HelperAvailability() {
               )}
 
               {currentDaySlots.map((slot, index) => {
-                // LỌC GIỜ KẾ THÚC: Phải sau giờ bắt đầu ít nhất 4 tiếng (240 phút)
                 const filteredEndHours = allHours.filter(
                   (h) => toMinutes(h) >= toMinutes(slot.start) + 240,
                 );
-
                 return (
                   <Card
                     key={index}
@@ -213,7 +321,6 @@ export default function HelperAvailability() {
                     }}
                   >
                     <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                      {/* CHỌN GIỜ BẮT ĐẦU */}
                       <FormControl sx={{ flex: 1 }}>
                         <InputLabel sx={{ fontWeight: 600 }}>
                           Bắt đầu
@@ -226,19 +333,14 @@ export default function HelperAvailability() {
                           }
                           sx={{ borderRadius: "12px" }}
                         >
-                          {allHours.slice(0, 21).map(
-                            (
-                              h, // Chỉ cho phép bắt đầu muộn nhất là 20:00 để đủ 4 tiếng
-                            ) => (
-                              <MenuItem key={h} value={h}>
-                                {h}
-                              </MenuItem>
-                            ),
-                          )}
+                          {allHours.slice(0, 21).map((h) => (
+                            <MenuItem key={h} value={h}>
+                              {h}
+                            </MenuItem>
+                          ))}
                         </Select>
                       </FormControl>
 
-                      {/* CHỌN GIỜ KẾ THÚC (ĐÃ LỌC) */}
                       <FormControl sx={{ flex: 1 }}>
                         <InputLabel sx={{ fontWeight: 600 }}>
                           Kết thúc
@@ -288,143 +390,156 @@ export default function HelperAvailability() {
                     "&:hover": { borderColor: "#0ea5e9", bgcolor: "#f0f9ff" },
                   }}
                 >
-                  + Thêm khung giờ
+                  + Thêm khung giờ rảnh
                 </Button>
               )}
             </Stack>
           </Grid>
         </Grid>
 
-        <Divider sx={{ my: 6, borderColor: "#e2e8f0" }} />
-
-        {/* DANH SÁCH TỔNG HỢP */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <EventAvailableIcon sx={{ color: "#0ea5e9", fontSize: "2.2rem" }} />
-            <Typography
-              sx={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}
-            >
-              Lịch rảnh của bạn
-            </Typography>
-          </Box>
-
-          <Grid sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-            {Object.keys(availability).length === 0 ? (
-              <Box
-                sx={{
-                  width: "100%",
-                  p: 4,
-                  textAlign: "center",
-                  borderRadius: "20px",
-                  border: "2px dashed #cbd5e1",
-                }}
-              >
-                <Typography sx={{ color: "#94a3b8" }}>
-                  Chưa có lịch nào được đăng ký
-                </Typography>
-              </Box>
-            ) : (
-              Object.keys(availability)
-                .sort()
-                .map((dateStr) => (
-                  <Grid
-                    key={dateStr}
-                    sx={{ width: { xs: "100%", sm: "calc(50% - 8px)" } }}
-                  >
-                    <Card
-                      sx={{
-                        p: 2.5,
-                        borderRadius: "20px",
-                        border: "1px solid #e2e8f0",
-                        boxShadow: "none",
-                        bgcolor: "white",
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontWeight: 700,
-                          color: "#0ea5e9",
-                          mb: 2,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: "50%",
-                            bgcolor: "#0ea5e9",
-                          }}
-                        />
-                        {format(new Date(dateStr), "dd/MM/yyyy")}
-                      </Typography>
-                      <Stack
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 1,
-                        }}
-                      >
-                        {availability[dateStr].map((slot, idx) => (
-                          <Box
-                            key={idx}
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              p: 1.5,
-                              bgcolor: "#f8fafc",
-                              borderRadius: "12px",
-                              border: "1px solid #f1f5f9",
-                            }}
-                          >
-                            <Typography
-                              sx={{
-                                fontWeight: 700,
-                                fontSize: "0.95rem",
-                                color: "#334155",
-                              }}
-                            >
-                              {slot.start} — {slot.end}
-                            </Typography>
-                            <Typography
-                              sx={{
-                                fontSize: "0.75rem",
-                                color: "#0369a1",
-                                fontWeight: 700,
-                              }}
-                            >
-                              Ca {idx + 1}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Stack>
-                    </Card>
-                  </Grid>
-                ))
-            )}
-          </Grid>
-        </Box>
-
         <Button
-          disabled={overlapError}
+          onClick={handleSaveSchedule}
+          disabled={isSaveDisabled}
           sx={{
-            mt: 6,
+            mt: 4,
             py: 2,
             width: "100%",
-            bgcolor: overlapError ? "#cbd5e1" : "#0ea5e9",
+            bgcolor: isSaveDisabled ? "#cbd5e1" : "#0ea5e9",
             color: "white",
             borderRadius: "16px",
             fontSize: "1.1rem",
             textTransform: "none",
             boxShadow: "none",
-            "&:hover": { bgcolor: overlapError ? "#cbd5e1" : "#0284c7" },
+            "&:hover": { bgcolor: isSaveDisabled ? "#cbd5e1" : "#0284c7" },
             transition: "all 0.2s",
           }}
         >
-          Xác nhận lưu lịch làm việc
+          {isSaving ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : (
+            "Xác nhận lưu lịch mới"
+          )}
         </Button>
+
+        <Divider sx={{ my: 6, borderColor: "#e2e8f0" }} />
+
+        {/* ================= PHẦN DƯỚI: DANH SÁCH LỊCH TỪ SERVER ================= */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <EventAvailableIcon sx={{ color: "#10b981", fontSize: "2.2rem" }} />
+            <Typography
+              sx={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}
+            >
+              Lịch rảnh hiện tại của bạn
+            </Typography>
+          </Box>
+
+          {isLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+              {Object.keys(existingSchedule).length === 0 ? (
+                <Box
+                  sx={{
+                    width: "100%",
+                    p: 4,
+                    textAlign: "center",
+                    borderRadius: "20px",
+                    border: "2px dashed #cbd5e1",
+                  }}
+                >
+                  <Typography sx={{ color: "#94a3b8" }}>
+                    Bạn chưa có lịch rảnh nào trên hệ thống.
+                  </Typography>
+                </Box>
+              ) : (
+                Object.keys(existingSchedule)
+                  .sort()
+                  .map((dateStr) => (
+                    <Grid
+                      key={dateStr}
+                      sx={{ width: { xs: "100%", sm: "calc(50% - 8px)" } }}
+                    >
+                      <Card
+                        sx={{
+                          p: 2.5,
+                          borderRadius: "20px",
+                          border: "1px solid #e2e8f0",
+                          boxShadow: "none",
+                          bgcolor: "white",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontWeight: 700,
+                            color: "#10b981",
+                            mb: 2,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <Box
+                            component="span" // <--- THÊM DÒNG NÀY VÀO
+                            sx={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              bgcolor: "#10b981",
+                            }}
+                          />
+                          {format(new Date(dateStr), "dd/MM/yyyy")}
+                        </Typography>
+                        <Stack
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 1,
+                          }}
+                        >
+                          {existingSchedule[dateStr].map((slot, idx) => (
+                            <Box
+                              key={slot.maLichRanh}
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                p: 1.5,
+                                bgcolor: "#f8fafc",
+                                borderRadius: "12px",
+                                border: "1px solid #f1f5f9",
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: "0.95rem",
+                                  color: "#334155",
+                                }}
+                              >
+                                {slot.gioBatDau.substring(0, 5)} —{" "}
+                                {slot.gioKetThuc.substring(0, 5)}
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontSize: "0.75rem",
+                                  color: "#059669",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Đã lưu
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Card>
+                    </Grid>
+                  ))
+              )}
+            </Grid>
+          )}
+        </Box>
       </Container>
     </Box>
   );

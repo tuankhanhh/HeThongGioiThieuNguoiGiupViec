@@ -65,7 +65,35 @@ function ServiceCard({ service }: { service: ServiceType }) {
       return;
     }
 
-    // chỉ lưu khi đã login
+    // --- THÊM PHẦN KIỂM TRA ROLE TẠI ĐÂY ---
+    try {
+      // Giải mã JWT để lấy payload
+      const payload = JSON.parse(atob(token.split(".")[1]));
+
+      // Trích xuất role từ payload (xử lý các format chuẩn của C#/.NET)
+      const roles =
+        payload["role"] ||
+        payload["roles"] ||
+        payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+
+      const userRole = Array.isArray(roles) ? roles[0] : roles;
+
+      // Nếu không phải Customer thì chặn lại
+      if (userRole !== "Customer") {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        router.push("/customer/sign-in");
+        return; // Điều hướng về trang đăng nhập sau khi đăng xuất
+      }
+    } catch (error) {
+      console.error("Lỗi khi kiểm tra phân quyền:", error);
+      alert("Lỗi xác thực dữ liệu. Vui lòng đăng nhập lại.");
+      router.push("/customer/sign-in");
+      return;
+    }
+    // --------------------------------------
+
+    // Chỉ lưu và chuyển trang khi đã login VÀ đúng role là Customer
     localStorage.setItem("booking_services", JSON.stringify([service.id]));
     router.push("/customer/list-services/service-type");
   };

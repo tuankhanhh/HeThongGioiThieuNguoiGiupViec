@@ -97,7 +97,7 @@ export default function FinalSummaryStep() {
     } else {
       // Nếu không có token, đá văng ra trang login
       alert("Bạn chưa đăng nhập!");
-      router.push("/login");
+      router.push("/maid/sign-in");
     }
   }, [router]);
 
@@ -124,7 +124,7 @@ export default function FinalSummaryStep() {
     const token = localStorage.getItem("accessToken");
     if (!token) {
       alert("Bạn chưa đăng nhập hoặc token đã hết hạn.");
-      router.push("/login");
+      router.push("/maid/sign-in");
       return;
     }
 
@@ -180,7 +180,7 @@ export default function FinalSummaryStep() {
       if (response.ok && (result as any).success) {
         alert("Gửi hồ sơ thành công!");
         resetForm();
-        router.push("/maid/success");
+        router.push("/maid/sign-up/status");
       } else {
         alert("Lỗi: " + ((result as any).message || "Không thể gửi hồ sơ"));
       }

@@ -36,10 +36,6 @@ public partial class NguoiDung
 
     public bool TrangThai { get; set; } = true;
 
-    [StringLength(100)]
-    [Unicode(false)]
-    public string? AnhDaiDien { get; set; }
-
     [StringLength(200)]
     [Unicode(false)]
     public string? RefreshToken { get; set; }

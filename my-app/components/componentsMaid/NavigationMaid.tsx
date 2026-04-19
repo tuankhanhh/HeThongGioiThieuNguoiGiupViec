@@ -1,19 +1,20 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // Thêm useRouter
 import {
   AccountCircle,
   CalendarMonth,
   EventNote,
   History,
   Paid,
-  Settings,
+  Logout, // Import icon Logout
 } from "@mui/icons-material";
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const router = useRouter();
 
-  // Danh sách các mục dựa trên Use Case trong hình
+  // Danh sách các mục chính
   const menuItems = [
     {
       title: "Hồ sơ cá nhân",
@@ -42,6 +43,12 @@ const Sidebar = () => {
     },
   ];
 
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    router.push("/maid/sign-in"); // Điều hướng về trang đăng nhập sau khi đăng xuất
+  };
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
       {/* Logo / Brand */}
@@ -67,7 +74,11 @@ const Sidebar = () => {
               }`}
             >
               <span
-                className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"}`}
+                className={`${
+                  isActive
+                    ? "text-blue-600"
+                    : "text-gray-400 group-hover:text-gray-600"
+                }`}
               >
                 {item.icon}
               </span>
@@ -77,8 +88,18 @@ const Sidebar = () => {
         })}
       </nav>
 
-      {/* Bottom Profile / Logout Stub */}
-      <div className="p-4 border-t border-gray-100">
+      {/* Bottom Section: Logout & Profile */}
+      <div className="p-4 border-t border-gray-100 space-y-4">
+        {/* Nút Đăng xuất */}
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200 group"
+        >
+          <Logout className="text-red-400 group-hover:text-red-500" />
+          <span className="text-sm font-medium">Đăng xuất</span>
+        </button>
+
+        {/* Profile Stub */}
         <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
             TK

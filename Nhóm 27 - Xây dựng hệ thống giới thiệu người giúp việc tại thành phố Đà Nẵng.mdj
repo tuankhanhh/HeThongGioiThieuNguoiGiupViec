@@ -25244,22 +25244,6 @@
 										},
 										{
 											"_type": "ERDColumnView",
-											"_id": "AAAAAAGdbUTN5xQelMs=",
-											"_parent": {
-												"$ref": "AAAAAAGdM83rESNQhms="
-											},
-											"model": {
-												"$ref": "AAAAAAGdbUTN3hQb+7c="
-											},
-											"font": "Arial;13;0",
-											"parentStyle": true,
-											"left": 453,
-											"top": 749,
-											"width": 250.8642578125,
-											"height": 13
-										},
-										{
-											"_type": "ERDColumnView",
 											"_id": "AAAAAAGdbUTSaxQkCw4=",
 											"_parent": {
 												"$ref": "AAAAAAGdM83rESNQhms="
@@ -25270,7 +25254,7 @@
 											"font": "Arial;13;0",
 											"parentStyle": true,
 											"left": 453,
-											"top": 764,
+											"top": 749,
 											"width": 250.8642578125,
 											"height": 13
 										},
@@ -25286,7 +25270,7 @@
 											"font": "Arial;13;0",
 											"parentStyle": true,
 											"left": 453,
-											"top": 779,
+											"top": 764,
 											"width": 250.8642578125,
 											"height": 13
 										}
@@ -25296,7 +25280,7 @@
 									"left": 448,
 									"top": 639,
 									"width": 260.8642578125,
-									"height": 158
+									"height": 143
 								}
 							],
 							"font": "Arial;13;0",
@@ -29820,16 +29804,6 @@
 							},
 							"name": "TrangThai",
 							"type": "NVARCHAR",
-							"length": "30"
-						},
-						{
-							"_type": "ERDColumn",
-							"_id": "AAAAAAGdbUTN3hQb+7c=",
-							"_parent": {
-								"$ref": "AAAAAAGdM83rESNMbuM="
-							},
-							"name": "AnhDaiDien",
-							"type": "VARCHAR",
 							"length": "30"
 						},
 						{
