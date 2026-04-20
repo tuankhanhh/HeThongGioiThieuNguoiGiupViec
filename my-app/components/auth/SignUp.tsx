@@ -75,6 +75,7 @@ export default function Registration(props: {
       alert("Đăng ký thành công!");
       router.push(props.loginSuccessUrl);
     } catch (err: unknown) {
+      console.log("Registration error:", formData);
       setError(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {
       setIsLoading(false);

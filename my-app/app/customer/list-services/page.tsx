@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { CircularProgress } from "@mui/material";
+import { api } from "@/utils/api";
 
 // 1. Cập nhật Interface (Bỏ trường icon)
 interface ServiceType {
@@ -42,60 +43,30 @@ const headerVariants: Variants = {
 /* ================== Component Thẻ Dịch Vụ ================== */
 function ServiceCard({ service }: { service: ServiceType }) {
   const router = useRouter();
+  const [isBooking, setIsBooking] = useState(false); // Thêm state này
 
-  const handleBooking = () => {
-    if (typeof window === "undefined") return;
+  const handleBooking = async () => {
+    if (typeof window === "undefined" || isBooking) return; // Chặn bấm nhiều lần
+    setIsBooking(true); // Bắt đầu loading
 
-    const token = localStorage.getItem("accessToken");
-
-    const isValidToken = (token: string) => {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        return payload.exp * 1000 > Date.now();
-      } catch {
-        return false;
-      }
-    };
-
-    const isLoggedIn = token && isValidToken(token);
-
-    if (!isLoggedIn) {
-      localStorage.setItem("redirect_after_login", window.location.pathname);
-      router.push("/customer/sign-in");
-      return;
-    }
-
-    // --- THÊM PHẦN KIỂM TRA ROLE TẠI ĐÂY ---
     try {
-      // Giải mã JWT để lấy payload
-      const payload = JSON.parse(atob(token.split(".")[1]));
+      const currentUser = await api.get<any>("/User/me");
+      const userRole = currentUser.role || currentUser.Role;
 
-      // Trích xuất role từ payload (xử lý các format chuẩn của C#/.NET)
-      const roles =
-        payload["role"] ||
-        payload["roles"] ||
-        payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-
-      const userRole = Array.isArray(roles) ? roles[0] : roles;
-
-      // Nếu không phải Customer thì chặn lại
       if (userRole !== "Customer") {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        alert("Chỉ khách hàng mới có thể đặt lịch.");
         router.push("/customer/sign-in");
-        return; // Điều hướng về trang đăng nhập sau khi đăng xuất
+        setIsBooking(false); // Tắt loading nếu fail
+        return;
       }
-    } catch (error) {
-      console.error("Lỗi khi kiểm tra phân quyền:", error);
-      alert("Lỗi xác thực dữ liệu. Vui lòng đăng nhập lại.");
-      router.push("/customer/sign-in");
-      return;
-    }
-    // --------------------------------------
 
-    // Chỉ lưu và chuyển trang khi đã login VÀ đúng role là Customer
-    localStorage.setItem("booking_services", JSON.stringify([service.id]));
-    router.push("/customer/list-services/service-type");
+      localStorage.setItem("booking_services", JSON.stringify([service.id]));
+      router.push("/customer/list-services/service-type");
+      // Chuyển trang rồi nên không cần setIsBooking(false) nữa
+    } catch (error: any) {
+      console.error("Xác thực thất bại hoặc lỗi gọi API:", error);
+      setIsBooking(false); // Tắt loading nếu catch lỗi
+    }
   };
 
   return (
@@ -179,14 +150,14 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
 
   // 2. Gọi API từ Backend C#
+  // 2. Gọi API từ Backend C#
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch("https://localhost:7095/api/dichvu");
-        if (response.ok) {
-          const data = await response.json();
-          setServices(data);
-        }
+        // Dùng api.get thay vì fetch thuần. Nó sẽ tự nối NEXT_PUBLIC_API_URL vào
+        // Giả sử api là public (không cần token), apiService vẫn hoạt động bình thường
+        const data = await api.get<ServiceType[]>("/dichvu");
+        setServices(data);
       } catch (error) {
         console.error("Lỗi lấy dữ liệu dịch vụ:", error);
       } finally {

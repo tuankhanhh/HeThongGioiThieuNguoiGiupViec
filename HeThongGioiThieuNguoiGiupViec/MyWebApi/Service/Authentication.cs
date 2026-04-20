@@ -73,7 +73,7 @@ namespace MyWebApi.Service
 
             var newUser = new NguoiDung
             {
-                MaNguoiDung = Guid.NewGuid().ToString().Substring(0, 5),
+                MaNguoiDung = GenerateId("ND"),
                 MatKhau = hashedPassword,
                 HoTen = request.HoTen,
                 Email = request.Email,
@@ -136,9 +136,16 @@ namespace MyWebApi.Service
                 .ThenInclude(ur => ur.MaVaiTroNavigation)
                 .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
 
-            if (user == null)
+            if (user == null
+                || user.NgayHetHanRefreshToken == null
+                || user.NgayHetHanRefreshToken < DateTime.UtcNow)
             {
-                throw new UnauthorizedAccessException("Refresh token không hợp lệ");
+                throw new UnauthorizedAccessException("Refresh token không hợp lệ hoặc đã hết hạn");
+            }
+
+            if (!user.TrangThai)
+            {
+                throw new UnauthorizedAccessException("User đã bị khóa");
             }
 
             var roles = user.NguoiDungVaiTros
@@ -146,11 +153,18 @@ namespace MyWebApi.Service
                 .ToList();
 
             var newAccessToken = _tokenService.GenerateAccessToken(user, roles);
+            var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            user.NgayTaoRefreshToken = DateTime.UtcNow;
+            user.NgayHetHanRefreshToken = DateTime.UtcNow.AddDays(7);
+
+            await _context.SaveChangesAsync();
 
             return new LoginResponse
             {
                 AccessToken = newAccessToken,
-                RefreshToken = request.RefreshToken
+                RefreshToken = newRefreshToken
             };
         }
 
@@ -178,6 +192,12 @@ namespace MyWebApi.Service
             await _context.SaveChangesAsync();
 
             return true;
+        }
+        private string GenerateId(string prefix)
+        {
+            int randomNum = new Random().Next(1000, 9999);
+            string id = prefix + randomNum.ToString();
+            return id.Length > 5 ? id.Substring(0, 5) : id;
         }
     }
 }

@@ -161,6 +161,21 @@ namespace MyWebApi.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            var maNguoiDung = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var hoTen = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            return Ok(new
+            {
+                MaNguoiDung = maNguoiDung,
+                HoTen = hoTen,
+                Role = role
+            });
+        }
     }
 
     // ================= DTO =================

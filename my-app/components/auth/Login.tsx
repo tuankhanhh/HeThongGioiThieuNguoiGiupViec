@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { api, tokenStore } from "@/utils/api"; // Thêm dòng import này (đổi đường dẫn cho đúng)
 
 type RoleType = "CUSTOMER" | "MAID" | "STAFF" | "ADMIN";
 
@@ -36,33 +37,28 @@ export default function Login({
     Admin: "/Admin",
   };
 
-  async function loginApi(soDienThoai: string, matKhau: string) {
-    const res = await fetch("https://localhost:7095/api/User/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ soDienThoai, matKhau }),
-    });
-
-    if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(msg || "Đăng nhập thất bại");
-    }
-    return res.json();
-  }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // 1. Gọi API Login
-      const data = await loginApi(phone, password);
+      // 1. Gọi API Login cực kỳ gọn nhẹ qua apiService
+      const data = await api.post<any>("/User/login", {
+        soDienThoai: phone,
+        matKhau: password,
+      });
 
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
+      // 2. Giao việc lưu token cho tokenStore quản lý
+      tokenStore.setTokens({
+        accessToken: data.accessToken || data.AccessToken,
+        refreshToken: data.refreshToken || data.RefreshToken,
+      });
 
-      // 2. Giải mã JWT lấy Role
-      const payload = JSON.parse(atob(data.accessToken.split(".")[1]));
+      // 3. Giải mã JWT lấy Role (Lấy từ tokenStore cho chắc chắn)
+      const currentToken = tokenStore.getAccessToken();
+      if (!currentToken) throw new Error("Lỗi hệ thống: Không lưu được token.");
+
+      const payload = JSON.parse(atob(currentToken.split(".")[1]));
       const roles =
         payload["role"] ||
         payload["roles"] ||
@@ -70,36 +66,30 @@ export default function Login({
 
       const role = Array.isArray(roles) ? roles[0] : roles;
 
-      // 3. Xử lý logic riêng nếu Role là Maid
+      // [TÙY CHỌN BẢO MẬT]: Chặn người dùng đăng nhập sai cổng
+      // Ví dụ: Tài khoản là Customer nhưng lại vào trang Login của Maid
+      // if (role.toUpperCase() !== roleType) {
+      //   tokenStore.clearTokens();
+      //   throw new Error(`Tài khoản này không có quyền truy cập cổng ${roleLabels[roleType]}.`);
+      // }
+
+      // 4. Xử lý logic riêng nếu Role là Maid
       if (role === "Maid") {
-        const statusRes = await fetch(
-          "https://localhost:7095/api/v1/maid/status",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${data.accessToken}`,
-            },
-          },
-        );
-
-        if (!statusRes.ok) throw new Error("Không thể tải trạng thái hồ sơ");
-
-        const { hasProfile, status } = await statusRes.json();
+        // TUYỆT VỜI: Không cần tự nhét Header Authorization nữa.
+        // apiService sẽ tự động lấy token từ tokenStore vừa lưu ở bước 2 gắn vào!
+        const { hasProfile, status } = await api.get<any>("/v1/maid/status");
 
         if (!hasProfile) {
           router.push("/maid/sign-up/generalinfo");
           return;
         }
 
-        // Tối ưu Router: Gom Chờ duyệt & Từ chối về chung 1 trang Status
         switch (status) {
           case "Đã duyệt":
-            router.push("/maid/profile"); // Vào thẳng hệ thống làm việc
+            router.push("/maid/profile");
             break;
           case "Chờ duyệt":
           case "Từ chối":
-            // Đẩy sang trang dùng chung để hiển thị thông báo
             router.push("/maid/sign-up/status");
             break;
           default:
@@ -108,11 +98,14 @@ export default function Login({
         return;
       }
 
-      // 4. Nếu là các Role khác
+      // 5. Nếu là các Role khác
       const targetPath = redirectMap[role] || "/";
       router.push(targetPath);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Đăng nhập thất bại");
+    } catch (err: any) {
+      // apiService luôn trả về cấu trúc ApiError (chứa status và message)
+      alert(
+        err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+      );
     } finally {
       setIsLoading(false);
     }

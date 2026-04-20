@@ -22,7 +22,6 @@ public partial class NguoiDung
     [Unicode(false)]
     public string? Email { get; set; }
 
-
     [StringLength(11)]
     [Unicode(false)]
     public string SoDienThoai { get; set; }
@@ -36,12 +35,23 @@ public partial class NguoiDung
 
     public bool TrangThai { get; set; } = true;
 
+    // 🔐 Refresh Token
     [StringLength(200)]
     [Unicode(false)]
     public string? RefreshToken { get; set; }
 
+    // 🔥 Thời điểm tạo refresh token
+    [Column(TypeName = "datetime")]
+    public DateTime? NgayTaoRefreshToken { get; set; }
+
+    // 🔥 Thời điểm hết hạn refresh token
+    [Column(TypeName = "datetime")]
+    public DateTime? NgayHetHanRefreshToken { get; set; }
+
     [Column(TypeName = "datetime")]
     public DateTime? NgayTao { get; set; }
+
+    // ================= RELATION =================
 
     [InverseProperty("MaKhachhangNavigation")]
     public virtual ICollection<DonDat> DonDatMaKhachhangNavigations { get; set; } = new List<DonDat>();

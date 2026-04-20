@@ -22,9 +22,11 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin() // Cho phép tất cả trong lúc dev
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy
+            .WithOrigins("http://localhost:3000") // ✅ chỉ định rõ
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // ✅ hợp lệ
     });
 });
 
@@ -153,7 +155,10 @@ using (var scope = app.Services.CreateScope())
             HoTen = "System Administrator",
             TrangThai = true,
             NgayTao = DateTime.UtcNow,
-            RefreshToken = ""
+
+            RefreshToken = null,
+            NgayTaoRefreshToken = null,
+            NgayHetHanRefreshToken = null
         };
 
         context.NguoiDungs.Add(adminUser);

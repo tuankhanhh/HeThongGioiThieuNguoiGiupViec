@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// MUI Icons (Giữ lại vài icon làm fallback nếu API không có hình)
+// MUI Icons
 import MiscellaneousServicesIcon from "@mui/icons-material/MiscellaneousServices";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
@@ -11,9 +11,9 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 import BookingStepper from "@/components/componentsCustomer/BookingStepper";
 import Swal from "sweetalert2";
+import { api } from "@/utils/api";
 
 // ---------------- TYPES ----------------
-// Khai báo kiểu dữ liệu khớp với JSON từ Backend trả về
 interface Service {
   id: string;
   title: string;
@@ -28,47 +28,57 @@ interface Service {
 export default function ServiceSelection() {
   const router = useRouter();
 
-  // State lưu dữ liệu từ API
+  // State API
   const [servicesData, setServicesData] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Khởi tạo state trực tiếp từ localStorage để giữ trạng thái khi back/forward
-  const [selectedServices, setSelectedServices] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("booking_services");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          return [];
-        }
+  // State Selection
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false); // Cờ kiểm tra đã lấy dữ liệu LS chưa
+
+  // 1. ĐỒNG BỘ LOCALSTORAGE (ĐỌC)
+  useEffect(() => {
+    const saved = localStorage.getItem("booking_services");
+    if (saved) {
+      try {
+        setSelectedServices(JSON.parse(saved));
+      } catch {
+        setSelectedServices([]);
       }
     }
-    return [];
-  });
+    // Đánh dấu là đã lấy dữ liệu xong
+    setIsInitialized(true);
+  }, []);
 
-  // Lưu vào localStorage khi có sự thay đổi
+  // 2. ĐỒNG BỘ LOCALSTORAGE (GHI)
   useEffect(() => {
-    localStorage.setItem("booking_services", JSON.stringify(selectedServices));
-  }, [selectedServices]);
+    // CHỈ lưu vào LS khi tiến trình đọc (bước 1) đã hoàn tất
+    // Ngăn chặn việc mảng rỗng [] mặc định ghi đè mất dữ liệu cũ
+    if (isInitialized) {
+      localStorage.setItem(
+        "booking_services",
+        JSON.stringify(selectedServices),
+      );
+    }
+  }, [selectedServices, isInitialized]);
 
-  // ---------------- CALL API ----------------
+  // 3. CALL API
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch("https://localhost:7095/api/dichvu");
-
-        if (!response.ok) {
-          throw new Error("Không thể tải dữ liệu dịch vụ");
-        }
-
-        const data: Service[] = await response.json();
+        const data = await api.get<Service[]>("/dichvu");
         setServicesData(data);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Lỗi fetch services:", error);
+
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Không thể tải danh sách dịch vụ lúc này. Vui lòng thử lại sau.";
+
         Swal.fire({
           title: "Lỗi kết nối",
-          text: "Không thể tải danh sách dịch vụ lúc này. Vui lòng thử lại sau.",
+          text: errorMessage,
           icon: "error",
           confirmButtonColor: "#0d7660",
         });
@@ -80,14 +90,16 @@ export default function ServiceSelection() {
     fetchServices();
   }, []);
 
-  // ---------------- SELECT SERVICE ----------------
+  // 4. XỬ LÝ CHỌN DỊCH VỤ
   const handleSelect = (id: string) => {
     setSelectedServices((prev) => {
+      // Nếu đã chọn rồi -> Bỏ chọn
       if (prev.includes(id)) {
-        localStorage.removeItem("booking_workdays");
+        localStorage.removeItem("booking_workdays"); // Reset bước sau
         return prev.filter((item) => item !== id);
       }
 
+      // Giới hạn tối đa 2 dịch vụ
       if (prev.length >= 2) {
         Swal.fire({
           title: "Giới hạn dịch vụ",
@@ -99,12 +111,13 @@ export default function ServiceSelection() {
         return prev;
       }
 
-      localStorage.removeItem("booking_workdays");
+      // Chọn mới
+      localStorage.removeItem("booking_workdays"); // Reset bước sau
       return [...prev, id];
     });
   };
 
-  // ---------------- CONTINUE ----------------
+  // 5. CHUYỂN TRANG
   const handleContinue = () => {
     if (selectedServices.length > 0) {
       router.push("/customer/list-services/choose-time");
@@ -173,14 +186,14 @@ export default function ServiceSelection() {
                     />
                   )}
 
-                  {/* Badge Phổ biến (Dựa vào API) */}
+                  {/* Badge Phổ biến */}
                   {service.popular && (
                     <div className="absolute top-4 left-4 bg-orange-100 text-orange-600 text-xs font-bold px-2 py-1 rounded-md">
                       Hot
                     </div>
                   )}
 
-                  {/* Hình ảnh từ API (hoặc Icon fallback) */}
+                  {/* Hình ảnh từ API */}
                   <div
                     className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors overflow-hidden mt-6
                     ${isSelected ? "bg-white shadow-inner" : "bg-[#e1ece8]"}`}
@@ -200,7 +213,6 @@ export default function ServiceSelection() {
                     {service.title}
                   </h3>
 
-                  {/* Giá tiền từ API */}
                   <p className="text-[#0d7660] font-semibold text-sm mb-2">
                     {service.price}
                   </p>
@@ -209,8 +221,7 @@ export default function ServiceSelection() {
                     className={`text-[14px] leading-relaxed transition-colors line-clamp-3
                     ${isSelected ? "text-gray-800" : "text-gray-500"}`}
                   >
-                    {service.description}{" "}
-                    {/* Đã sửa từ desc thành description theo API */}
+                    {service.description}
                   </p>
                 </div>
               );

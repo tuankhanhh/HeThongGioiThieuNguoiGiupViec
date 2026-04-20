@@ -30,13 +30,44 @@ namespace MyWebApi.Controllers
         [HttpPost("Create")]
         public async Task<IActionResult> CreateBooking([FromBody] BookingRequestDto request)
         {
-            // 1. Kiểm tra dữ liệu đầu vào
             if (request == null || request.ChiTietNgayLamViec == null || !request.ChiTietNgayLamViec.Any())
             {
                 return BadRequest(new { message = "Dữ liệu đặt lịch không hợp lệ hoặc bị trống." });
             }
 
-            // 2. Bắt đầu Transaction để đảm bảo an toàn dữ liệu
+            // Lấy thời gian hiện tại làm mốc
+            DateTime now = DateTime.Now;
+
+            foreach (var day in request.ChiTietNgayLamViec)
+            {
+                if (!TimeOnly.TryParse(day.GioBatDau, out TimeOnly parsedTime))
+                {
+                    return BadRequest(new { message = $"Định dạng giờ '{day.GioBatDau}' không hợp lệ." });
+                }
+
+                // =========================================================
+                // CHỈ RÀNG BUỘC 1 TIẾNG NẾU NGÀY THỰC HIỆN LÀ HÔM NAY
+                // =========================================================
+                if (day.NgayThucHien.Date == now.Date)
+                {
+                    // Nối ngày và giờ lại
+                    DateTime scheduledDateTime = day.NgayThucHien.Date.Add(parsedTime.ToTimeSpan());
+                    DateTime minAllowedTime = now.AddHours(1);
+
+                    if (scheduledDateTime < minAllowedTime)
+                    {
+                        return BadRequest(new
+                        {
+                            success = false,
+                            message = $"Nếu đặt lịch trong ngày hôm nay, vui lòng chọn giờ bắt đầu từ {minAllowedTime:HH:mm} trở đi."
+                        });
+                    }
+                }
+            }
+
+            // =========================================================
+            // 2. BẮT ĐẦU TRANSACTION ĐỂ ĐẢM BẢO AN TOÀN DỮ LIỆU
+            // =========================================================
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
