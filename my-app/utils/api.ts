@@ -18,13 +18,13 @@ type ApiRequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
-type RefreshResponse = {
-  accessToken?: string;
-  AccessToken?: string;
-  refreshToken?: string;
-  RefreshToken?: string;
-  token?: string;
-};
+// type RefreshResponse = {
+//   accessToken?: string;
+//   AccessToken?: string;
+//   refreshToken?: string;
+//   RefreshToken?: string;
+//   token?: string;
+// };
 
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -164,36 +164,35 @@ const refreshAccessToken = async (): Promise<boolean> => {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
+        // Đảm bảo URL này khớp với Controller C# của bạn (ví dụ: /api/User/refresh-token)
         const res = await fetch(buildUrl("/User/refresh-token"), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            refreshToken: currentRefreshToken,
+            refreshToken: currentRefreshToken, // Gửi đúng tên field Backend cần
           }),
-          credentials: "include",
         });
 
         if (!res.ok) return false;
 
-        const data = (await res.json()) as RefreshResponse;
+        const data = await res.json();
 
-        const newAccessToken =
-          data.accessToken ?? data.AccessToken ?? data.token ?? null;
-
-        const newRefreshToken =
-          data.refreshToken ?? data.RefreshToken ?? currentRefreshToken;
+        // Backend C# của bạn trả về AccessToken và RefreshToken (viết hoa chữ đầu)
+        // hoặc accessToken (camelCase). Hãy kiểm tra LoginResponse ở Backend.
+        const newAccessToken = data.accessToken || data.AccessToken;
+        const newRefreshToken = data.refreshToken || data.RefreshToken;
 
         if (!newAccessToken) return false;
 
+        // Lưu lại cặp token mới vào localStorage/Store
         tokenStore.setTokens({
           accessToken: newAccessToken,
           refreshToken: newRefreshToken,
         });
 
         return true;
-      } catch {
+      } catch (error) {
+        console.error("Refresh Token Error:", error);
         return false;
       }
     })().finally(() => {
@@ -207,7 +206,7 @@ const refreshAccessToken = async (): Promise<boolean> => {
 const request = async <T>(
   path: string,
   options: ApiRequestOptions = {},
-  retryOn401 = true
+  retryOn401 = true,
 ): Promise<T> => {
   const token = tokenStore.getAccessToken();
   const { headers, body } = prepareBodyAndHeaders(options);
@@ -216,35 +215,29 @@ const request = async <T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(buildUrl(path), {
-    ...options,
-    headers,
-    body,
-    credentials: options.credentials ?? "include",
-  });
+  const res = await fetch(buildUrl(path), { ...options, headers, body });
 
-  if (res.status === 401 && retryOn401) {
+  // 1. Kiểm tra xem đây có phải là request login hay không
+  const isLoginRequest = path.includes("/User/login");
+
+  // 2. Chỉ xử lý auto-refresh/redirect nếu KHÔNG PHẢI là trang login
+  if (res.status === 401 && retryOn401 && !isLoginRequest) {
     const refreshed = await refreshAccessToken();
 
-    if (!refreshed) {
+    if (refreshed) {
+      return request<T>(path, options, false);
+    } else {
       tokenStore.clearTokens();
-
-      if (isBrowser()) {
+      if (typeof window !== "undefined") {
+        // Chỉ redirect khi token hết hạn thật sự ở các trang khác
         window.location.href = "/customer/sign-in";
       }
-
-      throw {
-        status: 401,
-        message: "Session expired",
-      } as ApiError;
+      throw await parseError(res);
     }
-
-    return request<T>(path, options, false);
   }
 
-  if (!res.ok) {
-    throw await parseError(res);
-  }
+  // 3. Nếu là lỗi (bao gồm cả 401 của Login), ném lỗi ra để component Login xử lý
+  if (!res.ok) throw await parseError(res);
 
   return parseResponse<T>(res);
 };

@@ -135,7 +135,7 @@ function ServiceCard({ service }: { service: ServiceType }) {
         {/* Action Button */}
         <button
           onClick={handleBooking}
-          className="w-full py-3 px-4 bg-stone-50 hover:bg-amber-500 hover:text-white text-stone-700 font-bold rounded-xl border border-stone-200 hover:border-amber-500 transition-all duration-300 mt-auto"
+          className="w-full py-3 px-4 bg-stone-50 hover:bg-amber-500 hover:text-white text-stone-700 font-bold rounded-xl border border-stone-200 hover:border-amber-500 transition-all duration-300 mt-auto cursor-pointer disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:border-stone-200"
         >
           Đặt dịch vụ
         </button>

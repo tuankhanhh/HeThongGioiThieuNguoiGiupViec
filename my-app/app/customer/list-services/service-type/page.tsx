@@ -252,7 +252,7 @@ export default function ServiceSelection() {
           <button
             onClick={handleContinue}
             disabled={selectedServices.length === 0}
-            className={`text-base font-bold py-4 px-12 rounded-2xl flex items-center gap-3 transition-all w-full md:w-auto justify-center
+            className={`text-base font-bold py-4 px-12 rounded-2xl flex items-center gap-3 transition-all w-full md:w-auto justify-center cursor-pointer
             ${
               selectedServices.length > 0
                 ? "bg-[#0d7660] hover:bg-[#0a6350] text-white shadow-lg active:scale-95"

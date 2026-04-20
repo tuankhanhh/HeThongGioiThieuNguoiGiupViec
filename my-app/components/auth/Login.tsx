@@ -1,111 +1,84 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, tokenStore } from "@/utils/api"; // Thêm dòng import này (đổi đường dẫn cho đúng)
+import { api, tokenStore } from "@/utils/api";
 
-type RoleType = "CUSTOMER" | "MAID" | "STAFF" | "ADMIN";
+const ROLE_LABELS = {
+  CUSTOMER: "Khách hàng",
+  MAID: "Người giúp việc",
+  STAFF: "Nhân viên",
+  ADMIN: "Quản trị viên",
+};
+
+const REDIRECT_MAP: Record<string, string> = {
+  Customer: "/",
+  Staff: "/Staff",
+  Admin: "/Admin",
+  Maid: "/Maid/profile",
+};
 
 interface LoginProps {
   signUpHref?: string;
-  roleType: RoleType;
+  roleType: keyof typeof ROLE_LABELS;
 }
 
 export default function Login({
   signUpHref = "/customer/sign-up",
   roleType = "CUSTOMER",
 }: LoginProps) {
+  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const router = useRouter();
-
-  const roleLabels: Record<RoleType, string> = {
-    CUSTOMER: "Khách hàng",
-    MAID: "Người giúp việc",
-    STAFF: "Nhân viên",
-    ADMIN: "Quản trị viên",
-  };
-
-  const redirectMap: Record<string, string> = {
-    Customer: "/",
-    Staff: "/Staff",
-    Admin: "/Admin",
-  };
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
-      // 1. Gọi API Login cực kỳ gọn nhẹ qua apiService
+      // 1. Gọi API Login để lấy cặp Token
       const data = await api.post<any>("/User/login", {
         soDienThoai: phone,
         matKhau: password,
       });
 
-      // 2. Giao việc lưu token cho tokenStore quản lý
+      // 2. Lưu token vào store (Để apiService có token gọi các API tiếp theo)
       tokenStore.setTokens({
         accessToken: data.accessToken || data.AccessToken,
         refreshToken: data.refreshToken || data.RefreshToken,
       });
 
-      // 3. Giải mã JWT lấy Role (Lấy từ tokenStore cho chắc chắn)
-      const currentToken = tokenStore.getAccessToken();
-      if (!currentToken) throw new Error("Lỗi hệ thống: Không lưu được token.");
+      // 3. GỌI API /ME ĐỂ LẤY ROLE THẬT TỪ SERVER
+      // Thay vì atob, ta dùng chính API bạn vừa viết.
+      // apiService sẽ tự kẹp Token vừa lưu ở trên vào Header.
+      const userData = await api.get<any>("/User/me");
+      const role = userData.role || userData.Role;
 
-      const payload = JSON.parse(atob(currentToken.split(".")[1]));
-      const roles =
-        payload["role"] ||
-        payload["roles"] ||
-        payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-
-      const role = Array.isArray(roles) ? roles[0] : roles;
-
-      // [TÙY CHỌN BẢO MẬT]: Chặn người dùng đăng nhập sai cổng
-      // Ví dụ: Tài khoản là Customer nhưng lại vào trang Login của Maid
-      // if (role.toUpperCase() !== roleType) {
-      //   tokenStore.clearTokens();
-      //   throw new Error(`Tài khoản này không có quyền truy cập cổng ${roleLabels[roleType]}.`);
-      // }
-
-      // 4. Xử lý logic riêng nếu Role là Maid
+      // 4. Luồng xử lý điều hướng dựa trên Role từ API /me
       if (role === "Maid") {
-        // TUYỆT VỜI: Không cần tự nhét Header Authorization nữa.
-        // apiService sẽ tự động lấy token từ tokenStore vừa lưu ở bước 2 gắn vào!
         const { hasProfile, status } = await api.get<any>("/v1/maid/status");
-
         if (!hasProfile) {
           router.push("/maid/sign-up/generalinfo");
-          return;
-        }
-
-        switch (status) {
-          case "Đã duyệt":
-            router.push("/maid/profile");
-            break;
-          case "Chờ duyệt":
-          case "Từ chối":
-            router.push("/maid/sign-up/status");
-            break;
-          default:
-            throw new Error("Trạng thái hồ sơ không hợp lệ.");
+        } else if (status === "Đã duyệt") {
+          router.push("/maid/profile");
+        } else {
+          router.push("/maid/sign-up/status");
         }
         return;
       }
 
-      // 5. Nếu là các Role khác
-      const targetPath = redirectMap[role] || "/";
+      // 5. Điều hướng cho các Role khác (Customer, Staff, Admin)
+      const targetPath = REDIRECT_MAP[role] || "/";
       router.push(targetPath);
     } catch (err: any) {
-      // apiService luôn trả về cấu trúc ApiError (chứa status và message)
-      alert(
-        err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
-      );
+      setError(err.message || "Thông tin đăng nhập không chính xác.");
+      tokenStore.clearTokens(); // Xóa sạch dấu vết nếu login lỗi
     } finally {
       setIsLoading(false);
     }
@@ -116,50 +89,59 @@ export default function Login({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-white rounded-[2rem] shadow-xl shadow-stone-200/50 overflow-hidden border border-stone-100"
+        className="w-full max-w-md bg-white rounded-[2rem] shadow-xl border border-stone-100 overflow-hidden"
       >
         <div className="p-8 sm:p-10">
-          <div className="text-center mb-8">
+          <header className="text-center mb-8">
             <h2 className="text-3xl font-bold text-stone-800 font-display mb-2">
               Chào mừng trở lại!
             </h2>
             <p className="text-stone-500 text-sm">
               Đăng nhập với vai trò{" "}
               <span className="font-semibold text-amber-600">
-                {roleLabels[roleType]}
+                {ROLE_LABELS[roleType]}
               </span>
             </p>
-          </div>
+          </header>
+
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl overflow-hidden"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1.5">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-stone-700">
                 Số điện thoại
               </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Nhập số điện thoại..."
-                  className="w-full pl-4 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400"
-                />
-              </div>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full pl-4 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400"
+              />
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-stone-700">
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-stone-700">
                   Mật khẩu
                 </label>
-                <a
+                <Link
                   href="#"
-                  className="text-xs font-medium text-amber-500 hover:text-amber-600"
+                  className="text-xs text-amber-600 hover:underline"
                 >
                   Quên mật khẩu?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <input
@@ -167,15 +149,14 @@ export default function Login({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu..."
-                  className="w-full pl-4 pr-12 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400"
+                  className="w-full pl-4 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs font-semibold hover:text-stone-600 cursor-pointer"
                 >
-                  {showPassword ? "Ẩn" : "Hiện"}
+                  {showPassword ? "ẨN" : "HIỆN"}
                 </button>
               </div>
             </div>
@@ -183,24 +164,24 @@ export default function Login({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 disabled:bg-stone-300 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all flex justify-center items-center gap-2 cursor-pointer"
             >
-              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
+              {isLoading ? "Đang xác thực..." : "Đăng nhập"}
             </button>
           </form>
 
           {(roleType === "CUSTOMER" || roleType === "MAID") && (
-            <div className="mt-8 text-center">
+            <footer className="mt-8 text-center border-t border-stone-100 pt-6">
               <p className="text-stone-500 text-sm">
                 Chưa có tài khoản?{" "}
                 <Link
                   href={signUpHref}
-                  className="font-bold text-amber-500 hover:text-amber-600"
+                  className="font-bold text-amber-600 hover:text-amber-700"
                 >
                   Đăng ký ngay
                 </Link>
               </p>
-            </div>
+            </footer>
           )}
         </div>
       </motion.div>
