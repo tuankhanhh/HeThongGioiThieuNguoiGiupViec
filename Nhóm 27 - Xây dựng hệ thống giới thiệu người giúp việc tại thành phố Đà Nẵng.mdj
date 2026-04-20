@@ -26663,7 +26663,7 @@
 									"parentStyle": true,
 									"left": 752,
 									"top": 229,
-									"width": 232,
+									"width": 254.376953125,
 									"height": 13,
 									"text": "LichSuTrangThaiDon"
 								},
@@ -26690,7 +26690,7 @@
 											"parentStyle": true,
 											"left": 757,
 											"top": 252,
-											"width": 222,
+											"width": 244.376953125,
 											"height": 13
 										},
 										{
@@ -26706,7 +26706,7 @@
 											"parentStyle": true,
 											"left": 757,
 											"top": 267,
-											"width": 222,
+											"width": 244.376953125,
 											"height": 13
 										},
 										{
@@ -26722,7 +26722,7 @@
 											"parentStyle": true,
 											"left": 757,
 											"top": 282,
-											"width": 222,
+											"width": 244.376953125,
 											"height": 13
 										},
 										{
@@ -26738,7 +26738,7 @@
 											"parentStyle": true,
 											"left": 757,
 											"top": 297,
-											"width": 222,
+											"width": 244.376953125,
 											"height": 13
 										}
 									],
@@ -26746,7 +26746,7 @@
 									"parentStyle": true,
 									"left": 752,
 									"top": 247,
-									"width": 232,
+									"width": 254.376953125,
 									"height": 68
 								}
 							],
@@ -26754,7 +26754,7 @@
 							"parentStyle": false,
 							"left": 752,
 							"top": 224,
-							"width": 232,
+							"width": 254.376953125,
 							"height": 91,
 							"nameLabel": {
 								"$ref": "AAAAAAGdNBVDqyzaUAs="
@@ -26837,7 +26837,7 @@
 								"$ref": "AAAAAAGdM/pRxyqN5nQ="
 							},
 							"lineStyle": 2,
-							"points": "1015:560;1015:261;984:261",
+							"points": "1015:560;1015:261;1006:261",
 							"nameLabel": {
 								"$ref": "AAAAAAGdNBh/ki0pPtc="
 							},
@@ -31010,7 +31010,7 @@
 							"_parent": {
 								"$ref": "AAAAAAGdNBVDqyzX+4k="
 							},
-							"name": "ThoiGian",
+							"name": "ThoiGianCapNhat",
 							"type": "DATETIME",
 							"length": 0
 						},

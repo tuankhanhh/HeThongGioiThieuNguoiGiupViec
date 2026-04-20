@@ -99,6 +99,14 @@ namespace MyWebApi.Controllers
                 };
                 _context.ThanhToans.Add(thanhToan);
 
+                var lichSuTrangThai = new LichSuTrangThaiDon
+                {
+                    MaLichSu = GenerateId("LS"),
+                    MaDon = donDat.MaDon,
+                    TrangThai = "Chờ xác nhận",
+                    ThoiGianCapNhat = DateTime.Now // Ghi nhận thời điểm tạo đơn
+                };
+                _context.LichSuTrangThaiDons.Add(lichSuTrangThai);
                 // =========================================================
                 // BƯỚC 3: XỬ LÝ DỊCH VỤ VÀ NGÀY LÀM VIỆC CHI TIẾT
                 // =========================================================
@@ -138,7 +146,10 @@ namespace MyWebApi.Controllers
                             MaDonDatDichVu = maDonDatDichVu,
                             MaNguoiGiupViec = null, // Để null chờ xếp lịch
                             NgayLam = DateOnly.FromDateTime(day.NgayThucHien),
-                            GioBatDau = TimeOnly.Parse(day.GioBatDau) // Lưu giờ bắt đầu thành công!
+                            GioBatDau = TimeOnly.Parse(day.GioBatDau), // Lưu giờ bắt đầu thành công!
+                            ThoiGianPhanCong = null,
+                            TrangThai = "Chờ phân công"
+
                         };
                         _context.NgayLamViecs.Add(ngayLamViec);
 

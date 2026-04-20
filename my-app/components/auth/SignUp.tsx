@@ -4,11 +4,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Snackbar, Alert } from "@mui/material"; // Nhúng MUI component
 
 // 1. Cập nhật Type
 type RegisterForm = {
   fullName: string;
-  email: string; // Thêm email
+  email: string;
   phone: string;
   password: string;
   confirmPassword: string;
@@ -25,7 +26,7 @@ export default function Registration(props: {
   // 2. Cập nhật State khởi tạo
   const [formData, setFormData] = useState<RegisterForm>({
     fullName: "",
-    email: "", // Khởi tạo rỗng
+    email: "",
     phone: "",
     password: "",
     confirmPassword: "",
@@ -35,6 +36,9 @@ export default function Registration(props: {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string>("");
+
+  // State quản lý hiển thị Toast Notification
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -60,7 +64,7 @@ export default function Registration(props: {
         },
         body: JSON.stringify({
           hoTen: formData.fullName,
-          email: formData.email, // Gửi email lên backend
+          email: formData.email,
           soDienThoai: formData.phone,
           matKhau: formData.password,
         }),
@@ -72,8 +76,13 @@ export default function Registration(props: {
         throw new Error(data?.message || "Đăng ký thất bại");
       }
 
-      alert("Đăng ký thành công!");
-      router.push(props.loginSuccessUrl);
+      // Hiển thị Toast thông báo thành công thay vì alert()
+      setShowSuccessToast(true);
+
+      // Đợi 2.5 giây cho hiệu ứng chạy xong rồi mới chuyển trang
+      setTimeout(() => {
+        router.push(props.loginSuccessUrl);
+      }, 2500);
     } catch (err: unknown) {
       console.log("Registration error:", formData);
       setError(err instanceof Error ? err.message : "Đăng ký thất bại");
@@ -83,7 +92,7 @@ export default function Registration(props: {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4 relative">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -132,7 +141,7 @@ export default function Registration(props: {
               </div>
             </div>
 
-            {/* Email Field - MỚI THÊM */}
+            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1.5">
                 Email
@@ -235,7 +244,7 @@ export default function Registration(props: {
                 >
                   {showPassword ? (
                     <svg
-                      className="w-5 h-5"
+                      className="w-5 h-5 cursor-pointer"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -249,7 +258,7 @@ export default function Registration(props: {
                     </svg>
                   ) : (
                     <svg
-                      className="w-5 h-5"
+                      className="w-5 h-5 cursor-pointer"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -303,7 +312,7 @@ export default function Registration(props: {
                 >
                   {showConfirmPassword ? (
                     <svg
-                      className="w-5 h-5"
+                      className="w-5 h-5 cursor-pointer"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -317,7 +326,7 @@ export default function Registration(props: {
                     </svg>
                   ) : (
                     <svg
-                      className="w-5 h-5"
+                      className="w-5 h-5 cursor-pointer"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -346,7 +355,7 @@ export default function Registration(props: {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+              className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4 cursor-pointer"
             >
               {isLoading ? "Đang xử lý..." : "Đăng ký"}
             </button>
@@ -357,7 +366,7 @@ export default function Registration(props: {
               Đã có tài khoản?{" "}
               <Link
                 href={props.urlLogin}
-                className="font-bold text-amber-500 hover:text-amber-600 transition-colors"
+                className="font-bold text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
               >
                 Đăng nhập ngay
               </Link>
@@ -365,6 +374,23 @@ export default function Registration(props: {
           </div>
         </div>
       </motion.div>
+
+      {/* Snackbar & Alert của MUI */}
+      <Snackbar
+        open={showSuccessToast}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ top: { xs: "80px", sm: "80px" } }} // Chỉnh lại số 80px nếu thanh Header của bạn cao/thấp hơn
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          className="relative overflow-hidden min-w-[280px] shadow-lg rounded-md"
+        >
+          Đăng ký thành công!
+          {/* Thanh progress bar chạy ngang ở dưới cùng */}
+          <span className="absolute bottom-0 left-0 h-1 bg-white/70 animate-progress-run"></span>
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

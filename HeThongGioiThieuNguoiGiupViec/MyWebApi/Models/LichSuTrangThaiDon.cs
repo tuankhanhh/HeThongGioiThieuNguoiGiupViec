@@ -17,6 +17,7 @@ public partial class LichSuTrangThaiDon
     [StringLength(5)]
     [Unicode(false)]
     public string MaDon { get; set; } = null!;
+    public DateTime ThoiGianCapNhat { get; set; }
 
     [StringLength(100)]
     public string? TrangThai { get; set; }

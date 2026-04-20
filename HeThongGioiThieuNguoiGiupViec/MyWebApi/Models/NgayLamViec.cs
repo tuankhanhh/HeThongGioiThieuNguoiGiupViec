@@ -25,6 +25,10 @@ public partial class NgayLamViec
     public DateOnly? NgayLam { get; set; }
 
     public TimeOnly? GioBatDau { get; set; }
+    public DateTime? ThoiGianPhanCong { get; set; }
+
+    [StringLength(50)]
+    public string? TrangThai { get; set; }
 
     [InverseProperty("MaNgayLamViecNavigation")]
     public virtual ICollection<DonDatDichVuNgayLamViec> DonDatDichVuNgayLamViecs { get; set; } = new List<DonDatDichVuNgayLamViec>();

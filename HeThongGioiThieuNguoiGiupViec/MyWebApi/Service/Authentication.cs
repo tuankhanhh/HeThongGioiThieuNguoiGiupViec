@@ -48,7 +48,11 @@ namespace MyWebApi.Service
             var accessToken = _tokenService.GenerateAccessToken(user, roles);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
+            // CẬP NHẬT Ở ĐÂY: Lưu cả token và thời gian hết hạn
             user.RefreshToken = refreshToken;
+            user.NgayTaoRefreshToken = DateTime.Now; // Ghi lại lúc tạo
+            user.NgayHetHanRefreshToken = DateTime.Now.AddDays(7); // Token này có giá trị trong 7 ngày
+
             await _context.SaveChangesAsync();
 
             return new LoginResponse
