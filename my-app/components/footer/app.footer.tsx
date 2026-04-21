@@ -1,5 +1,6 @@
 "use client";
 
+import { ROUTES } from "@/lib/routes";
 import Link from "next/link";
 
 // ─── CompanyInfo ──────────────────────────────────────────────────────────────
@@ -104,30 +105,30 @@ const linkColumns: LinkColumn[] = [
   {
     title: "Dịch vụ",
     links: [
-      { label: "Dọn nhà", href: "/services/cleaning" },
-      { label: "Nấu ăn", href: "/services/cooking" },
-      { label: "Chăm sóc trẻ", href: "/services/childcare" },
-      { label: "Chăm sóc người già", href: "/services/eldercare" },
+      { label: "Dọn nhà", href: ROUTES.PUBLIC.LIST_SERVICES },
+      { label: "Nấu ăn", href: ROUTES.PUBLIC.LIST_SERVICES },
+      { label: "Chăm sóc trẻ", href: ROUTES.PUBLIC.LIST_SERVICES },
+      { label: "Chăm sóc người già", href: ROUTES.PUBLIC.LIST_SERVICES },
     ],
   },
   {
     title: "Homezy",
     links: [
-      { label: "Về chúng tôi", href: "/customer/about" },
-      { label: "Câu hỏi thường gặp", href: "/faq" },
-      { label: "Liên hệ", href: "/customer/contact" },
-      { label: "Kênh người giúp việc", href: "/maid/sign-in" },
-      { label: "Kênh nhân viên", href: "/staff/sign-in" },
-      { label: "Kênh quản trị viên", href: "/admin/sign-in" },
+      { label: "Về chúng tôi", href: ROUTES.PUBLIC.ABOUT },
+      { label: "Câu hỏi thường gặp", href: "/" },
+      { label: "Liên hệ", href: ROUTES.PUBLIC.CONTACT },
+      { label: "Kênh người giúp việc", href: ROUTES.MAID.LOGIN },
+      { label: "Kênh nhân viên", href: ROUTES.STAFF.LOGIN },
+      { label: "Kênh quản trị viên", href: ROUTES.ADMIN.LOGIN },
     ],
   },
   {
     title: "Chính sách",
     links: [
-      { label: "Chính sách bảo mật", href: "/privacy" },
-      { label: "Điều khoản sử dụng", href: "/terms" },
-      { label: "Chính sách hoàn tiền", href: "/refund" },
-      { label: "Dành cho đối tác", href: "/partner" },
+      { label: "Chính sách bảo mật", href: "/" },
+      { label: "Điều khoản sử dụng", href: "/" },
+      { label: "Chính sách hoàn tiền", href: "/" },
+      { label: "Dành cho đối tác", href: "/" },
     ],
   },
 ];

@@ -3,13 +3,27 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { api, tokenStore } from "@/utils/api";
+import { api, tokenStore } from "@/services/api";
 
-const navLinks = [
-  { name: "Trang chủ", path: "/" },
-  { name: "Dịch vụ", path: "/customer/list-services" },
-  { name: "Về chúng tôi", path: "/customer/about" },
-  { name: "Liên hệ", path: "/customer/contact" },
+import { ROUTES } from "@/lib/routes";
+
+export const navLinks = [
+  {
+    name: "Trang chủ",
+    path: ROUTES.PUBLIC.HOME,
+  },
+  {
+    name: "Dịch vụ",
+    path: ROUTES.PUBLIC.LIST_SERVICES,
+  },
+  {
+    name: "Về chúng tôi",
+    path: ROUTES.PUBLIC.ABOUT,
+  },
+  {
+    name: "Liên hệ",
+    path: ROUTES.PUBLIC.CONTACT,
+  },
 ];
 
 export default function Header() {
@@ -115,13 +129,13 @@ export default function Header() {
             (!user ? (
               <>
                 <Link
-                  href="/customer/sign-up"
+                  href={ROUTES.CUSTOMER.REGISTER}
                   className="px-5 py-2.5 border-2 border-[#009966] text-[#009966] rounded-xl font-medium hover:bg-[#f0f9f0]"
                 >
                   Đăng ký
                 </Link>
                 <Link
-                  href="/customer/sign-in"
+                  href={ROUTES.CUSTOMER.LOGIN}
                   className="px-5 py-2.5 bg-[#009966] text-white rounded-xl font-medium shadow-md hover:opacity-90"
                 >
                   Đăng nhập
@@ -145,7 +159,7 @@ export default function Header() {
                     </div>
                     {user.role === "Customer" && (
                       <Link
-                        href="/customer/orders"
+                        href={ROUTES.CUSTOMER.HISTORY}
                         className="text-black block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0]"
                         onClick={() => setOpenAvatar(false)}
                       >

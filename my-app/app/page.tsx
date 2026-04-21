@@ -1,10 +1,10 @@
 "use client";
-import Banner from "@/components/componentsCustomer/home/Banner";
-import ServiceList from "@/components/componentsCustomer/home/ServiceList";
-import StepList from "@/components/componentsCustomer/home/StepList";
-import FeatureMaids from "@/components/componentsCustomer/home/MaidCarousel";
-import FeatureItem from "@/components/componentsCustomer/home/FeatureGrid";
-import ReviewSlider from "@/components/componentsCustomer/home/ReviewSlider";
+import Banner from "@/components/home/Banner";
+import ServiceList from "@/components/home/ServiceList";
+import StepList from "@/components/home/StepList";
+import FeatureMaids from "@/components/home/MaidCarousel";
+import FeatureItem from "@/components/home/FeatureGrid";
+import ReviewSlider from "@/components/home/ReviewSlider";
 import Footer from "@/components/footer/app.footer";
 import Header from "@/components/header/app.header";
 

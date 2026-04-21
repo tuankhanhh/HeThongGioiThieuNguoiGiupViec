@@ -1,6 +1,7 @@
 "use client"; // Bắt buộc vì dùng usePathname
 
 import Sidebar from "@/components/componentsMaid/NavigationMaid";
+import { ROUTES } from "@/lib/routes";
 import { usePathname } from "next/navigation";
 
 export default function RootLayout({
@@ -12,7 +13,8 @@ export default function RootLayout({
 
   // Kiểm tra xem có phải trang login/register không
   const isAuthPage =
-    pathname.includes("/sign-in") || pathname.includes("/sign-up");
+    pathname.includes(ROUTES.MAID.LOGIN) ||
+    pathname.includes(ROUTES.MAID.REGISTER);
 
   return (
     <div className="min-h-screen flex">

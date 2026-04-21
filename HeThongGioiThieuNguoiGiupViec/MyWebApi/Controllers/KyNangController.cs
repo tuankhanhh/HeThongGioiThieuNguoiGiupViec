@@ -21,7 +21,7 @@ namespace MyWebApi.Controllers
         }
         // --------------------------
 
-        [HttpGet("skills")]
+        [HttpGet("getAll")]
         public async Task<IActionResult> GetAllSkills()
         {
             try

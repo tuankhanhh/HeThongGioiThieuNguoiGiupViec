@@ -4,7 +4,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, tokenStore } from "@/utils/api";
+import { api, tokenStore } from "@/services/api";
+import { ROUTES } from "@/lib/routes";
 
 const ROLE_LABELS = {
   CUSTOMER: "Khách hàng",
@@ -17,7 +18,7 @@ const REDIRECT_MAP: Record<string, string> = {
   Customer: "/",
   Staff: "/Staff",
   Admin: "/Admin",
-  Maid: "/Maid/profile",
+  Maid: "ROUTES.MAID.PROFILE",
 };
 
 interface LoginProps {
@@ -26,7 +27,7 @@ interface LoginProps {
 }
 
 export default function Login({
-  signUpHref = "/customer/sign-up",
+  signUpHref = "ROUTES.CUSTOMER.REGISTER",
   roleType = "CUSTOMER",
 }: LoginProps) {
   const router = useRouter();
@@ -64,11 +65,11 @@ export default function Login({
       if (role === "Maid") {
         const { hasProfile, status } = await api.get<any>("/v1/maid/status");
         if (!hasProfile) {
-          router.push("/maid/sign-up/generalinfo");
+          router.push(ROUTES.MAID.REGISTER_INFO);
         } else if (status === "Đã duyệt") {
-          router.push("/maid/profile");
+          router.push(ROUTES.MAID.PROFILE);
         } else {
-          router.push("/maid/sign-up/status");
+          router.push(ROUTES.MAID.REGISTER_STATUS);
         }
         return;
       }

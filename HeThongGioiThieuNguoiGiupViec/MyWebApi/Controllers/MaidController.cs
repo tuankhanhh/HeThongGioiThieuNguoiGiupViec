@@ -123,6 +123,176 @@ namespace MyWebApi.Controllers
             }
         }
 
+        [HttpGet("ho-so-cua-toi")]
+        [Authorize]
+        public async Task<IActionResult> GetHoSoCuaToi()
+        {
+            var userIdFromToken =
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue("nameid") ??
+                User.FindFirstValue("sub");
+
+            if (string.IsNullOrEmpty(userIdFromToken))
+            {
+                return Unauthorized(new { success = false, message = "Token không hợp lệ." });
+            }
+
+            try
+            {
+                // 1. Lấy thông tin người dùng
+                var nguoiDung = await _context.NguoiDungs.FindAsync(userIdFromToken);
+                if (nguoiDung == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy người dùng." });
+
+                // 2. Chỉ truy vấn hồ sơ (Không gắn outer variable vào Select)
+                var hoSo = await _context.HoSoNguoiGiupViecs
+                    .FirstOrDefaultAsync(h => h.MaNguoiGiupViec == userIdFromToken);
+
+                // Nếu chưa từng có hồ sơ nào
+                if (hoSo == null)
+                {
+                    return Ok(new { success = true, hasProfile = false });
+                }
+
+                // 3. Lấy danh sách kỹ năng bằng truy vấn riêng (An toàn hơn rất nhiều)
+                var danhSachKyNang = await _context.KyNangNguoiGiupViecs
+                    .Where(kn => kn.MaHoSo == hoSo.MaHoSo)
+                    .Join(_context.KyNangs,
+                          kn => kn.MaKyNang,
+                          k => k.MaKyNang,
+                          (kn, k) => new { id = k.MaKyNang, name = k.TenKyNang })
+                    .ToListAsync();
+
+                // 4. Lắp ráp dữ liệu trả về cho Frontend
+                var responseData = new
+                {
+                    ngaySinh = hoSo.NgaySinh,
+                    gioiTinh = hoSo.GioiTinh,
+                    soCccd = hoSo.SoCccd,
+                    diaChi = nguoiDung.DiaChi, // Lấy địa chỉ từ biến đã fetch ở bước 1 một cách an toàn
+                    tenNguoiThan = hoSo.TenNguoiThan,
+                    sdtNguoiThan = hoSo.SdtnguoiThan,
+                    kinhNghiem = hoSo.KinhNghiem,
+                    moTaChiTietKinhNghiem = hoSo.MoTaChiTietKinhNghiem,
+                    anhCccdmatTruoc = hoSo.AnhCccdmatTruoc,
+                    anhCccdmatSau = hoSo.AnhCccdmatSau,
+                    anhChanDung = hoSo.AnhChanDung,
+                    giayXacNhanCuTru = hoSo.GiayXacNhanCuTru,
+                    lyDoTuChoi = hoSo.LyDoTuChoi,
+                    trangThai = hoSo.TrangThaiXacMinh,
+                    danhSachKyNang = danhSachKyNang
+                };
+
+                return Ok(new
+                {
+                    success = true,
+                    hasProfile = true,
+                    data = responseData
+                });
+            }
+            catch (Exception ex)
+            {
+                // Đặt breakpoint ở dòng return này trong Visual Studio để xem chính xác lỗi là gì nếu nó vẫn bị
+                Console.WriteLine(ex.ToString());
+                return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.InnerException?.Message ?? ex.Message });
+            }
+        }
+        [HttpPost("cap-nhat-ho-so")]
+        [Authorize]
+        public async Task<IActionResult> CapNhatHoSo([FromForm] HoSoRequest request)
+        {
+            var userIdFromToken =
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue("nameid") ??
+                User.FindFirstValue("sub");
+
+            if (string.IsNullOrEmpty(userIdFromToken) || userIdFromToken != request.MaNguoiGiupViec)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "Token không hợp lệ." });
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var nguoiDung = await _context.NguoiDungs.FindAsync(userIdFromToken);
+                if (nguoiDung == null) return NotFound(new { success = false, message = "Không tìm thấy người dùng." });
+
+                // Tìm hồ sơ cũ
+                var hoSo = await _context.HoSoNguoiGiupViecs.FirstOrDefaultAsync(h => h.MaNguoiGiupViec == userIdFromToken);
+                if (hoSo == null) return NotFound(new { success = false, message = "Không tìm thấy hồ sơ để cập nhật." });
+
+                // Cập nhật thông tin chữ
+                if (!string.IsNullOrWhiteSpace(request.DiaChi))
+                {
+                    nguoiDung.DiaChi = request.DiaChi;
+                    _context.NguoiDungs.Update(nguoiDung);
+                }
+
+                hoSo.SoCccd = request.SoCccd;
+                hoSo.NgaySinh = request.NgaySinh;
+                hoSo.GioiTinh = request.GioiTinh;
+                hoSo.KinhNghiem = request.KinhNghiem;
+                hoSo.MoTaChiTietKinhNghiem = request.MoTaChiTietKinhNghiem;
+                hoSo.TenNguoiThan = request.TenNguoiThan;
+                hoSo.SdtnguoiThan = request.SdtnguoiThan;
+
+                // Reset trạng thái & xóa lý do từ chối (vì người dùng đã nộp lại)
+                hoSo.TrangThaiXacMinh = "Chờ duyệt";
+                hoSo.LyDoTuChoi = null;
+
+                // Cập nhật File CHỈ KHI có file mới gửi lên
+                if (request.FileAnhCccdmatTruoc != null)
+                {
+                    // Tùy chọn: Thêm logic xóa file ảnh cũ trong thư mục (nếu cần)
+                    hoSo.AnhCccdmatTruoc = await SaveFileAsync(request.FileAnhCccdmatTruoc);
+                }
+                if (request.FileAnhCccdmatSau != null)
+                {
+                    hoSo.AnhCccdmatSau = await SaveFileAsync(request.FileAnhCccdmatSau);
+                }
+                if (request.FileAnhChanDung != null)
+                {
+                    hoSo.AnhChanDung = await SaveFileAsync(request.FileAnhChanDung);
+                }
+                if (request.FileAnhGiayXacNhanCuTru != null)
+                {
+                    hoSo.GiayXacNhanCuTru = await SaveFileAsync(request.FileAnhGiayXacNhanCuTru);
+                }
+
+                _context.HoSoNguoiGiupViecs.Update(hoSo);
+
+                // Xử lý Cập nhật Kỹ Năng: Xóa hết kỹ năng cũ, thêm lại kỹ năng mới
+                if (request.DanhSachMaKyNang != null && request.DanhSachMaKyNang.Any())
+                {
+                    // Xóa kỹ năng cũ
+                    var kyNangCu = await _context.KyNangNguoiGiupViecs.Where(kn => kn.MaHoSo == hoSo.MaHoSo).ToListAsync();
+                    _context.KyNangNguoiGiupViecs.RemoveRange(kyNangCu);
+
+                    // Thêm kỹ năng mới
+                    var distinctSkills = request.DanhSachMaKyNang.Distinct().ToList();
+                    var danhSachKyNangMoi = distinctSkills.Select(maKyNang => new KyNangNguoiGiupViec
+                    {
+                        MaHoSo = hoSo.MaHoSo,
+                        MaKyNang = maKyNang,
+                        NgayThem = DateTime.Now
+                    }).ToList();
+
+                    await _context.KyNangNguoiGiupViecs.AddRangeAsync(danhSachKyNangMoi);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new { success = true, message = "Cập nhật hồ sơ thành công!" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi cập nhật hồ sơ.", detail = ex.Message });
+            }
+        }
+
         private async Task<string> SaveFileAsync(IFormFile? file)
         {
             if (file == null || file.Length == 0)
