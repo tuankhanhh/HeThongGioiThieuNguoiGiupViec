@@ -551,8 +551,116 @@ namespace MyWebApi.Controllers
         }
 
         // =============================================
+        // 6. DANH SACH NGUOI GIUP VIEC (de phan cong)
+        // =============================================
+
+        // GET /api/v1/staff/danh-sach-nguoi-giup-viec?maDon=DD001
+        [HttpGet("danh-sach-nguoi-giup-viec")]
+        public async Task<IActionResult> GetDanhSachNguoiGiupViec([FromQuery] string? maDon = null)
+        {
+            try
+            {
+                // ── Buoc 1: Lay danh sach (NgayLam, GioBatDau) cua don can phan cong ──
+                List<(DateOnly NgayLam, TimeOnly GioBatDau)> lichDon = new();
+
+                if (!string.IsNullOrWhiteSpace(maDon))
+                {
+                    lichDon = await _context.NgayLamViecs
+                        .Where(nlv => nlv.MaDonDatDichVuNavigation.MaDon == maDon
+                                      && nlv.NgayLam.HasValue
+                                      && nlv.GioBatDau.HasValue)
+                        .Select(nlv => new
+                        {
+                            nlv.NgayLam,
+                            nlv.GioBatDau
+                        })
+                        .AsNoTracking()
+                        .ToListAsync()
+                        .ContinueWith(t => t.Result
+                            .Select(x => (x.NgayLam!.Value, x.GioBatDau!.Value))
+                            .ToList());
+                }
+
+                // ── Buoc 2: Lay tat ca nguoi giup viec hop le ──
+                //    - Co ho so TrangThaiXacMinh = "Da duyet"
+                //    - Co vai tro "Nguoi giup viec"
+                var hoSoDaDuyet = await _context.HoSoNguoiGiupViecs
+                    .Where(hs => hs.TrangThaiXacMinh == "Đã duyệt")
+                    .Include(hs => hs.MaNguoiGiupViecNavigation)
+                        .ThenInclude(nd => nd.NguoiDungVaiTros)
+                            .ThenInclude(nv => nv.MaVaiTroNavigation)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                // ── Buoc 3: Lay danh sach id nguoi co lich trung ──
+                HashSet<string> biBanLich = new();
+
+                if (lichDon.Count > 0)
+                {
+                    // Lay tat ca NgayLamViec con hieu luc (khong phai Huy)
+                    // cua tat ca nguoi giup viec, roi loc tren memory
+                    var tatCaNgayLamViec = await _context.NgayLamViecs
+                        .Where(nlv => nlv.MaNguoiGiupViec != null
+                                      && nlv.NgayLam.HasValue
+                                      && nlv.GioBatDau.HasValue
+                                      && nlv.TrangThai != "Đã hủy")
+                        .Select(nlv => new
+                        {
+                            nlv.MaNguoiGiupViec,
+                            nlv.NgayLam,
+                            nlv.GioBatDau
+                        })
+                        .AsNoTracking()
+                        .ToListAsync();
+
+                    biBanLich = tatCaNgayLamViec
+                        .Where(nlv => lichDon.Any(ld =>
+                            ld.NgayLam == nlv.NgayLam!.Value &&
+                            ld.GioBatDau == nlv.GioBatDau!.Value))
+                        .Select(nlv => nlv.MaNguoiGiupViec!)
+                        .ToHashSet();
+                }
+
+                // ── Buoc 4: Tong hop ket qua ──
+                var ketQua = hoSoDaDuyet
+                    .Where(hs =>
+                    {
+                        // Kiem tra co vai tro Nguoi giup viec
+                        bool coVaiTro = hs.MaNguoiGiupViecNavigation.NguoiDungVaiTros
+                            .Any(nv => nv.MaVaiTroNavigation.TenVaiTro == "Người giúp việc");
+
+                        // Kiem tra khong bi ban lich
+                        bool khongTrungLich = !biBanLich.Contains(hs.MaNguoiGiupViec);
+
+                        return coVaiTro && khongTrungLich;
+                    })
+                    .Select(hs => new
+                    {
+                        maNguoiGiupViec = hs.MaNguoiGiupViec,
+                        hoTen           = hs.MaNguoiGiupViecNavigation.HoTen,
+                        kinhNghiem      = hs.KinhNghiem,
+                        danhSachKyNang  = hs.KyNangNguoiGiupViecs
+                            .Select(kn => kn.MaKyNang)
+                            .ToList()
+                    })
+                    .ToList();
+
+                return Ok(new
+                {
+                    success = true,
+                    data    = ketQua
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Loi he thong.", detail = ex.Message });
+            }
+        }
+
+        // =============================================
         // HELPER
         // =============================================
+
 
         private async Task<string> GenerateMaLichSuAsync()
         {
