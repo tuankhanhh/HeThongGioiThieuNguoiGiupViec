@@ -16,7 +16,7 @@ const ROLE_LABELS = {
 
 const REDIRECT_MAP: Record<string, string> = {
   Customer: "/",
-  Staff: "/Staff",
+  Staff: "/staff",
   Admin: "/Admin",
   Maid: "ROUTES.MAID.PROFILE",
 };
