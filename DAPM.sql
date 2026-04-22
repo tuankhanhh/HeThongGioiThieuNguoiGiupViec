@@ -317,7 +317,9 @@ select * from DonDatDichVuNgayLamViec
 select * from NgayLamViec
 select * from LichSuTrangThaiDon
 select * from LichRanh
+select * from CaLamViec
+select * from LichRanhCaLamViec
 GO
 UPDATE HoSoNguoiGiupViec
 SET TrangThaiXacMinh = N'Đã duyệt'
-WHERE MaNguoiGiupViec = '91e32';
+WHERE MaNguoiGiupViec = 'GV712';
