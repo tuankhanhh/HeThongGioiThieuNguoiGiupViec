@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { vi } from "date-fns/locale";
-import { format } from "date-fns";
+import { format, addDays, startOfDay } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 
@@ -27,16 +27,14 @@ import {
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 
+// Import service API đã viết sẵn
+import api from "@/services/api";
+
 interface TimeRange {
   start: string;
   end: string;
 }
 
-interface DailyAvailability {
-  [dateKey: string]: TimeRange[];
-}
-
-// Interface hứng dữ liệu từ Server
 interface ServerSchedule {
   maLichRanh: string;
   ngay: string; // YYYY-MM-DD
@@ -44,195 +42,231 @@ interface ServerSchedule {
   gioKetThuc: string; // HH:mm:ss
 }
 
-// Cấu hình Base URL API của bạn
-const API_BASE_URL = "https://localhost:7095/api";
-
 export default function HelperAvailability() {
   const [isMounted, setIsMounted] = useState(false);
-  const [activeDate, setActiveDate] = useState<Date | undefined>(new Date());
 
-  // State quản lý lịch đang thao tác (chưa lưu)
-  const [availability, setAvailability] = useState<DailyAvailability>({});
+  // 1. CHỌN NHIỀU NGÀY
+  const [selectedDates, setSelectedDates] = useState<Date[] | undefined>([]);
 
-  // State quản lý lịch đã lưu trên Server
+  // 2. KHUNG GIỜ RIÊNG CHO TỪNG NGÀY (Map Object: "yyyy-MM-dd" => TimeRange[])
+  const [dateSlots, setDateSlots] = useState<Record<string, TimeRange[]>>({});
+
+  // Trạng thái dữ liệu lịch đã lưu
   const [existingSchedule, setExistingSchedule] = useState<
     Record<string, ServerSchedule[]>
   >({});
+
+  // Trạng thái loading
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-    fetchMySchedule(); // Gọi API lấy danh sách khi component mount
+    fetchMySchedule();
   }, []);
+
+  // ==========================================
+  // RÀNG BUỘC THỜI GIAN TRÊN LỊCH
+  // ==========================================
+  const today = startOfDay(new Date());
+  const minDate = addDays(today, 3); // Sau 3 ngày kể từ hôm nay
+  const maxDate = addDays(minDate, 30); // Cho phép đăng ký trong khoảng 30 ngày tiếp theo
+
+  // ==========================================
+  // XỬ LÝ KHI CHỌN/BỎ CHỌN NGÀY TRÊN LỊCH
+  // ==========================================
+  const handleSelectDates = (dates: Date[] | undefined) => {
+    const newDates = dates || [];
+    setSelectedDates(newDates);
+
+    const newDateSlots = { ...dateSlots };
+    const currentSelectedKeys = newDates.map((d) => format(d, "yyyy-MM-dd"));
+
+    // Xóa các ngày đã bị bỏ chọn khỏi cấu hình giờ
+    Object.keys(newDateSlots).forEach((key) => {
+      if (!currentSelectedKeys.includes(key)) {
+        delete newDateSlots[key];
+      }
+    });
+
+    // Thêm giờ mặc định cho các ngày mới được chọn
+    currentSelectedKeys.forEach((key) => {
+      if (!newDateSlots[key]) {
+        newDateSlots[key] = [{ start: "08:00", end: "12:00" }];
+      }
+    });
+
+    setDateSlots(newDateSlots);
+  };
 
   // ==========================================
   // API CALLS
   // ==========================================
-  const getToken = () => localStorage.getItem("accessToken") || ""; // Thay bằng logic lấy token của bạn
-
-  // Lấy lịch rảnh từ Server
   const fetchMySchedule = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/LichRanh/my-schedule`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-          "Content-Type": "application/json",
-        },
+      const data = await api.get<ServerSchedule[]>("/LichRanh/my-schedule");
+      const grouped: Record<string, ServerSchedule[]> = {};
+      data.forEach((item) => {
+        if (!grouped[item.ngay]) grouped[item.ngay] = [];
+        grouped[item.ngay].push(item);
       });
-
-      if (res.ok) {
-        const data: ServerSchedule[] = await res.json();
-        // Nhom du lieu theo ngày để hiển thị dễ hơn
-        const grouped: Record<string, ServerSchedule[]> = {};
-        data.forEach((item) => {
-          if (!grouped[item.ngay]) grouped[item.ngay] = [];
-          grouped[item.ngay].push(item);
-        });
-        setExistingSchedule(grouped);
-      } else if (res.status === 404) {
-        setExistingSchedule({}); // Chưa có lịch
+      setExistingSchedule(grouped);
+    } catch (error: any) {
+      if (error.status === 404) {
+        setExistingSchedule({});
       } else {
-        console.error("Lỗi khi lấy lịch rảnh");
+        console.error("Fetch schedule error:", error);
       }
-    } catch (error) {
-      console.error("Fetch error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Lưu lịch rảnh mới lên Server
   const handleSaveSchedule = async () => {
-    setIsSaving(true);
-    const token = getToken();
+    const datesToSave = Object.keys(dateSlots);
+    if (datesToSave.length === 0) return;
 
-    // Gom tất cả các khung giờ đang tạo thành mảng request
+    setIsSaving(true);
     const requests: Promise<any>[] = [];
 
-    for (const [date, slots] of Object.entries(availability)) {
-      for (const slot of slots) {
+    // Lặp qua từng ngày và từng khung giờ riêng biệt để lưu
+    Object.entries(dateSlots).forEach(([dateStr, slots]) => {
+      slots.forEach((slot) => {
         const payload = {
-          ngay: date,
-          gioBatDau: `${slot.start}:00`, // Format chuẩn của TimeOnly
+          ngay: dateStr,
+          gioBatDau: `${slot.start}:00`,
           gioKetThuc: `${slot.end}:00`,
         };
-        console.log(payload);
-
-        const req = fetch(`${API_BASE_URL}/LichRanh/dang-ky`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-        requests.push(req);
-      }
-    }
+        requests.push(api.post("/LichRanh/dang-ky", payload));
+      });
+    });
 
     try {
-      // Chạy toàn bộ các request tạo lịch rảnh
-      const responses = await Promise.all(requests);
-      const hasError = responses.some((res) => !res.ok);
-
-      if (hasError) {
-        alert(
+      await Promise.all(requests);
+      alert("Lưu lịch thành công!");
+      setSelectedDates([]); // Reset form
+      setDateSlots({});
+      fetchMySchedule();
+    } catch (error: any) {
+      console.error("Save schedule error:", error);
+      alert(
+        error?.message ||
           "Có lỗi xảy ra hoặc trùng lặp với lịch cũ. Vui lòng kiểm tra lại!",
-        );
-      } else {
-        alert("Lưu lịch thành công!");
-        setAvailability({}); // Xóa nháp
-        fetchMySchedule(); // Load lại lịch từ server
-      }
-    } catch (error) {
-      console.error("Lỗi khi lưu:", error);
-      alert("Lỗi kết nối máy chủ");
+      );
     } finally {
       setIsSaving(false);
     }
   };
 
   // ==========================================
-  // LOGIC XỬ LÝ FORM TẠO LỊCH (DRAFT)
+  // LOGIC XỬ LÝ KHUNG GIỜ (Riêng theo dateKey)
   // ==========================================
   const allHours = Array.from({ length: 25 }, (_, i) => {
     const hour = i < 10 ? `0${i}` : `${i}`;
     return `${hour}:00`;
   });
 
-  const dateKey = activeDate ? format(activeDate, "yyyy-MM-dd") : "";
-  const currentDaySlots = availability[dateKey] || [];
-
-  const addSlot = () => {
-    if (currentDaySlots.length >= 2) return;
-    const defaultStart = currentDaySlots.length === 0 ? "08:00" : "14:00";
-    const defaultEnd = currentDaySlots.length === 0 ? "12:00" : "18:00";
-    setAvailability({
-      ...availability,
-      [dateKey]: [...currentDaySlots, { start: defaultStart, end: defaultEnd }],
-    });
-  };
-
-  const updateSlot = (index: number, field: keyof TimeRange, value: string) => {
-    const updatedSlots = [...currentDaySlots];
-    updatedSlots[index] = { ...updatedSlots[index], [field]: value };
-
-    if (field === "start") {
-      const startMin = toMinutes(value);
-      const endMin = toMinutes(updatedSlots[index].end);
-      if (endMin - startMin < 240) {
-        const newEndMin = startMin + 240;
-        if (newEndMin <= 1440) {
-          const h = Math.floor(newEndMin / 60);
-          updatedSlots[index].end = `${h < 10 ? `0${h}` : h}:00`;
-        }
-      }
-    }
-    setAvailability({ ...availability, [dateKey]: updatedSlots });
-  };
-
-  const removeSlot = (index: number) => {
-    const updatedSlots = currentDaySlots.filter((_, i) => i !== index);
-    const newAvail = { ...availability };
-    updatedSlots.length === 0
-      ? delete newAvail[dateKey]
-      : (newAvail[dateKey] = updatedSlots);
-    setAvailability(newAvail);
-  };
-
   const toMinutes = (time: string) => {
     const [h, m] = time.split(":").map(Number);
     return h * 60 + (m || 0);
   };
 
-  const isOverlapping = () => {
-    if (currentDaySlots.length < 2) return false;
-    const s1 = toMinutes(currentDaySlots[0].start),
-      e1 = toMinutes(currentDaySlots[0].end);
-    const s2 = toMinutes(currentDaySlots[1].start),
-      e2 = toMinutes(currentDaySlots[1].end);
+  const addSlot = (dateKey: string) => {
+    const currentSlots = dateSlots[dateKey] || [];
+    if (currentSlots.length >= 2) return; // Tối đa 2 ca/ngày
+
+    if (currentSlots.length === 0) {
+      setDateSlots({
+        ...dateSlots,
+        [dateKey]: [{ start: "08:00", end: "12:00" }],
+      });
+    } else {
+      // Lấy giờ kết thúc của ca trước đó làm mốc cho ca mới
+      const prevEndMin = toMinutes(currentSlots[0].end);
+
+      // Giới hạn giờ bắt đầu tối đa là 20:00 (vì cần tối thiểu 4 tiếng đến 24:00)
+      const startMin = Math.min(prevEndMin, 20 * 60);
+      const hStart = Math.floor(startMin / 60);
+      const defaultStart = `${hStart < 10 ? `0${hStart}` : hStart}:00`;
+
+      // Giờ kết thúc mặc định = bắt đầu + 4 tiếng
+      const endMin = startMin + 240;
+      const hEnd = Math.floor(endMin / 60);
+      const defaultEnd = `${hEnd < 10 ? `0${hEnd}` : hEnd}:00`;
+
+      setDateSlots({
+        ...dateSlots,
+        [dateKey]: [...currentSlots, { start: defaultStart, end: defaultEnd }],
+      });
+    }
+  };
+
+  const updateSlot = (
+    dateKey: string,
+    index: number,
+    field: keyof TimeRange,
+    value: string,
+  ) => {
+    const currentSlots = [...dateSlots[dateKey]];
+    currentSlots[index] = { ...currentSlots[index], [field]: value };
+
+    if (field === "start") {
+      const startMin = toMinutes(value);
+      const endMin = toMinutes(currentSlots[index].end);
+      if (endMin - startMin < 240) {
+        // Đảm bảo tối thiểu 4 tiếng
+        const newEndMin = startMin + 240;
+        if (newEndMin <= 1440) {
+          const h = Math.floor(newEndMin / 60);
+          currentSlots[index].end = `${h < 10 ? `0${h}` : h}:00`;
+        }
+      }
+    }
+    setDateSlots({ ...dateSlots, [dateKey]: currentSlots });
+  };
+
+  const removeSlot = (dateKey: string, index: number) => {
+    const currentSlots = dateSlots[dateKey].filter((_, i) => i !== index);
+    setDateSlots({ ...dateSlots, [dateKey]: currentSlots });
+  };
+
+  // Ràng buộc lồng nhau cho MỘT ngày cụ thể
+  const isOverlapping = (dateKey: string) => {
+    const slots = dateSlots[dateKey] || [];
+    if (slots.length < 2) return false;
+    const s1 = toMinutes(slots[0].start),
+      e1 = toMinutes(slots[0].end);
+    const s2 = toMinutes(slots[1].start),
+      e2 = toMinutes(slots[1].end);
     return s1 < e2 && s2 < e1;
   };
 
+  // Kiểm tra xem có BẤT KỲ ngày nào bị lỗi lồng giờ hay không
+  const hasAnyOverlap = Object.keys(dateSlots).some((key) =>
+    isOverlapping(key),
+  );
+
+  // ==========================================
+  // RENDER
+  // ==========================================
   if (!isMounted) return null;
 
-  const overlapError = isOverlapping();
-  // Khóa nút lưu nếu đang lỗi trùng, đang save, hoặc chưa có nháp nào
-  const isSaveDisabled =
-    overlapError || isSaving || Object.keys(availability).length === 0;
+  const selectedKeys = Object.keys(dateSlots).sort();
+  const isSaveDisabled = hasAnyOverlap || isSaving || selectedKeys.length === 0;
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f1f5f9", py: 6 }}>
-      <Container sx={{ maxWidth: "900px !important", px: { xs: 2, md: 4 } }}>
-        {/* ================= PHẦN TRÊN: TẠO LỊCH MỚI ================= */}
+      <Container sx={{ maxWidth: "1000px !important", px: { xs: 2, md: 4 } }}>
         <Box sx={{ mb: 5, display: "flex", flexDirection: "column", gap: 1 }}>
           <Typography
             sx={{ fontSize: "2rem", fontWeight: 700, color: "#0f172a" }}
           >
-            Thiết lập lịch rảnh mới
+            Đăng ký lịch rảnh
+          </Typography>
+          <Typography sx={{ color: "#64748b" }}>
+            Chọn nhiều ngày và thiết lập thời gian làm việc riêng biệt cho từng
+            ngày.
           </Typography>
         </Box>
 
@@ -244,154 +278,212 @@ export default function HelperAvailability() {
             gap: { xs: 4, md: 0 },
           }}
         >
-          <Grid sx={{ width: { xs: "100%", md: "50%" }, pr: { md: 2 } }}>
-            <Paper
-              sx={{
-                p: 2,
-                borderRadius: "24px",
-                bgcolor: "white",
-                display: "flex",
-                justifyContent: "center",
-                border: "1px solid #e2e8f0",
-                boxShadow: "none",
-                "& .rdp-day_selected": {
-                  bgcolor: "#0ea5e9 !important",
-                  borderRadius: "8px",
-                },
-              }}
-            >
-              <DayPicker
-                mode="single"
-                selected={activeDate}
-                onSelect={setActiveDate}
-                locale={vi}
-                disabled={{ before: new Date() }}
-              />
-            </Paper>
-          </Grid>
-
-          <Grid sx={{ width: { xs: "100%", md: "50%" }, pl: { md: 2 } }}>
-            <Stack sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <Box
+          {/* CỘT TRÁI: Lịch chọn ngày */}
+          <Grid sx={{ width: { xs: "100%", md: "40%" }, pr: { md: 2 } }}>
+            <Box sx={{ position: "sticky", top: 20 }}>
+              <Paper
                 sx={{
                   p: 2,
-                  bgcolor: "#f0f9ff",
-                  borderRadius: "16px",
-                  border: "1px solid #bae6fd",
+                  borderRadius: "24px",
+                  bgcolor: "white",
                   display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
+                  justifyContent: "center",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "none",
+                  "& .rdp-day_selected": {
+                    bgcolor: "#0ea5e9 !important",
+                    borderRadius: "8px",
+                    color: "white",
+                  },
                 }}
               >
-                <Typography sx={{ fontWeight: 700, color: "#0369a1" }}>
-                  Ngày: {activeDate ? format(activeDate, "dd/MM/yyyy") : "---"}
-                </Typography>
-              </Box>
+                <DayPicker
+                  mode="multiple"
+                  selected={selectedDates}
+                  onSelect={handleSelectDates}
+                  locale={vi}
+                  disabled={[{ before: minDate }, { after: maxDate }]}
+                />
+              </Paper>
+            </Box>
+          </Grid>
 
-              {overlapError && (
-                <Typography
+          {/* CỘT PHẢI: Form cấu hình giờ cho TỪNG ngày */}
+          <Grid sx={{ width: { xs: "100%", md: "60%" }, pl: { md: 2 } }}>
+            <Stack sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {selectedKeys.length === 0 ? (
+                <Box
                   sx={{
-                    color: "#e11d48",
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
+                    p: 4,
                     textAlign: "center",
-                    bgcolor: "#fff1f2",
-                    p: 1,
-                    borderRadius: "8px",
-                    border: "1px solid #fca5a5",
+                    border: "2px dashed #cbd5e1",
+                    borderRadius: "20px",
+                    color: "#94a3b8",
                   }}
                 >
-                  Các khung giờ đang bị trùng lặp!
-                </Typography>
-              )}
+                  Vui lòng chọn ngày trên lịch để thiết lập thời gian.
+                </Box>
+              ) : (
+                selectedKeys.map((dateKey) => {
+                  const slotsForDate = dateSlots[dateKey];
+                  const hasOverlap = isOverlapping(dateKey);
 
-              {currentDaySlots.map((slot, index) => {
-                const filteredEndHours = allHours.filter(
-                  (h) => toMinutes(h) >= toMinutes(slot.start) + 240,
-                );
-                return (
-                  <Card
-                    key={index}
-                    sx={{
-                      p: 2.5,
-                      borderRadius: "20px",
-                      border: "2px solid",
-                      borderColor: overlapError ? "#fca5a5" : "#e2e8f0",
-                      boxShadow: "none",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel sx={{ fontWeight: 600 }}>
-                          Bắt đầu
-                        </InputLabel>
-                        <Select
-                          value={slot.start}
-                          label="Bắt đầu"
-                          onChange={(e: SelectChangeEvent) =>
-                            updateSlot(index, "start", e.target.value)
-                          }
-                          sx={{ borderRadius: "12px" }}
-                        >
-                          {allHours.slice(0, 21).map((h) => (
-                            <MenuItem key={h} value={h}>
-                              {h}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel sx={{ fontWeight: 600 }}>
-                          Kết thúc
-                        </InputLabel>
-                        <Select
-                          value={slot.end}
-                          label="Kết thúc"
-                          onChange={(e: SelectChangeEvent) =>
-                            updateSlot(index, "end", e.target.value)
-                          }
-                          sx={{ borderRadius: "12px" }}
-                        >
-                          {filteredEndHours.map((h) => (
-                            <MenuItem key={h} value={h}>
-                              {h}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <IconButton
-                        onClick={() => removeSlot(index)}
+                  return (
+                    <Paper
+                      key={dateKey}
+                      sx={{
+                        p: 3,
+                        borderRadius: "20px",
+                        border: "1px solid",
+                        borderColor: hasOverlap ? "#fca5a5" : "#e2e8f0",
+                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
+                        bgcolor: hasOverlap ? "#fff1f2" : "white",
+                      }}
+                    >
+                      <Box
                         sx={{
-                          bgcolor: "#fff1f2",
-                          color: "#e11d48",
-                          borderRadius: "10px",
-                          "&:hover": { bgcolor: "#ffe4e6" },
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          mb: 2,
                         }}
                       >
-                        <DeleteOutlineIcon />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                );
-              })}
+                        <Typography
+                          sx={{
+                            fontWeight: 700,
+                            color: "#0369a1",
+                            fontSize: "1.1rem",
+                          }}
+                        >
+                          Ngày {format(new Date(dateKey), "dd/MM/yyyy")}
+                        </Typography>
+                        {hasOverlap && (
+                          <Typography
+                            sx={{
+                              color: "#e11d48",
+                              fontSize: "0.85rem",
+                              fontWeight: 700,
+                            }}
+                          >
+                            Lỗi lồng giờ!
+                          </Typography>
+                        )}
+                      </Box>
 
-              {currentDaySlots.length < 2 && activeDate && (
-                <Button
-                  onClick={addSlot}
-                  sx={{
-                    py: 1.5,
-                    borderRadius: "16px",
-                    border: "2px dashed #bae6fd",
-                    textTransform: "none",
-                    fontWeight: 700,
-                    color: "#0ea5e9",
-                    "&:hover": { borderColor: "#0ea5e9", bgcolor: "#f0f9ff" },
-                  }}
-                >
-                  + Thêm khung giờ rảnh
-                </Button>
+                      <Stack sx={{ gap: 2 }}>
+                        {slotsForDate.map((slot, index) => {
+                          // LỌC GIỜ BẮT ĐẦU: Nếu là ca thứ 2 (index > 0), chỉ hiển thị các giờ >= giờ kết thúc của ca 1
+                          let availableStartHours = allHours.slice(0, 21); // Mặc định 00:00 -> 20:00
+                          if (index > 0) {
+                            const prevEndMin = toMinutes(
+                              slotsForDate[index - 1].end,
+                            );
+                            availableStartHours = availableStartHours.filter(
+                              (h) => toMinutes(h) >= prevEndMin,
+                            );
+                          }
+
+                          // LỌC GIỜ KẾT THÚC: Phải >= giờ bắt đầu của chính ca này + 4 tiếng
+                          const filteredEndHours = allHours.filter(
+                            (h) => toMinutes(h) >= toMinutes(slot.start) + 240,
+                          );
+
+                          return (
+                            <Box
+                              key={index}
+                              sx={{
+                                display: "flex",
+                                gap: 2,
+                                alignItems: "center",
+                              }}
+                            >
+                              <FormControl sx={{ flex: 1 }} size="small">
+                                <InputLabel>Bắt đầu</InputLabel>
+                                <Select
+                                  value={slot.start}
+                                  label="Bắt đầu"
+                                  onChange={(e: SelectChangeEvent) =>
+                                    updateSlot(
+                                      dateKey,
+                                      index,
+                                      "start",
+                                      e.target.value,
+                                    )
+                                  }
+                                  sx={{ borderRadius: "12px", bgcolor: "#fff" }}
+                                >
+                                  {availableStartHours.map((h) => (
+                                    <MenuItem key={h} value={h}>
+                                      {h}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+
+                              <FormControl sx={{ flex: 1 }} size="small">
+                                <InputLabel>Kết thúc</InputLabel>
+                                <Select
+                                  value={slot.end}
+                                  label="Kết thúc"
+                                  onChange={(e: SelectChangeEvent) =>
+                                    updateSlot(
+                                      dateKey,
+                                      index,
+                                      "end",
+                                      e.target.value,
+                                    )
+                                  }
+                                  sx={{ borderRadius: "12px", bgcolor: "#fff" }}
+                                >
+                                  {filteredEndHours.map((h) => (
+                                    <MenuItem key={h} value={h}>
+                                      {h}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+
+                              <IconButton
+                                onClick={() => removeSlot(dateKey, index)}
+                                sx={{
+                                  bgcolor: "#f1f5f9",
+                                  color: "#64748b",
+                                  borderRadius: "10px",
+                                  "&:hover": {
+                                    bgcolor: "#ffe4e6",
+                                    color: "#e11d48",
+                                  },
+                                }}
+                              >
+                                <DeleteOutlineIcon />
+                              </IconButton>
+                            </Box>
+                          );
+                        })}
+
+                        {slotsForDate.length < 2 && (
+                          <Button
+                            onClick={() => addSlot(dateKey)}
+                            sx={{
+                              py: 1,
+                              borderRadius: "12px",
+                              border: "1px dashed #bae6fd",
+                              textTransform: "none",
+                              fontWeight: 600,
+                              color: "#0ea5e9",
+                              "&:hover": {
+                                borderColor: "#0ea5e9",
+                                bgcolor: "#f0f9ff",
+                              },
+                            }}
+                          >
+                            + Thêm ca
+                          </Button>
+                        )}
+                      </Stack>
+                    </Paper>
+                  );
+                })
               )}
             </Stack>
           </Grid>
@@ -482,7 +574,7 @@ export default function HelperAvailability() {
                           }}
                         >
                           <Box
-                            component="span" // <--- THÊM DÒNG NÀY VÀO
+                            component="span"
                             sx={{
                               width: 8,
                               height: 8,
@@ -499,7 +591,7 @@ export default function HelperAvailability() {
                             gap: 1,
                           }}
                         >
-                          {existingSchedule[dateStr].map((slot, idx) => (
+                          {existingSchedule[dateStr].map((slot) => (
                             <Box
                               key={slot.maLichRanh}
                               sx={{

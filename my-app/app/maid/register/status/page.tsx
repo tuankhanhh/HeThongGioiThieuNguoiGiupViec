@@ -8,7 +8,10 @@ import { useRouter } from "next/navigation";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ReplayIcon from "@mui/icons-material/Replay";
+
+// Import các utilities đã có
 import { ROUTES } from "@/lib/routes";
+import api, { tokenStore } from "@/services/api"; // Thay đổi đường dẫn import cho đúng với project của bạn
 
 // Custom Theme MUI
 const theme = createTheme({
@@ -19,6 +22,11 @@ const theme = createTheme({
   typography: { fontFamily: "inherit" },
 });
 
+// Định nghĩa Type cho response từ API để code chặt chẽ hơn
+interface StatusResponse {
+  status: "Chờ duyệt" | "Từ chối" | "Đã duyệt";
+}
+
 export default function ApplicationStatusPage() {
   const router = useRouter();
   const [status, setStatus] = useState<
@@ -28,35 +36,32 @@ export default function ApplicationStatusPage() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
+        // Sử dụng tokenStore thay vì gọi trực tiếp localStorage
+        const token = tokenStore.getAccessToken();
         if (!token) {
-          router.push("/login"); // Về login nếu không có token
+          router.push(ROUTES.CUSTOMER.LOGIN); // Dùng ROUTES thay vì hardcode chuỗi
           return;
         }
 
-        // Gọi API thực tế mà bạn cung cấp
-        const res = await fetch("https://localhost:7095/api/v1/maid/status", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // Gọi API thông qua apiService:
+        // - Tự động nối NEXT_PUBLIC_API_URL
+        // - Tự động đính kèm Authorization: Bearer <token>
+        // - Tự động handle Refresh Token nếu bị 401
+        // Lưu ý: Đảm bảo path truyền vào khớp với NEXT_PUBLIC_API_URL của bạn.
+        const data = await api.get<StatusResponse>("/v1/maid/status");
 
-        if (!res.ok) throw new Error("Không thể kiểm tra trạng thái");
-
-        const data = await res.json();
-
-        // Nếu API trả về "Đã duyệt" thì đẩy thẳng vào hệ thống
         if (data.status === "Đã duyệt") {
-          router.push("/maid/");
+          // Bạn có thể cân nhắc thêm ROUTES.MAID.HOME / ROUTES.MAID.DASHBOARD ở đây
+          router.push(ROUTES.MAID.PROFILE);
           return;
         }
 
-        setStatus(data.status); // Set "Chờ duyệt" hoặc "Từ chối"
+        setStatus(data.status);
       } catch (error) {
         console.error("Lỗi khi tải trạng thái:", error);
-        // Có thể setStatus('Từ chối') hoặc hiển thị lỗi fallback ở đây
+        // Lưu ý: Nếu lỗi 401 và refresh token thất bại, apiService đã tự động đẩy về LOGIN.
+        // Ở đây chỉ set fallback 'Từ chối' nếu là các lỗi network/500 khác.
+        setStatus("Từ chối");
       }
     };
 
@@ -168,7 +173,7 @@ export default function ApplicationStatusPage() {
 
                 <button
                   onClick={() => router.push(ROUTES.MAID.REGISTER_UPDATE)}
-                  className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
+                  className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 cursor-pointer"
                 >
                   <ReplayIcon /> Cập nhật lại hồ sơ
                 </button>

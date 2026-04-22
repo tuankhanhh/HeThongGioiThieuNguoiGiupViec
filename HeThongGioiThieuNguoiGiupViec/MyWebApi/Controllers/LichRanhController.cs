@@ -56,41 +56,66 @@ namespace MyWebApi.Controllers
         [HttpPost("dang-ky")]
         public async Task<IActionResult> CreateLichRanh([FromBody] LichRanhRequest request)
         {
-            // 1. Lấy MaNguoiDung từ Token (Claim Types thường là NameIdentifier hoặc "Id")
+            // 1. Lấy MaNguoiDung từ Token
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("Không xác định được danh tính người dùng.");
+                return Unauthorized(new { message = "Không xác định được danh tính người dùng." });
             }
 
-            // 2. Kiểm tra logic thời gian
+            // 2. Kiểm tra logic thời gian cơ bản
             if (request.GioBatDau >= request.GioKetThuc)
             {
-                return BadRequest("Giờ bắt đầu phải nhỏ hơn giờ kết thúc.");
+                return BadRequest(new { message = "Giờ bắt đầu phải nhỏ hơn giờ kết thúc." });
             }
 
-            if (request.Ngay < DateOnly.FromDateTime(DateTime.Now))
+            // 3. Bảo vệ Business Rule (Đồng bộ với Frontend)
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var minDate = today.AddDays(3);
+
+            if (request.Ngay < minDate)
             {
-                return BadRequest("Không thể đăng ký lịch rảnh cho quá khứ.");
+                return BadRequest(new { message = "Chỉ có thể đăng ký lịch rảnh trước ít nhất 3 ngày." });
             }
 
-            // 3. (Tùy chọn) Kiểm tra xem lịch này đã tồn tại chưa để tránh trùng (Overlap)
+            // Kiểm tra giới hạn 2 ca/ngày
+            var caTrongNgay = await _context.LichRanhs
+                .CountAsync(l => l.MaNguoiGiupViec == userId && l.Ngay == request.Ngay);
+
+            if (caTrongNgay >= 2)
+            {
+                return BadRequest(new { message = "Bạn chỉ được đăng ký tối đa 2 ca làm việc trong một ngày." });
+            }
+
+            // 4. Thuật toán kiểm tra Overlap tối ưu
             bool isOverlapped = await _context.LichRanhs.AnyAsync(l =>
                 l.MaNguoiGiupViec == userId &&
                 l.Ngay == request.Ngay &&
-                ((request.GioBatDau >= l.GioBatDau && request.GioBatDau < l.GioKetThuc) ||
-                 (request.GioKetThuc > l.GioBatDau && request.GioKetThuc <= l.GioKetThuc)));
+                (request.GioBatDau < l.GioKetThuc && request.GioKetThuc > l.GioBatDau) // Công thức vàng check overlap
+            );
 
             if (isOverlapped)
             {
-                return BadRequest("Khung giờ này đã bị trùng với lịch rảnh khác của bạn.");
+                return BadRequest(new { message = "Khung giờ này đã bị trùng với lịch rảnh khác của bạn." });
             }
 
-            // 4. Tạo mã MaLichRanh tự động (Vì DB của bạn là VARCHAR(5))
-            // Lưu ý: Cách này chỉ dùng cho demo, thực tế nên dùng Identity hoặc Guid
-            string newId = "LR" + (await _context.LichRanhs.CountAsync() + 1).ToString("D3");
+            // 5. Khắc phục lỗi sinh ID
+            // Tìm mã lớn nhất hiện tại có tiền tố "LR", ví dụ "LR015" -> cắt lấy số 15
+            var maxIdStr = await _context.LichRanhs
+                .Where(l => l.MaLichRanh.StartsWith("LR"))
+                .MaxAsync(l => l.MaLichRanh);
 
+            int nextNumber = 1;
+            if (!string.IsNullOrEmpty(maxIdStr) && maxIdStr.Length > 2)
+            {
+                if (int.TryParse(maxIdStr.Substring(2), out int currentMax))
+                {
+                    nextNumber = currentMax + 1;
+                }
+            }
+            string newId = $"LR{nextNumber:D3}";
+
+            // 6. Lưu dữ liệu
             var newLich = new LichRanh
             {
                 MaLichRanh = newId,
