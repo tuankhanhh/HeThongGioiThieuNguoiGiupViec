@@ -53,7 +53,11 @@ export const ROUTES = {
   // Admin - Quản trị viên hệ thống
   ADMIN: {
     DASHBOARD: "/admin/dashboard",
-    LOGIN: "/admin/login",
+    LOGIN: "/admin/sign-in",
+    USERS: "/admin/users",
+    SERVICES: "/admin/services",
+    PROFILES: "/admin/profiles",
+    REPORTS: "/admin/reports",
   },
 } as const;
 

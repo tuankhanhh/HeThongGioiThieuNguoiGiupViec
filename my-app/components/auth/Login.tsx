@@ -16,8 +16,8 @@ const ROLE_LABELS = {
 
 const REDIRECT_MAP: Record<string, string> = {
   Customer: "/",
-  Staff: "/Staff",
-  Admin: "/Admin",
+  Staff: "/staff/dashboard",
+  Admin: "/admin/dashboard",
   Maid: "ROUTES.MAID.PROFILE",
 };
 
@@ -60,6 +60,10 @@ export default function Login({
       // apiService sẽ tự kẹp Token vừa lưu ở trên vào Header.
       const userData = await api.get<any>("/User/me");
       const role = userData.role || userData.Role;
+      
+      console.log("User data:", userData);
+      console.log("Role:", role);
+      console.log("Redirect path:", REDIRECT_MAP[role]);
 
       // 4. Luồng xử lý điều hướng dựa trên Role từ API /me
       if (role === "Maid") {
