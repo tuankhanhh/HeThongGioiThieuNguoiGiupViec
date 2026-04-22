@@ -37,4 +37,10 @@ public partial class KhieuNai
     [ForeignKey("MaNhanVien")]
     [InverseProperty("KhieuNaiMaNhanVienNavigations")]
     public virtual NguoiDung MaNhanVienNavigation { get; set; } = null!;
+
+    public string NoiDung { get; set; } = null!;
+    
+    public DateTime ThoiGian { get; set; }
+    public string TrangThai { get; set; } = "Chờ xử lý";
+    public string? PhanHoi { get; set; }
 }
