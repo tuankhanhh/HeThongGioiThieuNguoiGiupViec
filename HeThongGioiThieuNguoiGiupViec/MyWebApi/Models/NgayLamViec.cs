@@ -22,12 +22,14 @@ public partial class NgayLamViec
     [Unicode(false)]
     public string? MaNguoiGiupViec { get; set; }
 
+    public TimeOnly? GioBatDau { get; set; }
+
     public DateOnly? NgayLam { get; set; }
 
-    public TimeOnly? GioBatDau { get; set; }
+    [Column(TypeName = "datetime")]
     public DateTime? ThoiGianPhanCong { get; set; }
 
-    [StringLength(50)]
+    [StringLength(30)]
     public string? TrangThai { get; set; }
 
     [InverseProperty("MaNgayLamViecNavigation")]
@@ -39,7 +41,7 @@ public partial class NgayLamViec
 
     [ForeignKey("MaNguoiGiupViec")]
     [InverseProperty("NgayLamViecs")]
-    public virtual NguoiDung MaNguoiGiupViecNavigation { get; set; } = null!;
+    public virtual NguoiDung? MaNguoiGiupViecNavigation { get; set; }
 
     [InverseProperty("MaNgayLamViecNavigation")]
     public virtual ICollection<ThuNhapNguoiGiupViec> ThuNhapNguoiGiupViecs { get; set; } = new List<ThuNhapNguoiGiupViec>();

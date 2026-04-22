@@ -24,7 +24,19 @@ public partial class KhieuNai
 
     [StringLength(5)]
     [Unicode(false)]
-    public string MaNhanVien { get; set; } = null!;
+    public string? MaNhanVien { get; set; }
+
+    [StringLength(255)]
+    public string? NoiDung { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime? ThoiGian { get; set; }
+
+    [StringLength(30)]
+    public string? TrangThai { get; set; }
+
+    [StringLength(255)]
+    public string? PhanHoi { get; set; }
 
     [ForeignKey("MaDon")]
     [InverseProperty("KhieuNais")]
@@ -36,5 +48,5 @@ public partial class KhieuNai
 
     [ForeignKey("MaNhanVien")]
     [InverseProperty("KhieuNaiMaNhanVienNavigations")]
-    public virtual NguoiDung MaNhanVienNavigation { get; set; } = null!;
+    public virtual NguoiDung? MaNhanVienNavigation { get; set; }
 }

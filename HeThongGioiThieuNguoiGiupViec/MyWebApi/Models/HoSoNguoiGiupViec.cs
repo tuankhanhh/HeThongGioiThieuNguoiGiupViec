@@ -66,7 +66,6 @@ public partial class HoSoNguoiGiupViec
     [StringLength(200)]
     public string? LyDoTuChoi { get; set; }
 
-
     [InverseProperty("MaHoSoNavigation")]
     public virtual ICollection<KyNangNguoiGiupViec> KyNangNguoiGiupViecs { get; set; } = new List<KyNangNguoiGiupViec>();
 

@@ -65,13 +65,28 @@ FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 );
 
 -- 5 LichRanh
-CREATE TABLE LichRanh(
-MaLichRanh VARCHAR(5) PRIMARY KEY,
-MaNguoiGiupViec VARCHAR(5) NOT NULL,
-Ngay DATE,
-GioBatDau TIME,
-GioKetThuc TIME,
-FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
+CREATE TABLE CaLamViec (
+    MaCaLamViec CHAR(5) PRIMARY KEY,
+    GioBatDau TIME NOT NULL,
+    GioKetThuc TIME NOT NULL
+);
+GO
+-- Tạo bảng LichRanh
+CREATE TABLE LichRanh (
+    MaLichRanh CHAR(5) PRIMARY KEY,
+    MaNguoiGiupViec CHAR(5) NOT NULL,
+    Ngay DATE NOT NULL
+);
+GO
+
+-- Tạo bảng trung gian LichRanh_CaLamViec
+CREATE TABLE LichRanhCaLamViec (
+    MaLichRanh CHAR(5) NOT NULL,
+    MaCaLamViec CHAR(5) NOT NULL,
+	GhiChu NVARCHAR (100),
+PRIMARY KEY(MaLichRanh,MaCaLamViec),
+FOREIGN KEY(MaLichRanh) REFERENCES LichRanh(MaLichRanh),
+FOREIGN KEY(MaCaLamViec) REFERENCES CaLamViec(MaCaLamViec)
 );
 
 -- 6 KyNang
@@ -198,17 +213,22 @@ SoSao INT,
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
 
--- 19 KhieuNai
 CREATE TABLE KhieuNai(
-MaKhieuNai VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
-MaKhachHang VARCHAR(5) NOT NULL,
-MaNhanVien VARCHAR(5) NOT NULL,
-FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
-FOREIGN KEY(MaKhachHang) REFERENCES NguoiDung(MaNguoiDung),
-FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
+    MaKhieuNai VARCHAR(5) PRIMARY KEY,
+    MaDon VARCHAR(5) NOT NULL,
+    MaKhachHang VARCHAR(5) NOT NULL,
+    MaNhanVien VARCHAR(5) NULL,
+
+    NoiDung NVARCHAR(255),              
+    ThoiGian DATETIME DEFAULT GETDATE(), 
+    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chờ xử lý', N'Đang xử lý', N'Đã xử lý')),
+    PhanHoi NVARCHAR(255),              
+
+    FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
+    FOREIGN KEY(MaKhachHang) REFERENCES NguoiDung(MaNguoiDung),
+    FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 );
-GO
+GO 
 
 INSERT INTO KyNang (MaKyNang, TenKyNang, MoTa, IconName) VALUES 
 ('KN001', N'Dọn dẹp nhà', N'Vệ sinh, sắp xếp đồ đạc gọn gàng', 'cleaning'),
@@ -300,4 +320,4 @@ select * from LichRanh
 GO
 UPDATE HoSoNguoiGiupViec
 SET TrangThaiXacMinh = N'Đã duyệt'
-WHERE MaNguoiGiupViec = '1a5ab';
+WHERE MaNguoiGiupViec = '91e32';

@@ -24,14 +24,17 @@ public partial class DonDat
 
     [StringLength(200)]
     public string? DiaChi { get; set; }
-    [StringLength(100)]
-    public string? GhiChu { get; set; }
+
     public int? SoNgay { get; set; }
 
     [Column(TypeName = "decimal(10, 2)")]
     public decimal? TongTien { get; set; }
 
+    [Column(TypeName = "datetime")]
     public DateTime? NgayDat { get; set; }
+
+    [StringLength(100)]
+    public string? GhiChu { get; set; }
 
     [InverseProperty("MaDonNavigation")]
     public virtual ICollection<DanhGium> DanhGia { get; set; } = new List<DanhGium>();
@@ -51,7 +54,7 @@ public partial class DonDat
 
     [ForeignKey("MaNhanVien")]
     [InverseProperty("DonDatMaNhanVienNavigations")]
-    public virtual NguoiDung MaNhanVienNavigation { get; set; } = null!;
+    public virtual NguoiDung? MaNhanVienNavigation { get; set; }
 
     [InverseProperty("MaDonNavigation")]
     public virtual ICollection<ThanhToan> ThanhToans { get; set; } = new List<ThanhToan>();

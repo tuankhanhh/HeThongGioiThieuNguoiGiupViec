@@ -15,7 +15,7 @@ public partial class VaiTro
     public string MaVaiTro { get; set; } = null!;
 
     [StringLength(50)]
-    public string? TenVaiTro { get; set; } = null!;
+    public string? TenVaiTro { get; set; }
 
     [StringLength(200)]
     public string? MoTa { get; set; }

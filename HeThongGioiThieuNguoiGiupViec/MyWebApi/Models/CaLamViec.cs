@@ -6,20 +6,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MyWebApi.Models;
 
-[Table("LichRanh")]
-public partial class LichRanh
+[Table("CaLamViec")]
+public partial class CaLamViec
 {
     [Key]
     [StringLength(5)]
     [Unicode(false)]
-    public string MaLichRanh { get; set; } = null!;
+    public string MaCaLamViec { get; set; } = null!;
 
-    [StringLength(5)]
-    [Unicode(false)]
-    public string MaNguoiGiupViec { get; set; } = null!;
+    public TimeOnly GioBatDau { get; set; }
 
-    public DateOnly Ngay { get; set; }
+    public TimeOnly GioKetThuc { get; set; }
 
-    [InverseProperty("MaLichRanhNavigation")]
+    [InverseProperty("MaCaLamViecNavigation")]
     public virtual ICollection<LichRanhCaLamViec> LichRanhCaLamViecs { get; set; } = new List<LichRanhCaLamViec>();
 }

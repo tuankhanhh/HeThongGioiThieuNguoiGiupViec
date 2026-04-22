@@ -77,7 +77,7 @@ namespace MyWebApi.Service
 
             var newUser = new NguoiDung
             {
-                MaNguoiDung = GenerateId("ND"),
+                MaNguoiDung = GenerateId("KH"),
                 MatKhau = hashedPassword,
                 HoTen = request.HoTen,
                 Email = request.Email,
@@ -112,7 +112,7 @@ namespace MyWebApi.Service
 
             var newUser = new NguoiDung
             {
-                MaNguoiDung = Guid.NewGuid().ToString().Substring(0, 5),
+                MaNguoiDung = GenerateId("GV"),
                 MatKhau = hashedPassword,
                 HoTen = request.HoTen,
                 Email = request.Email,
