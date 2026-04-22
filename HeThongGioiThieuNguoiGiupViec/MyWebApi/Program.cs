@@ -6,12 +6,48 @@ using MyWebApi.Middlewares;
 using MyWebApi.Models; 
 using MyWebApi.Service;
 
+using BCrypt.Net;
+
+// TRUONG tạo mật khẩu cho nhân viên để test
+Console.WriteLine(BCrypt.Net.BCrypt.HashPassword("123456"));
+//
 var builder = WebApplication.CreateBuilder(args);
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen(); CŨ
+// TRUONG nút authozie test đăng nhập
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "My API", Version = "v1" });
 
+    // 🔥 Thêm Bearer JWT
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Nhập: Bearer {token}"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
+//
 builder.Services.AddControllers();
 
 // Ví dụ kết nối database
@@ -190,6 +226,7 @@ using (var scope = app.Services.CreateScope())
         }
     }
 }
+
 
 app.Run();
 
