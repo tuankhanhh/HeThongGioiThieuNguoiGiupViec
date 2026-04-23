@@ -53,7 +53,9 @@ export default function TaiKhoanPage() {
     <div className="p-6 max-w-xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Tài khoản</h1>
-        <p className="text-sm text-slate-500 mt-1">Thông tin tài khoản nhân viên</p>
+        <p className="text-sm text-slate-500 mt-1">
+          Thông tin tài khoản nhân viên
+        </p>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-4">
@@ -63,7 +65,9 @@ export default function TaiKhoanPage() {
             {loading ? "?" : (user?.hoTen?.charAt(0) ?? "S")}
           </div>
           <div>
-            <p className="text-lg font-bold text-white">{loading ? "Đang tải..." : (user?.hoTen ?? "—")}</p>
+            <p className="text-lg font-bold text-white">
+              {loading ? "Đang tải..." : (user?.hoTen ?? "—")}
+            </p>
             <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-sm">
               Nhân viên
             </span>
@@ -80,7 +84,10 @@ export default function TaiKhoanPage() {
             <>
               <InfoItem label="Họ tên" value={user?.hoTen ?? "—"} />
               <InfoItem label="Email" value={user?.email ?? "—"} />
-              <InfoItem label="Số điện thoại" value={user?.soDienThoai ?? "—"} />
+              <InfoItem
+                label="Số điện thoại"
+                value={user?.soDienThoai ?? "—"}
+              />
               <InfoItem label="Vai trò" value="Nhân viên (Staff)" />
             </>
           )}
@@ -90,10 +97,20 @@ export default function TaiKhoanPage() {
       {/* Logout button */}
       <button
         onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors cursor-pointer"
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          />
         </svg>
         Đăng xuất
       </button>

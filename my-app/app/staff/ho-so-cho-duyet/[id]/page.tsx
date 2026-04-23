@@ -8,6 +8,23 @@ import ReasonTextarea from "@/components/componentsStaff/ReasonTextarea";
 import ConfirmModal from "@/components/componentsStaff/ConfirmModal";
 import { LoadingState, ErrorState } from "@/components/componentsStaff/States";
 
+// --- THÊM CẤU HÌNH BACKEND URL & HÀM HELPER Ở ĐÂY ---
+const BACKEND_URL = "https://localhost:7095";
+
+const getImageUrl = (path?: string) => {
+  if (!path) return "";
+
+  // Nếu path đã là một URL đầy đủ (http/https) thì giữ nguyên
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  // Đảm bảo không bị dư hoặc thiếu dấu gạch chéo "/"
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${BACKEND_URL}${cleanPath}`;
+};
+// ----------------------------------------------------
+
 interface KyNang {
   id: string;
   ten: string;
@@ -209,11 +226,11 @@ export default function HoSoChiTietPage() {
               <InfoRow label="Số CCCD" value={hoSo.soCccd} />
               <InfoRow
                 label="Người thân"
-                value={
-                  hoSo.tenNguoiThan
-                    ? `${hoSo.tenNguoiThan} (${hoSo.sdtNguoiThan})`
-                    : "—"
-                }
+                value={hoSo.tenNguoiThan ? `${hoSo.tenNguoiThan}` : "—"}
+              />
+              <InfoRow
+                label="Số điện thoại người thân"
+                value={hoSo.sdtNguoiThan ? `${hoSo.sdtNguoiThan}` : "—"}
               />
             </div>
           </div>
@@ -271,7 +288,7 @@ export default function HoSoChiTietPage() {
                   <p className="text-xs text-slate-400 mb-1">{label}</p>
                   {src ? (
                     <img
-                      src={src}
+                      src={getImageUrl(src)}
                       alt={label}
                       className="w-full rounded-lg border border-slate-200 object-cover max-h-32"
                     />
@@ -302,15 +319,15 @@ export default function HoSoChiTietPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setConfirmDuyet(true)}
-                    className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors"
+                    className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors cursor-pointer"
                   >
-                    ✓ Duyệt hồ sơ
+                    Duyệt hồ sơ
                   </button>
                   <button
                     onClick={() => setActionState("rejecting")}
-                    className="flex-1 py-2.5 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 text-sm font-semibold transition-colors"
+                    className="flex-1 py-2.5 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 text-sm font-semibold transition-colors cursor-pointer"
                   >
-                    ✗ Từ chối
+                    Từ chối
                   </button>
                 </div>
               )}
