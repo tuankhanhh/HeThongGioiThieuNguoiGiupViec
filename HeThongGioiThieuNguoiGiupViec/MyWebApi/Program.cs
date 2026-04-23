@@ -6,6 +6,7 @@ using MyWebApi.Middlewares;
 using MyWebApi.Models; 
 using MyWebApi.Service;
 
+<<<<<<< HEAD
 using BCrypt.Net;
 
 // TRUONG tạo mật khẩu cho nhân viên để test
@@ -55,181 +56,207 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddCors(options =>
+=======
+internal class Program
+>>>>>>> Phu
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    private static async Task Main(string[] args)
     {
-        policy
-            .WithOrigins("http://localhost:3000") // ✅ chỉ định rõ
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials(); // ✅ hợp lệ
-    });
-});
+        var builder = WebApplication.CreateBuilder(args);
 
+        // Swagger/OpenAPI
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
 
-// Custom Services
-builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
-builder.Services.AddScoped<IAuthService, AuthenticationService>();
-builder.Services.AddScoped<ITokenService, TokenService>(); // Service tạo JWT token
-builder.Services.AddScoped<IPasswordService, PasswordService>(); // Service hash password
-builder.Services.AddAutoMapper(typeof(Program));
+        builder.Services.AddControllers();
 
+        // Ví dụ kết nối database
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(jwtOptions =>
-    {
-        jwtOptions.TokenValidationParameters = new TokenValidationParameters
+        builder.Services.AddCors(options =>
         {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["AppSettings:Issuer"] ?? "MyWebApi", // Issuer của JWT token
-            
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["AppSettings:Audience"] ?? "MyWebApi", // Audience của JWT token
-            
-            ValidateLifetime = true, // Kiểm tra token có hết hạn không
-          
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:SecretKey"])),
-            
-            ValidateIssuerSigningKey = true, // Xác thực chữ ký của token
-            
-            ClockSkew = TimeSpan.Zero // Bỏ qua độ lệch thời gian
-        };
-    });
-
-// ===== CẤU HÌNH AUTHORIZATION POLICIES ưng thì dùng =====
-builder.Services.AddAuthorization(options =>
-{
-    // Policy yêu cầu phải có role Admin
-    options.AddPolicy("RequireAdmin", policy =>
-        policy.RequireRole("Admin"));
-
-    // Policy yêu cầu phải có role Manager hoặc Admin
-    options.AddPolicy("RequireManagerOrAdmin", policy =>
-        policy.RequireRole("Manager", "Admin"));
-
-    // Policy yêu cầu claim tùy chỉnh
-    options.AddPolicy("RequireDepartmentIT", policy =>
-        policy.RequireClaim("Department", "IT"));
-        
-    // Policy kết hợp nhiều điều kiện
-    options.AddPolicy("AdminOrManagerWithIT", policy =>
-        policy.RequireRole("Admin", "Manager")
-              .RequireClaim("Department", "IT"));
-              
-    // Policy yêu cầu user phải authenticated (đã đăng nhập)
-    options.AddPolicy("RequireAuthenticated", policy =>
-        policy.RequireAuthenticatedUser());
-});
-var app = builder.Build();
-// Thêm dòng này để server cho phép truy cập tệp trong wwwroot
-app.UseStaticFiles();
+            options.AddPolicy("AllowFrontend", policy =>
+            {
+                policy
+                    .WithOrigins("http://localhost:3000", "http://localhost:3001") // ✅ cho phép cả 2 port
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials(); // ✅ hợp lệ
+            });
+        });
 
 
-// ===== ĐĂNG KÝ MIDDLEWARE =====
-// Thêm middleware xử lý API response và error handling
-// Cách 1: Áp dụng cho tất cả requests (nhưng middleware sẽ tự động bỏ qua Swagger UI và static files)
-//app.UseApiResponseMiddleware();
-// Cách 2: Chỉ áp dụng cho API endpoints cụ thể=
-// app.UseApiResponseMiddleware("/api");
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-//app.UseHttpsRedirection();
-
-app.UseCors("AllowFrontend"); 
-
-app.UseAuthentication();
-app.UseAuthorization();
-//app.UseSession();
-
-app.MapControllers();
+        // Custom Services
+        builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        builder.Services.AddScoped<IAuthService, AuthenticationService>();
+        builder.Services.AddScoped<ITokenService, TokenService>(); // Service tạo JWT token
+        builder.Services.AddScoped<IPasswordService, PasswordService>(); // Service hash password
+        builder.Services.AddAutoMapper(typeof(Program));
 
 
-// ===== SEED DATA - Tạo admin user và roles nếu chưa có =====
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(jwtOptions =>
+            {
+                jwtOptions.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = builder.Configuration["AppSettings:Issuer"] ?? "MyWebApi", // Issuer của JWT token
 
-    // =======================
-    // 1. SEED ROLES
-    // =======================
-    if (!context.VaiTros.Any())
-    {
-        var roles = new[]
+                    ValidateAudience = true,
+                    ValidAudience = builder.Configuration["AppSettings:Audience"] ?? "MyWebApi", // Audience của JWT token
+
+                    ValidateLifetime = true, // Kiểm tra token có hết hạn không
+
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:SecretKey"])),
+
+                    ValidateIssuerSigningKey = true, // Xác thực chữ ký của token
+
+                    ClockSkew = TimeSpan.Zero // Bỏ qua độ lệch thời gian
+                };
+            });
+
+        // ===== CẤU HÌNH AUTHORIZATION POLICIES ưng thì dùng =====
+        builder.Services.AddAuthorization(options =>
         {
+            // Policy yêu cầu phải có role Admin
+            options.AddPolicy("RequireAdmin", policy =>
+                policy.RequireRole("Admin"));
+
+            // Policy yêu cầu phải có role Manager hoặc Admin
+            options.AddPolicy("RequireManagerOrAdmin", policy =>
+                policy.RequireRole("Manager", "Admin"));
+
+            // Policy yêu cầu claim tùy chỉnh
+            options.AddPolicy("RequireDepartmentIT", policy =>
+                policy.RequireClaim("Department", "IT"));
+
+            // Policy kết hợp nhiều điều kiện
+            options.AddPolicy("AdminOrManagerWithIT", policy =>
+                policy.RequireRole("Admin", "Manager")
+                      .RequireClaim("Department", "IT"));
+
+            // Policy yêu cầu user phải authenticated (đã đăng nhập)
+            options.AddPolicy("RequireAuthenticated", policy =>
+                policy.RequireAuthenticatedUser());
+        });
+        var app = builder.Build();
+        // Thêm dòng này để server cho phép truy cập tệp trong wwwroot
+        app.UseStaticFiles();
+
+
+        // ===== ĐĂNG KÝ MIDDLEWARE =====
+        // Thêm middleware xử lý API response và error handling
+        // Cách 1: Áp dụng cho tất cả requests (nhưng middleware sẽ tự động bỏ qua Swagger UI và static files)
+        //app.UseApiResponseMiddleware();
+        // Cách 2: Chỉ áp dụng cho API endpoints cụ thể=
+        // app.UseApiResponseMiddleware("/api");
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
+
+        //app.UseHttpsRedirection();
+
+        app.UseCors("AllowFrontend");
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+        //app.UseSession();
+
+        app.MapControllers();
+
+
+        // ===== SEED DATA - Tạo admin user và roles nếu chưa có =====
+        using (var scope = app.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+
+            // =======================
+            // 1. SEED ROLES
+            // =======================
+            if (!context.VaiTros.Any())
+            {
+                var roles = new[]
+                {
             new VaiTro { MaVaiTro = "VT001", TenVaiTro = "Admin", MoTa = "Quản trị viên hệ thống" },
             new VaiTro { MaVaiTro = "VT002", TenVaiTro = "Staff", MoTa = "Nhân viên" },
             new VaiTro { MaVaiTro = "VT003", TenVaiTro = "Customer", MoTa = "Khách hàng" },
             new VaiTro { MaVaiTro = "VT004", TenVaiTro = "Maid", MoTa = "Người giúp việc" }
         };
 
-        context.VaiTros.AddRange(roles);
-        await context.SaveChangesAsync();
-    }
+                context.VaiTros.AddRange(roles);
+                await context.SaveChangesAsync();
+            }
 
-    // =======================
-    // 2. SEED ADMIN USER
-    // =======================
-    var adminUser = await context.NguoiDungs
-        .FirstOrDefaultAsync(u => u.SoDienThoai == "0332711675");
+            // =======================
+            // 2. SEED ADMIN USER
+            // =======================
+            var adminUser = await context.NguoiDungs
+                .FirstOrDefaultAsync(u => u.SoDienThoai == "0332711675");
 
-    if (adminUser == null)
-    {
-        var hashedPassword = passwordService.HashPassword("admin123");
-
-        adminUser = new NguoiDung
-        {
-            MaNguoiDung = "ADMIN", // tránh GUID + tránh trùng
-            SoDienThoai = "0332711675",
-            MatKhau = hashedPassword,
-            Email = "admin@gmail.com",
-            HoTen = "System Administrator",
-            TrangThai = true,
-            NgayTao = DateTime.UtcNow,
-
-            RefreshToken = null,
-            NgayTaoRefreshToken = null,
-            NgayHetHanRefreshToken = null
-        };
-
-        context.NguoiDungs.Add(adminUser);
-        await context.SaveChangesAsync();
-    }
-
-    // =======================
-    // 3. GET ROLE SAFE
-    // =======================
-    var adminRole = await context.VaiTros
-        .FirstOrDefaultAsync(r => r.TenVaiTro == "Admin");
-
-    if (adminRole != null)
-    {
-        var exists = await context.NguoiDungVaiTros.AnyAsync(x =>
-            x.MaNguoiDung == adminUser.MaNguoiDung &&
-            x.MaVaiTro == adminRole.MaVaiTro);
-
-        if (!exists)
-        {
-            context.NguoiDungVaiTros.Add(new NguoiDungVaiTro
+            if (adminUser == null)
             {
-                MaNguoiDung = adminUser.MaNguoiDung,
-                MaVaiTro = adminRole.MaVaiTro,
-                NgayGan = DateTime.UtcNow
-            });
+                var hashedPassword = passwordService.HashPassword("admin123");
 
-            await context.SaveChangesAsync();
+                adminUser = new NguoiDung
+                {
+                    MaNguoiDung = "ADMIN", // tránh GUID + tránh trùng
+                    SoDienThoai = "0332711675",
+                    MatKhau = hashedPassword,
+                    Email = "admin@gmail.com",
+                    HoTen = "System Administrator",
+                    TrangThai = true,
+                    NgayTao = DateTime.UtcNow,
+
+                    RefreshToken = null,
+                    NgayTaoRefreshToken = null,
+                    NgayHetHanRefreshToken = null
+                };
+
+                context.NguoiDungs.Add(adminUser);
+                await context.SaveChangesAsync();
+            }
+
+            // =======================
+            // 3. GET ROLE SAFE
+            // =======================
+            var adminRole = await context.VaiTros
+                .FirstOrDefaultAsync(r => r.TenVaiTro == "Admin");
+
+            if (adminRole != null)
+            {
+                var exists = await context.NguoiDungVaiTros.AnyAsync(x =>
+                    x.MaNguoiDung == adminUser.MaNguoiDung &&
+                    x.MaVaiTro == adminRole.MaVaiTro);
+
+                if (!exists)
+                {
+                    context.NguoiDungVaiTros.Add(new NguoiDungVaiTro
+                    {
+                        MaNguoiDung = adminUser.MaNguoiDung,
+                        MaVaiTro = adminRole.MaVaiTro,
+                        NgayGan = DateTime.UtcNow
+                    });
+
+                    await context.SaveChangesAsync();
+                }
+            }
         }
+
+        app.Run();
     }
 }
 
+<<<<<<< HEAD
 
 app.Run();
 
+=======
+>>>>>>> Phu
 // ===== GHI CHÚ VỀ AUTHORIZATION =====
 // ClaimTypes.Name → gán vào token tên đăng nhập (UserName).
 // Trong ASP.NET Core, khi bạn truy cập User.Identity.Name, nó sẽ trả về giá trị này.
