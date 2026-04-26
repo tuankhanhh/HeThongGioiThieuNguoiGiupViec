@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,8 +54,15 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<VaiTro> VaiTros { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Data Source=PHUVO\\SQLEXPRESS;Initial Catalog=dbHeThongGioiThieuNguoiGiupViec;Integrated Security=True;Persist Security Info=False;Pooling=False;Multiple Active Result Sets=False;Encrypt=False;Trust Server Certificate=True;Command Timeout=0");
+    {
+        // ✅ Chỉ dùng fallback nếu chưa được cấu hình từ Program.cs (appsettings.json)
+        // Connection string chính được đọc từ appsettings.json → KHÔNG hardcode ở đây
+        if (!optionsBuilder.IsConfigured)
+        {
+            // Fallback cho trường hợp chạy độc lập (EF migrations, tools)
+            optionsBuilder.UseSqlServer("Data Source=(local)\\SQLEXPRESS;Initial Catalog=dbHeThongGioiThieuNguoiGiupViec;Integrated Security=True;Encrypt=False;Trust Server Certificate=True;");
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

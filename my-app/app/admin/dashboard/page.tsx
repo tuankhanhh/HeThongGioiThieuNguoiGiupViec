@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/services/api";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 interface Statistics {
@@ -14,85 +13,95 @@ interface Statistics {
   pendingBookings: number;
 }
 
+// ✅ Dữ liệu tĩnh từ CSDL (DAPM.sql seed data)
+const MOCK_STATISTICS: Statistics = {
+  totalUsers: 8,
+  totalMaids: 2,
+  totalBookings: 9,
+  totalRevenue: 2770000,
+  pendingProfiles: 1,
+  pendingBookings: 2,
+};
+
 const statCards = [
   {
     key: "totalUsers" as keyof Statistics,
     label: "Tổng người dùng",
+    sub: "4 KH · 2 GV · 1 NV · 1 Admin",
     icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
-    gradient: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-    shadow: "rgba(99,102,241,0.35)",
-    light: "rgba(99,102,241,0.08)",
-    textColor: "#6366f1",
+    iconBg: "#EEEDFE",
+    iconColor: "#534AB7",
+    valueColor: "#1e1b4b",
   },
   {
     key: "totalMaids" as keyof Statistics,
     label: "Người giúp việc",
+    sub: "GV001, GV002",
     icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
     ),
-    gradient: "linear-gradient(135deg, #ec4899 0%, #f43f5e 100%)",
-    shadow: "rgba(236,72,153,0.35)",
-    light: "rgba(236,72,153,0.08)",
-    textColor: "#ec4899",
+    iconBg: "#FBEAF0",
+    iconColor: "#993556",
+    valueColor: "#1e1b4b",
   },
   {
     key: "totalBookings" as keyof Statistics,
     label: "Tổng đơn đặt",
+    sub: "DD001 → DD009",
     icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
       </svg>
     ),
-    gradient: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
-    shadow: "rgba(14,165,233,0.35)",
-    light: "rgba(14,165,233,0.08)",
-    textColor: "#0ea5e9",
+    iconBg: "#E6F1FB",
+    iconColor: "#185FA5",
+    valueColor: "#1e1b4b",
   },
   {
     key: "totalRevenue" as keyof Statistics,
     label: "Tổng doanh thu",
+    sub: "↑ Tổng tích lũy",
     icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
-    gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-    shadow: "rgba(16,185,129,0.35)",
-    light: "rgba(16,185,129,0.08)",
-    textColor: "#10b981",
+    iconBg: "#EAF3DE",
+    iconColor: "#3B6D11",
+    valueColor: "#1e1b4b",
     isCurrency: true,
   },
   {
     key: "pendingBookings" as keyof Statistics,
     label: "Đơn chờ xác nhận",
+    sub: "DD008, DD009",
     icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
-    gradient: "linear-gradient(135deg, #f59e0b 0%, #f97316 100%)",
-    shadow: "rgba(245,158,11,0.35)",
-    light: "rgba(245,158,11,0.08)",
-    textColor: "#f59e0b",
+    iconBg: "#FAEEDA",
+    iconColor: "#854F0B",
+    valueColor: "#854F0B",
   },
   {
     key: "pendingProfiles" as keyof Statistics,
     label: "Hồ sơ chờ duyệt",
+    sub: "HS002 — cần xem xét",
     icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     ),
-    gradient: "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
-    shadow: "rgba(139,92,246,0.35)",
-    light: "rgba(139,92,246,0.08)",
-    textColor: "#8b5cf6",
+    iconBg: "#EEEDFE",
+    iconColor: "#534AB7",
+    valueColor: "#534AB7",
   },
 ];
 
@@ -107,21 +116,12 @@ export default function AdminDashboard() {
       router.push("/admin/sign-in");
       return;
     }
-    fetchStatistics();
-  }, []);
-
-  const fetchStatistics = async () => {
-    try {
-      const response = await api.get("/admin/statistics");
-      if (response.data.success) {
-        setStats(response.data.data);
-      }
-    } catch (error) {
-      console.error("Lỗi khi tải thống kê:", error);
-    } finally {
+    // ✅ Dùng mock data tĩnh — không cần gọi API
+    setTimeout(() => {
+      setStats(MOCK_STATISTICS);
       setLoading(false);
-    }
-  };
+    }, 400);
+  }, []);
 
   if (loading) {
     return (
@@ -129,13 +129,15 @@ export default function AdminDashboard() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{
-              width: "56px", height: "56px", borderRadius: "50%",
-              border: "4px solid rgba(99,102,241,0.15)",
-              borderTopColor: "#6366f1",
+              width: "40px", height: "40px", borderRadius: "50%",
+              border: "3px solid #EEEDFE",
+              borderTopColor: "#534AB7",
               animation: "spin 0.8s linear infinite",
               margin: "0 auto",
             }} />
-            <p style={{ marginTop: "16px", color: "#6366f1", fontWeight: 500 }}>Đang tải dữ liệu...</p>
+            <p style={{ marginTop: "12px", color: "#534AB7", fontWeight: 500, fontSize: "14px" }}>
+              Đang tải dữ liệu...
+            </p>
           </div>
         </div>
       </AdminLayout>
@@ -144,24 +146,42 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+      `}</style>
 
       {/* Page Header */}
-      <div style={{ marginBottom: "32px" }}>
-        <h2 style={{ fontSize: "28px", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>
+      <div style={{ marginBottom: "28px" }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: "6px",
+          background: "#EAF3DE", color: "#3B6D11",
+          fontSize: "11px", fontWeight: 600,
+          padding: "3px 10px", borderRadius: "20px",
+          marginBottom: "10px", letterSpacing: "0.03em",
+        }}>
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#3B6D11", display: "inline-block" }} />
+          Hệ thống đang hoạt động
+        </div>
+        <h2 style={{ fontSize: "22px", fontWeight: 600, color: "#1e1b4b", margin: 0, lineHeight: 1.3 }}>
           Tổng quan hệ thống
         </h2>
-        <p style={{ color: "#6b7280", marginTop: "6px", fontSize: "14px" }}>
+        <p style={{ color: "#9ca3af", marginTop: "4px", fontSize: "13px" }}>
           Chào mừng trở lại! Đây là tổng quan về hoạt động hệ thống.
         </p>
       </div>
 
+      {/* Section Label */}
+      <p style={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "14px" }}>
+        Thống kê chính
+      </p>
+
       {/* Stats Grid */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-        gap: "20px",
-        marginBottom: "32px",
+        gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+        gap: "12px",
+        marginBottom: "28px",
       }}>
         {statCards.map((card, index) => {
           const value = stats?.[card.key] ?? 0;
@@ -174,49 +194,53 @@ export default function AdminDashboard() {
               key={card.key}
               style={{
                 background: "#fff",
-                borderRadius: "16px",
-                padding: "24px",
-                boxShadow: "0 2px 16px rgba(99,102,241,0.07)",
-                border: "1px solid rgba(99,102,241,0.06)",
+                borderRadius: "14px",
+                padding: "18px 20px",
+                border: "0.5px solid #e5e7eb",
                 display: "flex",
                 alignItems: "flex-start",
-                gap: "16px",
-                animation: `fadeInUp 0.4s ease ${index * 0.07}s both`,
-                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                gap: "14px",
+                animation: `fadeInUp 0.35s ease ${index * 0.06}s both`,
+                transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                 cursor: "default",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 32px ${card.shadow}`;
+                (e.currentTarget as HTMLElement).style.borderColor = "#c7d2fe";
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(99,102,241,0.08)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 16px rgba(99,102,241,0.07)";
+                (e.currentTarget as HTMLElement).style.borderColor = "#e5e7eb";
+                (e.currentTarget as HTMLElement).style.boxShadow = "none";
               }}
             >
+              {/* Icon */}
               <div style={{
-                width: "52px", height: "52px",
-                background: card.gradient,
-                borderRadius: "14px",
+                width: "40px", height: "40px",
+                background: card.iconBg,
+                borderRadius: "10px",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
-                boxShadow: `0 6px 16px ${card.shadow}`,
-                color: "white",
+                color: card.iconColor,
               }}>
                 {card.icon}
               </div>
+
+              {/* Text */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontWeight: 500 }}>
+                <p style={{ margin: 0, fontSize: "12px", color: "#9ca3af", fontWeight: 500 }}>
                   {card.label}
                 </p>
                 <p style={{
-                  margin: "4px 0 0",
-                  fontSize: card.isCurrency ? "20px" : "30px",
-                  fontWeight: 700,
-                  color: "#1e1b4b",
+                  margin: "3px 0 0",
+                  fontSize: card.isCurrency ? "18px" : "26px",
+                  fontWeight: 600,
+                  color: card.valueColor,
                   lineHeight: 1.2,
                 }}>
                   {displayValue}
+                </p>
+                <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#9ca3af" }}>
+                  {card.sub}
                 </p>
               </div>
             </div>
@@ -224,51 +248,92 @@ export default function AdminDashboard() {
         })}
       </div>
 
+      {/* Divider */}
+      <div style={{ height: "0.5px", background: "#f3f4f6", marginBottom: "20px" }} />
+
       {/* Quick Actions */}
-      <div style={{ marginBottom: "12px" }}>
-        <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#1e1b4b", margin: "0 0 16px" }}>
-          Truy cập nhanh
-        </h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px" }}>
-          {[
-            { label: "Quản lý người dùng", path: "/admin/users", color: "#6366f1", bg: "rgba(99,102,241,0.08)" },
-            { label: "Quản lý dịch vụ", path: "/admin/services", color: "#ec4899", bg: "rgba(236,72,153,0.08)" },
-            { label: "Báo cáo doanh thu", path: "/admin/reports", color: "#10b981", bg: "rgba(16,185,129,0.08)" },
-          ].map((action) => (
-            <button
-              key={action.path}
-              onClick={() => router.push(action.path)}
-              style={{
-                background: action.bg,
-                border: `1px solid ${action.color}20`,
-                borderRadius: "12px",
-                padding: "16px 20px",
-                color: action.color,
-                fontWeight: 600,
-                fontSize: "14px",
-                cursor: "pointer",
-                textAlign: "left",
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 20px ${action.color}25`;
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "none";
-              }}
-            >
+      <p style={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "14px" }}>
+        Truy cập nhanh
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "10px" }}>
+        {[
+          {
+            label: "Quản lý người dùng",
+            desc: "Xem, chỉnh sửa tài khoản",
+            path: "/admin/users",
+            iconBg: "#EEEDFE", iconColor: "#534AB7",
+            icon: (
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {action.label}
-            </button>
-          ))}
-        </div>
+            ),
+          },
+          {
+            label: "Quản lý dịch vụ",
+            desc: "Cập nhật danh mục dịch vụ",
+            path: "/admin/services",
+            iconBg: "#FBEAF0", iconColor: "#993556",
+            icon: (
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            ),
+          },
+          {
+            label: "Báo cáo doanh thu",
+            desc: "Xem thống kê tài chính",
+            path: "/admin/reports",
+            iconBg: "#EAF3DE", iconColor: "#3B6D11",
+            icon: (
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            ),
+          },
+        ].map((action) => (
+          <button
+            key={action.path}
+            onClick={() => router.push(action.path)}
+            style={{
+              background: "#fff",
+              border: "0.5px solid #e5e7eb",
+              borderRadius: "12px",
+              padding: "16px 18px",
+              cursor: "pointer",
+              textAlign: "left",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#c7d2fe";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(99,102,241,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#e5e7eb";
+              (e.currentTarget as HTMLElement).style.boxShadow = "none";
+            }}
+          >
+            <div style={{
+              width: "32px", height: "32px",
+              background: action.iconBg,
+              borderRadius: "8px",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: action.iconColor,
+            }}>
+              {action.icon}
+            </div>
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "#1e1b4b" }}>
+                {action.label}
+              </div>
+              <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px" }}>
+                {action.desc}
+              </div>
+            </div>
+          </button>
+        ))}
       </div>
     </AdminLayout>
   );

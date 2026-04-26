@@ -284,20 +284,96 @@ INSERT INTO DichVuThanhPhan (MaDichVu, MaThanhPhan, GhiChu) VALUES
 ('DV006', 'TP018', NULL);
 GO
 
-select * from NguoiDung
-select * from NguoiDungVaiTro
-select * from VaiTro
-select * from HoSoNguoiGiupViec
-select * from KyNang
-select * from KyNangNguoiGiupViec
+-- ================================================
+-- SEED DATA - Dữ liệu mẫu cho hệ thống
+-- ================================================
 
-select * from DonDat
-select * from DonDatDichVu
-select * from DonDatDichVuNgayLamViec
-select * from NgayLamViec
-select * from LichSuTrangThaiDon
-select * from LichRanh
+-- 1. VaiTro (phải khớp với Program.cs để tránh duplicate)
+INSERT INTO VaiTro (MaVaiTro, TenVaiTro, MoTa) VALUES
+('VT001', N'Admin',    N'Quản trị viên hệ thống'),
+('VT002', N'Staff',    N'Nhân viên điều phối'),
+('VT003', N'Customer', N'Khách hàng'),
+('VT004', N'Maid',     N'Người giúp việc');
 GO
-UPDATE HoSoNguoiGiupViec
-SET TrangThaiXacMinh = N'Đã duyệt'
-WHERE MaNguoiGiupViec = '1a5ab';
+
+-- 2. NguoiDung mẫu (Admin user được seed tự động bởi Program.cs khi khởi động)
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai, NgayTao) VALUES
+('KH001', N'Nguyễn Thị Lan',   'lan@gmail.com',  '0901111111', 'demo', N'123 Nguyễn Văn Linh, Đà Nẵng', 1, DATEADD(DAY,-120, GETDATE())),
+('KH002', N'Trần Văn Minh',    'minh@gmail.com', '0902222222', 'demo', N'45 Trần Phú, Hải Châu, Đà Nẵng', 1, DATEADD(DAY,-90, GETDATE())),
+('KH003', N'Lê Thị Hoa',       'hoa@gmail.com',  '0903333333', 'demo', N'78 Lê Duẩn, Đà Nẵng',           1, DATEADD(DAY,-60, GETDATE())),
+('KH004', N'Bùi Thành Đạt',    'dat@gmail.com',  '0904444400', 'demo', N'99 Hàm Nghi, Đà Nẵng',          1, DATEADD(DAY,-45, GETDATE())),
+('GV001', N'Phạm Thị Mai',     'mai@gmail.com',  '0904444441', 'demo', N'12 Hoàng Diệu, Đà Nẵng',        1, DATEADD(DAY,-100, GETDATE())),
+('GV002', N'Võ Thị Thu',       'thu@gmail.com',  '0905555555', 'demo', N'34 Điện Biên Phủ, Đà Nẵng',     1, DATEADD(DAY,-80, GETDATE())),
+('NV001', N'Đặng Thị Hạnh',    'hanh@gmail.com', '0906666666', 'demo', N'56 Hùng Vương, Đà Nẵng',        1, DATEADD(DAY,-110, GETDATE()));
+GO
+
+-- 3. Phân quyền NguoiDung
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro) VALUES
+('KH001', 'VT003'),
+('KH002', 'VT003'),
+('KH003', 'VT003'),
+('KH004', 'VT003'),
+('GV001', 'VT004'),
+('GV002', 'VT004'),
+('NV001', 'VT002');
+GO
+
+-- 4. HoSoNguoiGiupViec
+INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, KinhNghiem, TrangThaiXacMinh) VALUES
+('HS001', 'GV001', '201234567891', N'3 năm kinh nghiệm dọn dẹp, nấu ăn', N'Đã duyệt'),
+('HS002', 'GV002', '201234567892', N'2 năm kinh nghiệm chăm sóc trẻ',    N'Chờ duyệt');
+GO
+
+-- 5. DonDat mẫu — trải đều các tháng để biểu đồ doanh thu có số liệu
+DECLARE @Y INT = YEAR(GETDATE());
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
+('DD001', 'KH001', 'NV001', N'123 Nguyễn Văn Linh, Đà Nẵng', 2,  480000, DATEFROMPARTS(@Y,1,15), N'Dọn dẹp sau Tết'),
+('DD002', 'KH002', 'NV001', N'45 Trần Phú, Đà Nẵng',         1,  160000, DATEFROMPARTS(@Y,1,28), NULL),
+('DD003', 'KH001', 'NV001', N'123 Nguyễn Văn Linh, Đà Nẵng', 1,   80000, DATEFROMPARTS(@Y,2,10), NULL),
+('DD004', 'KH003', 'NV001', N'78 Lê Duẩn, Đà Nẵng',          3,  630000, DATEFROMPARTS(@Y,2,22), N'Tổng vệ sinh'),
+('DD005', 'KH002', 'NV001', N'45 Trần Phú, Đà Nẵng',         2,  320000, DATEFROMPARTS(@Y,3,5),  NULL),
+('DD006', 'KH004', 'NV001', N'99 Hàm Nghi, Đà Nẵng',         1,  250000, DATEFROMPARTS(@Y,3,18), NULL),
+('DD007', 'KH001', 'NV001', N'123 Nguyễn Văn Linh, Đà Nẵng', 2,  500000, DATEFROMPARTS(@Y,4,2),  NULL),
+('DD008', 'KH003', 'NV001', N'78 Lê Duẩn, Đà Nẵng',          1,  140000, DATEFROMPARTS(@Y,4,15), NULL),
+('DD009', 'KH002', 'NV001', N'45 Trần Phú, Đà Nẵng',         1,  210000, DATEFROMPARTS(@Y,4,20), N'Chăm sóc người cao tuổi');
+GO
+
+-- 6. DonDatDichVu
+INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
+('DDV01', 'DD001', 'DV001'), ('DDV02', 'DD001', 'DV003'),
+('DDV03', 'DD002', 'DV001'),
+('DDV04', 'DD003', 'DV003'),
+('DDV05', 'DD004', 'DV002'),
+('DDV06', 'DD005', 'DV001'), ('DDV07', 'DD005', 'DV004'),
+('DDV08', 'DD006', 'DV002'),
+('DDV09', 'DD007', 'DV001'), ('DDV10', 'DD007', 'DV003'),
+('DDV11', 'DD008', 'DV001'),
+('DDV12', 'DD009', 'DV005');
+GO
+
+-- 7. LichSuTrangThaiDon
+DECLARE @Y2 INT = YEAR(GETDATE());
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
+('LS001', 'DD001', DATEFROMPARTS(@Y2,1,16), N'Hoàn thành'),
+('LS002', 'DD002', DATEFROMPARTS(@Y2,1,29), N'Hoàn thành'),
+('LS003', 'DD003', DATEFROMPARTS(@Y2,2,11), N'Hoàn thành'),
+('LS004', 'DD004', DATEFROMPARTS(@Y2,2,25), N'Hoàn thành'),
+('LS005', 'DD005', DATEFROMPARTS(@Y2,3,7),  N'Hoàn thành'),
+('LS006', 'DD006', DATEFROMPARTS(@Y2,3,19), N'Hoàn thành'),
+('LS007', 'DD007', DATEFROMPARTS(@Y2,4,3),  N'Đang thực hiện'),
+('LS008', 'DD008', DATEFROMPARTS(@Y2,4,15), N'Chờ xác nhận'),
+('LS009', 'DD009', DATEFROMPARTS(@Y2,4,20), N'Chờ xác nhận');
+GO
+
+-- 8. ThanhToan
+INSERT INTO ThanhToan (MaThanhToan, MaDon, TrangThaiThanhToan) VALUES
+('TT001', 'DD001', N'Đã thanh toán'),
+('TT002', 'DD002', N'Đã thanh toán'),
+('TT003', 'DD003', N'Đã thanh toán'),
+('TT004', 'DD004', N'Đã thanh toán'),
+('TT005', 'DD005', N'Đã thanh toán'),
+('TT006', 'DD006', N'Đã thanh toán'),
+('TT007', 'DD007', N'Chờ thanh toán'),
+('TT008', 'DD008', N'Chờ thanh toán'),
+('TT009', 'DD009', N'Chờ thanh toán');
+GO
