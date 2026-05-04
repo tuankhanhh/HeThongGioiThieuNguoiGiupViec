@@ -27,10 +27,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 import RegistrationStepper from "@/components/componentsMaid/Stepper";
-import {
-  useRegistrationStore,
-  SkillParams,
-} from "@/store/useRegistrationStore";
+import { useRegistrationStore } from "@/store/useRegistrationStore";
 
 // IMPORT apiService
 import { api } from "@/services/api";

@@ -84,6 +84,12 @@ interface SkillItem {
   iconKey?: string;
 }
 
+// Cập nhật lại Interface theo Backend mới
+interface SelectedSkill {
+  maKyNang: string;
+  kinhNghiem: string;
+}
+
 interface WorkerProfile {
   maNguoiDung: string;
   hoTen: string;
@@ -91,18 +97,16 @@ interface WorkerProfile {
   email: string;
   diaChi: string;
   anhChanDung: string;
-  kinhNghiem: string;
-  moTaChiTietKinhNghiem: string;
   tenNguoiThan: string;
   sdtnguoiThan: string;
-  danhSachKyNang: string[];
+  danhSachKyNang: SelectedSkill[]; // Chuyển từ mảng string sang mảng Object
 }
 
 export default function ProfileUpdatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  const BACKEND_URL = "https://localhost:7095";
-  // States
+  const BACKEND_URL = "https://localhost:7095"; // Chú ý: Đổi URL nếu server bạn khác
+
   const [skillsList, setSkillsList] = useState<SkillItem[]>([]);
   const [profile, setProfile] = useState<WorkerProfile>({
     maNguoiDung: "",
@@ -111,14 +115,11 @@ export default function ProfileUpdatePage() {
     email: "",
     diaChi: "",
     anhChanDung: "",
-    kinhNghiem: "Chưa có kinh nghiệm",
-    moTaChiTietKinhNghiem: "",
     tenNguoiThan: "",
     sdtnguoiThan: "",
     danhSachKyNang: [],
   });
 
-  // State lưu dữ liệu gốc để so sánh
   const [originalProfile, setOriginalProfile] = useState<WorkerProfile | null>(
     null,
   );
@@ -129,20 +130,71 @@ export default function ProfileUpdatePage() {
     severity: "success" as "success" | "error",
   });
 
+  // Hàm bóc tách dữ liệu kỹ năng từ chuỗi của C# trả về (Ví dụ: "Dọn dẹp nhà cửa (1 - 3 năm)")
+  const parseBackendSkills = (
+    backendSkills: any[],
+    dbSkills: SkillItem[],
+  ): SelectedSkill[] => {
+    if (!backendSkills || !Array.isArray(backendSkills)) return [];
+
+    return backendSkills
+      .map((item) => {
+        if (typeof item === "string") {
+          // Tìm xem chuỗi có khớp với kỹ năng nào trong DB không
+          const foundSkill = dbSkills.find(
+            (s) =>
+              item.toLowerCase().includes(s.title.toLowerCase()) ||
+              item.includes(s.id),
+          );
+
+          // Tách lấy kinh nghiệm nằm trong dấu ngoặc đơn (...)
+          const expMatch = item.match(/\(([^)]+)\)/);
+          const exp = expMatch ? expMatch[1].trim() : "";
+
+          return {
+            maKyNang: foundSkill?.id || "",
+            kinhNghiem: exp,
+          };
+        }
+        // Đề phòng trường hợp C# trả về thẳng object luôn
+        return {
+          maKyNang: item.maKyNang || item.id,
+          kinhNghiem: item.kinhNghiem || item.experienceYears || "",
+        };
+      })
+      .filter((s) => s.maKyNang !== ""); // Lọc bỏ những kỹ năng không lấy được ID
+  };
+
   // 1. Fetch Dữ liệu
   useEffect(() => {
     const fetchAllData = async () => {
       try {
         const [profileData, skillsData] = await Promise.all([
-          api.get<WorkerProfile>("/v1/maid/profile"),
+          api.get<any>("/v1/maid/profile"),
           api.get<SkillItem[]>("/KyNang/getAll"),
         ]);
 
         if (skillsData) setSkillsList(skillsData);
-        if (profileData) {
-          setProfile(profileData);
-          // Lưu lại bản sao gốc (Deep Copy)
-          setOriginalProfile(JSON.parse(JSON.stringify(profileData)));
+        if (profileData && skillsData) {
+          const parsedSkills = parseBackendSkills(
+            profileData.danhSachKyNang,
+            skillsData,
+          );
+
+          const mappedProfile: WorkerProfile = {
+            maNguoiDung: profileData.maNguoiDung || "",
+            hoTen: profileData.hoTen || "",
+            soDienThoai: profileData.soDienThoai || "",
+            email: profileData.email || "",
+            diaChi: profileData.diaChi || "",
+            anhChanDung: profileData.anhChanDung || "",
+            tenNguoiThan: profileData.tenNguoiThan || "",
+            sdtnguoiThan: profileData.sdtnguoiThan || "",
+            danhSachKyNang: parsedSkills,
+          };
+
+          setProfile(mappedProfile);
+          setOriginalProfile(JSON.parse(JSON.stringify(mappedProfile)));
         }
       } catch (error: any) {
         console.error("Lỗi kết nối API:", error.message);
@@ -158,7 +210,7 @@ export default function ProfileUpdatePage() {
     fetchAllData();
   }, []);
 
-  // 2. Handlers
+  // 2. Handlers Thông tin cơ bản
   const handleTextChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
@@ -172,55 +224,70 @@ export default function ProfileUpdatePage() {
     }
   };
 
-  const handleExperienceChange = (event: SelectChangeEvent<string>) => {
-    setProfile((prev) => ({ ...prev, kinhNghiem: event.target.value }));
-  };
-
+  // 3. Handlers Kỹ năng & Kinh nghiệm
   const toggleSkill = (skill: SkillItem) => {
-    const skillString = `${skill.id} - ${skill.title}`;
     setProfile((prev) => {
       const currentSkills = prev.danhSachKyNang;
-      if (currentSkills.includes(skillString)) {
+      const exists = currentSkills.find((s) => s.maKyNang === skill.id);
+
+      if (exists) {
         return {
           ...prev,
-          danhSachKyNang: currentSkills.filter((s) => s !== skillString),
+          danhSachKyNang: currentSkills.filter((s) => s.maKyNang !== skill.id),
         };
       } else {
-        return { ...prev, danhSachKyNang: [...currentSkills, skillString] };
+        return {
+          ...prev,
+          danhSachKyNang: [
+            ...currentSkills,
+            { maKyNang: skill.id, kinhNghiem: "" },
+          ],
+        };
       }
     });
   };
 
-  // 3. Logic Validation & Kiểm tra thay đổi
+  const handleExperienceChange = (skillId: string, value: string) => {
+    setProfile((prev) => ({
+      ...prev,
+      danhSachKyNang: prev.danhSachKyNang.map((s) =>
+        s.maKyNang === skillId ? { ...s, kinhNghiem: value } : s,
+      ),
+    }));
+  };
+
+  // 4. Logic Validation & Kiểm tra thay đổi
   const isNameValid = profile.tenNguoiThan.trim() !== "";
   const isPhoneValid = profile.sdtnguoiThan.length === 10;
-  const isExperienceValid = profile.kinhNghiem.trim() !== "";
-  const isSkillsValid = profile.danhSachKyNang.length >= 3;
 
-  // Form hợp lệ khi tất cả các trường bắt buộc đã được điền đủ
-  const isFormValid =
-    isNameValid && isPhoneValid && isExperienceValid && isSkillsValid;
+  // Mảng kỹ năng phải có ít nhất 3 cái VÀ tất cả đều phải chọn kinh nghiệm
+  const isSkillsLengthValid = profile.danhSachKyNang.length >= 3;
+  const isSkillsExpValid = profile.danhSachKyNang.every(
+    (s) => s.kinhNghiem && s.kinhNghiem.trim() !== "",
+  );
+  const isSkillsValid = isSkillsLengthValid && isSkillsExpValid;
+
+  const isFormValid = isNameValid && isPhoneValid && isSkillsValid;
   const isPhoneError = profile.sdtnguoiThan.length > 0 && !isPhoneValid;
 
-  // Kiểm tra xem có sự thay đổi so với ban đầu không
   const checkChanges = () => {
     if (!originalProfile) return false;
 
-    // So sánh dữ liệu hiện tại với dữ liệu gốc
     const currentData = {
       ten: profile.tenNguoiThan,
       sdt: profile.sdtnguoiThan,
-      kinhNghiem: profile.kinhNghiem,
-      moTa: profile.moTaChiTietKinhNghiem,
-      kyNang: [...profile.danhSachKyNang].sort(),
+      // Sắp xếp mảng để compare chính xác không bị sai do thứ tự click
+      kyNang: [...profile.danhSachKyNang].sort((a, b) =>
+        a.maKyNang.localeCompare(b.maKyNang),
+      ),
     };
 
     const originalData = {
       ten: originalProfile.tenNguoiThan,
       sdt: originalProfile.sdtnguoiThan,
-      kinhNghiem: originalProfile.kinhNghiem,
-      moTa: originalProfile.moTaChiTietKinhNghiem,
-      kyNang: [...originalProfile.danhSachKyNang].sort(),
+      kyNang: [...originalProfile.danhSachKyNang].sort((a, b) =>
+        a.maKyNang.localeCompare(b.maKyNang),
+      ),
     };
 
     return JSON.stringify(currentData) !== JSON.stringify(originalData);
@@ -228,30 +295,26 @@ export default function ProfileUpdatePage() {
 
   const hasChanges = checkChanges();
 
-  // 4. Submit Update
+  // 5. Submit Update
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!isFormValid || !hasChanges) return;
-
     setIsLoading(true);
 
     try {
       const payload = {
         TenNguoiThan: profile.tenNguoiThan,
         SdtnguoiThan: profile.sdtnguoiThan,
-        KinhNghiem: profile.kinhNghiem,
-        MoTaChiTietKinhNghiem: profile.moTaChiTietKinhNghiem,
-        DanhSachMaKyNang: profile.danhSachKyNang.map(
-          (skill) => skill.split(" - ")[0],
-        ),
+        // Gửi DanhSachKyNang đúng chuẩn DTO mới
+        DanhSachKyNang: profile.danhSachKyNang.map((s) => ({
+          MaKyNang: s.maKyNang,
+          KinhNghiem: s.kinhNghiem,
+        })),
       };
 
       await api.put("/v1/maid/update-profile", payload);
 
-      // Cập nhật lại originalProfile sau khi lưu thành công để reset trạng thái nút bấm
       setOriginalProfile(JSON.parse(JSON.stringify(profile)));
-
       setToast({
         open: true,
         message: "Cập nhật hồ sơ thành công!",
@@ -289,9 +352,9 @@ export default function ProfileUpdatePage() {
             <div className="inline-block relative mb-4">
               <img
                 src={
-                  profile.anhChanDung
+                  profile.anhChanDung && profile.anhChanDung.startsWith("/")
                     ? `${BACKEND_URL}${profile.anhChanDung}`
-                    : "/avatar.png"
+                    : profile.anhChanDung || "/avatar.png"
                 }
                 alt="Avatar"
                 className="w-28 h-28 rounded-full border-4 border-white object-cover shadow-lg bg-white"
@@ -389,99 +452,121 @@ export default function ProfileUpdatePage() {
               </div>
               <div className="mb-8">
                 <label className="block text-sm font-semibold text-gray-700 mb-4">
-                  Chọn ít nhất 3 kỹ năng <span className="text-red-500">*</span>
+                  Chọn ít nhất 3 kỹ năng và cập nhật kinh nghiệm{" "}
+                  <span className="text-red-500">*</span>
                 </label>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {skillsList.map((skill) => {
-                    const skillString = `${skill.id} - ${skill.title}`;
-                    const isSelected =
-                      profile.danhSachKyNang.includes(skillString);
+                    const selectedSkillData = profile.danhSachKyNang.find(
+                      (s) => s.maKyNang === skill.id,
+                    );
+                    const isSelected = !!selectedSkillData;
+                    const isMissingExp =
+                      isSelected && !selectedSkillData.kinhNghiem;
 
                     return (
                       <div
                         key={skill.id}
-                        onClick={() => toggleSkill(skill)}
-                        className={`relative flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
+                        className={`relative rounded-xl transition-all duration-200 border-2 ${
                           isSelected
-                            ? "border-emerald-700 bg-emerald-50/30"
+                            ? "border-emerald-700 bg-white shadow-sm"
                             : !isSkillsValid &&
                                 profile.danhSachKyNang.length > 0
-                              ? "border-red-200 bg-red-50"
+                              ? "border-red-200 bg-red-50 hover:bg-red-100"
                               : "border-transparent bg-[#f8faf9] hover:bg-gray-100"
                         }`}
                       >
+                        {/* VÙNG CLICK CHỌN KỸ NĂNG */}
                         <div
-                          className={`mt-1 p-2 rounded-lg ${isSelected ? "text-emerald-700 bg-white shadow-sm" : "text-gray-500 bg-white"}`}
+                          onClick={() => toggleSkill(skill)}
+                          className="flex items-start gap-4 p-4 cursor-pointer"
                         >
-                          {ICON_MAP[skill.iconKey || "other"] || (
-                            <MoreHorizOutlinedIcon />
-                          )}
-                        </div>
-                        <div className="flex-1 pr-8">
-                          <h4
-                            className={`font-bold mb-1 ${isSelected ? "text-emerald-900" : "text-gray-800"}`}
+                          <div
+                            className={`mt-1 p-2 rounded-lg ${isSelected ? "text-emerald-700" : "text-gray-500 bg-white"}`}
                           >
-                            {skill.title}
-                          </h4>
-                          <p className="text-sm text-gray-500 leading-snug">
-                            {skill.desc || "Cung cấp dịch vụ chuyên nghiệp"}
-                          </p>
+                            {ICON_MAP[skill.iconKey || "other"] || (
+                              <MoreHorizOutlinedIcon />
+                            )}
+                          </div>
+                          <div className="flex-1 pr-8">
+                            <h4
+                              className={`font-bold mb-1 ${isSelected ? "text-emerald-900" : "text-gray-800"}`}
+                            >
+                              {skill.title}
+                            </h4>
+                            <p className="text-sm text-gray-500 leading-snug">
+                              {skill.desc || "Cung cấp dịch vụ chuyên nghiệp"}
+                            </p>
+                          </div>
+                          <Checkbox
+                            checked={isSelected}
+                            className="absolute top-4 right-4 p-0 pointer-events-none"
+                            color="success"
+                          />
                         </div>
-                        <Checkbox
-                          checked={isSelected}
-                          className="absolute top-4 right-4 p-0 pointer-events-none"
-                          color="success"
-                        />
+
+                        {/* VÙNG CHỌN KINH NGHIỆM */}
+                        {isSelected && (
+                          <div className="px-4 pb-4 pl-[4.5rem]">
+                            <FormControl
+                              fullWidth
+                              size="small"
+                              error={isMissingExp}
+                            >
+                              <Select
+                                value={selectedSkillData.kinhNghiem}
+                                onChange={(e) =>
+                                  handleExperienceChange(
+                                    skill.id,
+                                    e.target.value,
+                                  )
+                                }
+                                displayEmpty
+                                className="bg-white"
+                              >
+                                <MenuItem value="" disabled>
+                                  <span className="text-gray-400">
+                                    Chọn số năm kinh nghiệm
+                                  </span>
+                                </MenuItem>
+                                <MenuItem value="Chưa có kinh nghiệm">
+                                  Chưa có kinh nghiệm
+                                </MenuItem>
+                                <MenuItem value="Dưới 1 năm">
+                                  Dưới 1 năm
+                                </MenuItem>
+                                <MenuItem value="1 - 3 năm">1 - 3 năm</MenuItem>
+                                <MenuItem value="3 - 5 năm">3 - 5 năm</MenuItem>
+                                <MenuItem value="Trên 5 năm">
+                                  Trên 5 năm
+                                </MenuItem>
+                              </Select>
+                              {isMissingExp && (
+                                <FormHelperText>
+                                  Vui lòng chọn số năm kinh nghiệm
+                                </FormHelperText>
+                              )}
+                            </FormControl>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-                {!isSkillsValid && profile.danhSachKyNang.length > 0 && (
+
+                {/* HIỂN THỊ LỖI CHUNG */}
+                {!isSkillsLengthValid && profile.danhSachKyNang.length > 0 && (
                   <p className="text-red-500 text-sm font-medium mt-3">
                     Vui lòng chọn thêm kỹ năng (cần ít nhất 3).
                   </p>
                 )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Số năm kinh nghiệm <span className="text-red-500">*</span>
-                  </label>
-                  <FormControl fullWidth>
-                    <Select
-                      name="kinhNghiem"
-                      value={profile.kinhNghiem}
-                      onChange={handleExperienceChange}
-                      displayEmpty
-                    >
-                      <MenuItem value="" disabled>
-                        <span className="text-gray-400">Chọn kinh nghiệm</span>
-                      </MenuItem>
-                      <MenuItem value="Chưa có kinh nghiệm">
-                        Chưa có kinh nghiệm
-                      </MenuItem>
-                      <MenuItem value="Dưới 1 năm">Dưới 1 năm</MenuItem>
-                      <MenuItem value="1 - 3 năm">1 - 3 năm</MenuItem>
-                      <MenuItem value="3 - 5 năm">3 - 5 năm</MenuItem>
-                      <MenuItem value="Trên 5 năm">Trên 5 năm</MenuItem>
-                    </Select>
-                  </FormControl>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Mô tả chi tiết
-                  </label>
-                  <OutlinedInput
-                    fullWidth
-                    multiline
-                    rows={4}
-                    name="moTaChiTietKinhNghiem"
-                    value={profile.moTaChiTietKinhNghiem}
-                    onChange={handleTextChange}
-                    placeholder="Chia sẻ thêm về kinh nghiệm làm việc của bạn..."
-                  />
-                </div>
+                {isSkillsLengthValid && !isSkillsExpValid && (
+                  <p className="text-red-500 text-sm font-medium mt-3">
+                    Vui lòng cung cấp kinh nghiệm cho tất cả các kỹ năng đã
+                    chọn.
+                  </p>
+                )}
               </div>
             </section>
 
@@ -551,7 +636,6 @@ export default function ProfileUpdatePage() {
               <Button
                 type="submit"
                 variant="contained"
-                // Nút bị vô hiệu hóa nếu: Đang tải OR Form lỗi OR Không có thay đổi
                 disabled={isLoading || !isFormValid || !hasChanges}
                 startIcon={
                   isLoading ? (

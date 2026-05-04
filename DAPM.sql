@@ -320,4 +320,4 @@ select * from LichRanhCaLamViec
 GO
 UPDATE HoSoNguoiGiupViec
 SET TrangThaiXacMinh = N'Đã duyệt'
-WHERE MaNguoiGiupViec = 'GV712';
+WHERE MaNguoiGiupViec = 'GV661';
