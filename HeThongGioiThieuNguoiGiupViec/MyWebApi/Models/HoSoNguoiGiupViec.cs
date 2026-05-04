@@ -28,11 +28,6 @@ public partial class HoSoNguoiGiupViec
     [StringLength(100)]
     public string? GioiTinh { get; set; }
 
-    [StringLength(200)]
-    public string? KinhNghiem { get; set; }
-
-    [StringLength(200)]
-    public string? MoTaChiTietKinhNghiem { get; set; }
 
     [StringLength(100)]
     public string? TenNguoiThan { get; set; }

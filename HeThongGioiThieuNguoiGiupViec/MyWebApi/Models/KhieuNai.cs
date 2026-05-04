@@ -48,7 +48,5 @@ public partial class KhieuNai
 
     [ForeignKey("MaNhanVien")]
     [InverseProperty("KhieuNaiMaNhanVienNavigations")]
-
     public virtual NguoiDung? MaNhanVienNavigation { get; set; }
-
 }

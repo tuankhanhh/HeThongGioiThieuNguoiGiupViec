@@ -14,10 +14,8 @@ import { useRouter } from "next/navigation";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import InsertPhotoOutlinedIcon from "@mui/icons-material/InsertPhotoOutlined";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import SendIcon from "@mui/icons-material/Send";
-import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
 import RegistrationStepper from "@/components/componentsMaid/Stepper";
 
 // Import Store và API Service
@@ -26,7 +24,7 @@ import { api } from "@/services/api";
 import { ROUTES } from "@/lib/routes";
 
 // IMPORT COMPONENT TOAST
-import NotificationToast from "@/components/NotificationToast"; // Sửa lại đường dẫn nếu cần
+import NotificationToast from "@/components/NotificationToast";
 
 const theme = createTheme({
   palette: {
@@ -112,7 +110,7 @@ export default function FinalSummaryStep() {
         return false;
       }
 
-      // Kiểm tra Bước 2: Tài liệu xác minh (bỏ qua giấy cư trú vì không bắt buộc)
+      // Kiểm tra Bước 2: Tài liệu xác minh
       if (
         !step3_docs.cccdFront ||
         !step3_docs.cccdBack ||
@@ -122,10 +120,10 @@ export default function FinalSummaryStep() {
         return false;
       }
 
-      // Kiểm tra Bước 3: Kỹ năng & Kinh nghiệm
+      // Kiểm tra Bước 3: Kỹ năng & Kinh nghiệm (Chỉ kiểm tra mảng kỹ năng)
       if (
-        step4_skills.selectedSkills.length < 3 ||
-        !step4_skills.experienceYears
+        !step4_skills.selectedSkills ||
+        step4_skills.selectedSkills.length < 3
       ) {
         router.push(ROUTES.MAID.REGISTER_SKILL);
         return false;
@@ -187,7 +185,6 @@ export default function FinalSummaryStep() {
   // Trích xuất và format dữ liệu an toàn
   const uploadedFiles = Object.entries(step3_docs)
     .filter(([key, file]) => {
-      // Chỉ lấy những key thuộc về tài liệu và có dữ liệu
       const isValidKey = Object.keys(docLabels).includes(key);
       return isValidKey && file !== null && file !== undefined;
     })
@@ -195,15 +192,12 @@ export default function FinalSummaryStep() {
       const isImage = file?.type ? file.type.startsWith("image/") : false;
       const isPdf = file?.type ? file.type.includes("pdf") : false;
 
-      // Logic tính toán dung lượng thông minh (KB hoặc MB)
       let formattedSize = "Chưa rõ";
       if (file?.size && !isNaN(file.size)) {
         const sizeInBytes = file.size;
         if (sizeInBytes < 1024 * 1024) {
-          // Nếu nhỏ hơn 1MB, hiển thị bằng KB (làm tròn số nguyên)
           formattedSize = Math.round(sizeInBytes / 1024) + " KB";
         } else {
-          // Nếu lớn hơn hoặc bằng 1MB, hiển thị bằng MB (lấy 1 chữ số thập phân)
           formattedSize = (sizeInBytes / (1024 * 1024)).toFixed(1) + " MB";
         }
       }
@@ -212,7 +206,7 @@ export default function FinalSummaryStep() {
         id: key,
         label: docLabels[key as keyof typeof docLabels],
         name: file?.name || "Tài liệu đã tải lên",
-        size: formattedSize, // <-- Đã được xử lý thông minh
+        size: formattedSize,
         type: isImage ? "image" : isPdf ? "pdf" : "other",
         previewUrl: isImage ? filePreviews[key] : null,
       };
@@ -240,11 +234,14 @@ export default function FinalSummaryStep() {
       formData.append("DiaChi", step2_personal.address);
       formData.append("TenNguoiThan", step2_personal.relativeName);
       formData.append("SdtnguoiThan", step2_personal.relativePhone);
-      formData.append("KinhNghiem", String(step4_skills.experienceYears));
-      formData.append("MoTaChiTietKinhNghiem", step4_skills.experienceDesc);
 
-      step4_skills.selectedSkills.forEach((skill) => {
-        formData.append("DanhSachMaKyNang", skill.id);
+      // CẬP NHẬT LOGIC GỬI KỸ NĂNG THEO DTO MỚI (Có kèm kinh nghiệm)
+      step4_skills.selectedSkills?.forEach((skill, index) => {
+        formData.append(`DanhSachKyNang[${index}].MaKyNang`, skill.id);
+        formData.append(
+          `DanhSachKyNang[${index}].KinhNghiem`,
+          skill.experienceYears || "Chưa có kinh nghiệm",
+        );
       });
 
       if (step3_docs.cccdFront)
@@ -274,7 +271,6 @@ export default function FinalSummaryStep() {
         "error",
       );
     } finally {
-      // Chỉ tắt loading nếu bị lỗi, nếu thành công cứ để loading cho đến khi chuyển trang xong
       if (!isSuccessRef.current) {
         setIsSubmitting(false);
       }
@@ -303,6 +299,7 @@ export default function FinalSummaryStep() {
             <div className="flex flex-col gap-6">
               {/* === THÔNG TIN CÁ NHÂN & KỸ NĂNG === */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Cột Trái: Thông tin cá nhân */}
                 <div className="md:col-span-2 border border-gray-100 bg-white rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-emerald-50 text-emerald-700 rounded-lg">
@@ -338,55 +335,37 @@ export default function FinalSummaryStep() {
                   </div>
                 </div>
 
+                {/* Cột Phải: Kỹ năng & Kinh nghiệm */}
                 <div className="md:col-span-1 bg-[#f4f9f7] rounded-2xl p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
                       <VerifiedUserOutlinedIcon fontSize="small" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Kỹ năng</h3>
+                    <h3 className="text-lg font-bold text-gray-900">
+                      Kỹ năng & Kinh nghiệm
+                    </h3>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {step4_skills.selectedSkills.map((skill, index) => (
-                      <span
+                  <div className="flex flex-col gap-3">
+                    {step4_skills.selectedSkills?.map((skill, index) => (
+                      <div
                         key={index}
-                        className="bg-white text-emerald-800 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm border border-emerald-100"
+                        className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm flex flex-col gap-1"
                       >
-                        {skill.name}
-                      </span>
+                        <p className="text-sm font-bold text-emerald-900">
+                          {skill.name}
+                        </p>
+                        <p className="text-xs font-semibold text-gray-500">
+                          Kinh nghiệm:{" "}
+                          <span className="text-gray-800 font-bold">
+                            {skill.experienceYears || "Chưa cập nhật"}
+                          </span>
+                        </p>
+                      </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* === KINH NGHIỆM === */}
-              <div className="border border-gray-100 bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-lg">
-                    <WorkOutlineIcon fontSize="small" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Kinh nghiệm
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="md:col-span-1">
-                    <InfoItem
-                      label="Số năm"
-                      value={step4_skills.experienceYears}
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
-                      Mô tả
-                    </p>
-                    <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded-lg border border-gray-100 min-h-[60px]">
-                      {step4_skills.experienceDesc || "Chưa có mô tả."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* === TÀI LIỆU === */}
               {/* === TÀI LIỆU === */}
               <div className="bg-[#f4f9f7] rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -413,7 +392,7 @@ export default function FinalSummaryStep() {
                             <img
                               src={doc.previewUrl}
                               alt={doc.label}
-                              className="w-full h-full object-cover" // Dùng object-cover để lấp đầy khung
+                              className="w-full h-full object-cover"
                             />
                           ) : doc.type === "pdf" ? (
                             <div className="flex flex-col items-center text-red-500">

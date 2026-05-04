@@ -15,12 +15,21 @@ interface User {
   roles: string[];
 }
 
-const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
-  Admin: { label: "Admin", color: "#dc2626", bg: "rgba(220,38,38,0.1)" },
-  Staff: { label: "Staff", color: "#2563eb", bg: "rgba(37,99,235,0.1)" },
-  Maid: { label: "Người giúp việc", color: "#7c3aed", bg: "rgba(124,58,237,0.1)" },
-  Customer: { label: "Khách hàng", color: "#059669", bg: "rgba(5,150,105,0.1)" },
-};
+const roleConfig: Record<string, { label: string; color: string; bg: string }> =
+  {
+    Admin: { label: "Admin", color: "#dc2626", bg: "rgba(220,38,38,0.1)" },
+    Staff: { label: "Staff", color: "#2563eb", bg: "rgba(37,99,235,0.1)" },
+    Maid: {
+      label: "Người giúp việc",
+      color: "#7c3aed",
+      bg: "rgba(124,58,237,0.1)",
+    },
+    Customer: {
+      label: "Khách hàng",
+      color: "#059669",
+      bg: "rgba(5,150,105,0.1)",
+    },
+  };
 
 export default function UsersManagement() {
   const router = useRouter();
@@ -52,7 +61,7 @@ export default function UsersManagement() {
   const filteredUsers = users.filter(
     (user) =>
       user.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const avatarColors = [
@@ -66,16 +75,29 @@ export default function UsersManagement() {
   if (loading) {
     return (
       <AdminLayout>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "60vh",
+          }}
+        >
           <div style={{ textAlign: "center" }}>
-            <div style={{
-              width: "56px", height: "56px", borderRadius: "50%",
-              border: "4px solid rgba(99,102,241,0.15)",
-              borderTopColor: "#6366f1",
-              animation: "spin 0.8s linear infinite",
-              margin: "0 auto",
-            }} />
-            <p style={{ marginTop: "16px", color: "#6366f1", fontWeight: 500 }}>Đang tải dữ liệu...</p>
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                border: "4px solid rgba(99,102,241,0.15)",
+                borderTopColor: "#6366f1",
+                animation: "spin 0.8s linear infinite",
+                margin: "0 auto",
+              }}
+            />
+            <p style={{ marginTop: "16px", color: "#6366f1", fontWeight: 500 }}>
+              Đang tải dữ liệu...
+            </p>
           </div>
         </div>
       </AdminLayout>
@@ -87,13 +109,31 @@ export default function UsersManagement() {
       <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }`}</style>
 
       {/* Header */}
-      <div style={{ marginBottom: "28px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
+      <div
+        style={{
+          marginBottom: "28px",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "16px",
+        }}
+      >
         <div>
-          <h2 style={{ fontSize: "28px", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>
+          <h2
+            style={{
+              fontSize: "28px",
+              fontWeight: 700,
+              color: "#1e1b4b",
+              margin: 0,
+            }}
+          >
             Quản lý người dùng
           </h2>
           <p style={{ color: "#6b7280", marginTop: "6px", fontSize: "14px" }}>
-            Tổng cộng <strong style={{ color: "#6366f1" }}>{users.length}</strong> người dùng trong hệ thống
+            Tổng cộng{" "}
+            <strong style={{ color: "#6366f1" }}>{users.length}</strong> người
+            dùng trong hệ thống
           </p>
         </div>
         {/* Search */}
@@ -116,36 +156,84 @@ export default function UsersManagement() {
               boxShadow: "0 2px 8px rgba(99,102,241,0.06)",
               transition: "border-color 0.2s",
             }}
-            onFocus={(e) => ((e.target as HTMLInputElement).style.borderColor = "#6366f1")}
-            onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "rgba(99,102,241,0.2)")}
+            onFocus={(e) =>
+              ((e.target as HTMLInputElement).style.borderColor = "#6366f1")
+            }
+            onBlur={(e) =>
+              ((e.target as HTMLInputElement).style.borderColor =
+                "rgba(99,102,241,0.2)")
+            }
           />
-          <svg style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }}
-            fill="none" viewBox="0 0 24 24" stroke="#9ca3af" width="18" height="18">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <svg
+            style={{
+              position: "absolute",
+              left: "14px",
+              top: "50%",
+              transform: "translateY(-50%)",
+            }}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="#9ca3af"
+            width="18"
+            height="18"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
           </svg>
         </div>
       </div>
 
       {/* Table Card */}
-      <div style={{
-        background: "#fff",
-        borderRadius: "20px",
-        boxShadow: "0 2px 20px rgba(99,102,241,0.07)",
-        border: "1px solid rgba(99,102,241,0.06)",
-        overflow: "hidden",
-        animation: "fadeIn 0.4s ease",
-      }}>
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: "20px",
+          boxShadow: "0 2px 20px rgba(99,102,241,0.07)",
+          border: "1px solid rgba(99,102,241,0.06)",
+          overflow: "hidden",
+          animation: "fadeIn 0.4s ease",
+        }}
+      >
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "700px" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              minWidth: "700px",
+            }}
+          >
             <thead>
-              <tr style={{ background: "linear-gradient(135deg,#1e1b4b,#3730a3)", color: "white" }}>
-                {["Người dùng", "Liên hệ", "Vai trò", "Trạng thái", "Ngày tạo"].map((h) => (
-                  <th key={h} style={{
-                    padding: "16px 20px", textAlign: "left",
-                    fontSize: "12px", fontWeight: 600,
-                    textTransform: "uppercase", letterSpacing: "0.05em",
-                    color: "rgba(199,210,254,0.9)",
-                  }}>{h}</th>
+              <tr
+                style={{
+                  background: "linear-gradient(135deg,#1e1b4b,#3730a3)",
+                  color: "white",
+                }}
+              >
+                {[
+                  "Người dùng",
+                  "Liên hệ",
+                  "Vai trò",
+                  "Trạng thái",
+                  "Ngày tạo",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      padding: "16px 20px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "rgba(199,210,254,0.9)",
+                    }}
+                  >
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -156,79 +244,187 @@ export default function UsersManagement() {
                     key={user.maNguoiDung}
                     style={{
                       borderBottom: "1px solid rgba(99,102,241,0.06)",
-                      background: index % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)",
+                      background:
+                        index % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)",
                       transition: "background 0.15s",
                     }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,0.04)")}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = index % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)")}
+                    onMouseEnter={(e) =>
+                      ((e.currentTarget as HTMLElement).style.background =
+                        "rgba(99,102,241,0.04)")
+                    }
+                    onMouseLeave={(e) =>
+                      ((e.currentTarget as HTMLElement).style.background =
+                        index % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)")
+                    }
                   >
                     <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <div style={{
-                          width: "42px", height: "42px", borderRadius: "50%",
-                          background: avatarColors[index % avatarColors.length],
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          color: "white", fontWeight: 700, fontSize: "16px", flexShrink: 0,
-                          boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
-                        }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "42px",
+                            height: "42px",
+                            borderRadius: "50%",
+                            background:
+                              avatarColors[index % avatarColors.length],
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            fontWeight: 700,
+                            fontSize: "16px",
+                            flexShrink: 0,
+                            boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
+                          }}
+                        >
                           {user.hoTen?.charAt(0).toUpperCase() || "?"}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 600, color: "#1e1b4b", fontSize: "14px" }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              color: "#1e1b4b",
+                              fontSize: "14px",
+                            }}
+                          >
                             {user.hoTen || "Chưa cập nhật"}
                           </div>
-                          <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px" }}>
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: "#9ca3af",
+                              marginTop: "2px",
+                            }}
+                          >
                             ID: {user.maNguoiDung}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td style={{ padding: "16px 20px" }}>
-                      <div style={{ fontSize: "14px", color: "#374151" }}>{user.email || "—"}</div>
-                      <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "2px" }}>{user.soDienThoai || "—"}</div>
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                        {user.roles?.length > 0 ? user.roles.map((role, idx) => {
-                          const cfg = roleConfig[role] ?? { label: role, color: "#6b7280", bg: "rgba(107,114,128,0.1)" };
-                          return (
-                            <span key={idx} style={{
-                              padding: "3px 10px",
-                              borderRadius: "99px",
-                              fontSize: "12px", fontWeight: 600,
-                              color: cfg.color, background: cfg.bg,
-                            }}>{cfg.label}</span>
-                          );
-                        }) : <span style={{ color: "#9ca3af", fontSize: "13px" }}>Chưa phân quyền</span>}
+                      <div style={{ fontSize: "14px", color: "#374151" }}>
+                        {user.email || "—"}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#9ca3af",
+                          marginTop: "2px",
+                        }}
+                      >
+                        {user.soDienThoai || "—"}
                       </div>
                     </td>
                     <td style={{ padding: "16px 20px" }}>
-                      <span style={{
-                        padding: "4px 12px", borderRadius: "99px", fontSize: "12px", fontWeight: 600,
-                        background: user.trangThai ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-                        color: user.trangThai ? "#059669" : "#dc2626",
-                        display: "inline-flex", alignItems: "center", gap: "5px",
-                      }}>
-                        <span style={{
-                          width: "6px", height: "6px", borderRadius: "50%",
-                          background: user.trangThai ? "#10b981" : "#ef4444",
-                          display: "inline-block",
-                        }} />
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "6px",
+                        }}
+                      >
+                        {user.roles?.length > 0 ? (
+                          user.roles.map((role, idx) => {
+                            const cfg = roleConfig[role] ?? {
+                              label: role,
+                              color: "#6b7280",
+                              bg: "rgba(107,114,128,0.1)",
+                            };
+                            return (
+                              <span
+                                key={idx}
+                                style={{
+                                  padding: "3px 10px",
+                                  borderRadius: "99px",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  color: cfg.color,
+                                  background: cfg.bg,
+                                }}
+                              >
+                                {cfg.label}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span style={{ color: "#9ca3af", fontSize: "13px" }}>
+                            Chưa phân quyền
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <span
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: "99px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          background: user.trangThai
+                            ? "rgba(16,185,129,0.1)"
+                            : "rgba(239,68,68,0.1)",
+                          color: user.trangThai ? "#059669" : "#dc2626",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: "6px",
+                            height: "6px",
+                            borderRadius: "50%",
+                            background: user.trangThai ? "#10b981" : "#ef4444",
+                            display: "inline-block",
+                          }}
+                        />
                         {user.trangThai ? "Hoạt động" : "Bị khóa"}
                       </span>
                     </td>
-                    <td style={{ padding: "16px 20px", fontSize: "13px", color: "#6b7280" }}>
-                      {new Date(user.ngayTao).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" })}
+                    <td
+                      style={{
+                        padding: "16px 20px",
+                        fontSize: "13px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {new Date(user.ngayTao).toLocaleDateString("vi-VN", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                      })}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} style={{ padding: "60px 20px", textAlign: "center" }}>
-                    <svg fill="none" viewBox="0 0 24 24" stroke="#d1d5db" width="48" height="48" style={{ margin: "0 auto 12px" }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  <td
+                    colSpan={5}
+                    style={{ padding: "60px 20px", textAlign: "center" }}
+                  >
+                    <svg
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="#d1d5db"
+                      width="48"
+                      height="48"
+                      style={{ margin: "0 auto 12px" }}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                      />
                     </svg>
-                    <p style={{ color: "#9ca3af", fontWeight: 500 }}>Không tìm thấy người dùng nào</p>
+                    <p style={{ color: "#9ca3af", fontWeight: 500 }}>
+                      Không tìm thấy người dùng nào
+                    </p>
                   </td>
                 </tr>
               )}

@@ -1,12 +1,7 @@
 import { create } from "zustand";
 
-interface SkillParams {
-  id: string;
-  name: string;
-}
-
 // 1. Khai báo Type cho toàn bộ dữ liệu hồ sơ
-interface RegistrationState {
+export interface RegistrationState {
   step2_personal: {
     dob: string;
     gender: string;
@@ -23,13 +18,16 @@ interface RegistrationState {
     residence: File | null;
   };
 
+  // Đưa thẳng Type vào đây, thêm [] để TypeScript hiểu đây là Mảng (Array)
   step4_skills: {
-    selectedSkills: SkillParams[];
-    experienceYears: string;
-    experienceDesc: string;
+    selectedSkills: {
+      id: string;
+      name: string;
+      experienceYears: string;
+    }[];
   };
 
-  // --- ACTIONS (Hàm cập nhật dữ liệu) ---
+  // --- ACTIONS ---
   updatePersonal: (data: Partial<RegistrationState["step2_personal"]>) => void;
   updateDocs: (
     field: keyof RegistrationState["step3_docs"],
@@ -56,9 +54,8 @@ const initialState = {
     residence: null,
   },
   step4_skills: {
-    selectedSkills: [],
-    experienceYears: "",
-    experienceDesc: "",
+    // Ép kiểu ngay tại đây để tránh lỗi never[] khi dùng các hàm .map() bên UI
+    selectedSkills: [] as RegistrationState["step4_skills"]["selectedSkills"],
   },
 };
 
@@ -66,9 +63,6 @@ const initialState = {
 export const useRegistrationStore = create<RegistrationState>((set) => ({
   ...initialState,
 
-  // Cập nhật thông tin tài khoản Bước 1
-
-  // Dùng toán tử spread (...) để gộp dữ liệu mới vào dữ liệu cũ
   updatePersonal: (data) =>
     set((state) => ({
       step2_personal: { ...state.step2_personal, ...data },
@@ -84,6 +78,5 @@ export const useRegistrationStore = create<RegistrationState>((set) => ({
       step4_skills: { ...state.step4_skills, ...data },
     })),
 
-  // Hàm xóa sạch dữ liệu (dùng khi submit thành công)
   resetForm: () => set(initialState),
 }));
