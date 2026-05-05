@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/admin/AdminLayout";
+import api from "@/services/api";
 
 interface User {
   maNguoiDung: string;
@@ -47,13 +48,13 @@ export default function UsersManagement() {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) { router.push("/admin/sign-in"); return; }
-    setTimeout(() => { setUsers(MOCK_USERS); setLoading(false); }, 400);
+    fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get("/user/all");
-      setUsers(response.data || []);
+      const response = await api.get<User[]>("/user/all");
+      setUsers(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error("Lỗi khi tải danh sách người dùng:", error);
       setUsers([]);
@@ -104,9 +105,9 @@ export default function UsersManagement() {
             </p>
           </div>
         </div>
-      </div>
-    </AdminLayout>
-  );
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -164,13 +165,6 @@ export default function UsersManagement() {
               boxShadow: "0 2px 8px rgba(99,102,241,0.06)",
               transition: "border-color 0.2s",
             }}
-            onFocus={(e) =>
-              ((e.target as HTMLInputElement).style.borderColor = "#6366f1")
-            }
-            onBlur={(e) =>
-              ((e.target as HTMLInputElement).style.borderColor =
-                "rgba(99,102,241,0.2)")
-            }
           />
           <svg
             style={{
@@ -192,21 +186,6 @@ export default function UsersManagement() {
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
-          <input
-            type="text"
-            placeholder="Tìm theo tên, email..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{
-              width:"100%", padding:"9px 14px 9px 38px",
-              borderRadius:"10px", border:"0.5px solid #e5e7eb",
-              background:"#fff", fontSize:"13px", color:"#374151",
-              outline:"none", boxSizing:"border-box",
-              transition:"border-color 0.2s",
-            }}
-            onFocus={e => (e.target as HTMLInputElement).style.borderColor="#a5b4fc"}
-            onBlur={e => (e.target as HTMLInputElement).style.borderColor="#e5e7eb"}
-          />
         </div>
       </div>
 
@@ -261,15 +240,14 @@ export default function UsersManagement() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length > 0 ? filtered.map((user, i) => {
-                const av = avatarBgs[i % avatarBgs.length];
-                return (
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user, i) => (
                   <tr
                     key={user.maNguoiDung}
                     style={{
                       borderBottom: "1px solid rgba(99,102,241,0.06)",
                       background:
-                        index % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)",
+                        i % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)",
                       transition: "background 0.15s",
                     }}
                     onMouseEnter={(e) =>
@@ -278,7 +256,7 @@ export default function UsersManagement() {
                     }
                     onMouseLeave={(e) =>
                       ((e.currentTarget as HTMLElement).style.background =
-                        index % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)")
+                        i % 2 === 0 ? "#fff" : "rgba(99,102,241,0.015)")
                     }
                   >
                     <td style={{ padding: "16px 20px" }}>
@@ -295,7 +273,7 @@ export default function UsersManagement() {
                             height: "42px",
                             borderRadius: "50%",
                             background:
-                              avatarColors[index % avatarColors.length],
+                              avatarColors[i % avatarColors.length],
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -424,8 +402,8 @@ export default function UsersManagement() {
                       })}
                     </td>
                   </tr>
-                );
-              }) : (
+                ))
+              ) : (
                 <tr>
                   <td
                     colSpan={5}
@@ -457,10 +435,10 @@ export default function UsersManagement() {
         </div>
 
         {/* Footer count */}
-        {filtered.length > 0 && (
+        {filteredUsers.length > 0 && (
           <div style={{ padding:"12px 20px", borderTop:"0.5px solid #f3f4f6", background:"#fafafa" }}>
             <p style={{ margin:0, fontSize:"12px", color:"#9ca3af" }}>
-              Hiển thị <span style={{ color:"#534AB7", fontWeight:600 }}>{filtered.length}</span> / {users.length} người dùng
+              Hiển thị <span style={{ color:"#534AB7", fontWeight:600 }}>{filteredUsers.length}</span> / {users.length} người dùng
             </p>
           </div>
         )}

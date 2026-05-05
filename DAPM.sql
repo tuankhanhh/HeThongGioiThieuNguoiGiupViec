@@ -303,9 +303,12 @@ INSERT INTO DichVuThanhPhan (MaDichVu, MaThanhPhan, GhiChu) VALUES
 ('DV006', 'TP018', NULL);
 GO
 
--- ================================================
--- SEED DATA - Dữ liệu mẫu cho hệ thống
--- ================================================
+select * from NguoiDung
+select * from NguoiDungVaiTro
+select * from VaiTro
+select * from HoSoNguoiGiupViec
+select * from KyNang
+select * from KyNangNguoiGiupViec
 
 select * from DonDat
 select * from DonDatDichVu
