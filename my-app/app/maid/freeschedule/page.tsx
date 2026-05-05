@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { vi } from "date-fns/locale";
-import { format } from "date-fns";
+import { format, addDays, startOfDay } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 
@@ -23,216 +23,318 @@ import {
   InputLabel,
   SelectChangeEvent,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 
+import api from "@/services/api";
+import NotificationToast from "@/components/NotificationToast";
+
 interface TimeRange {
   start: string;
   end: string;
+  isSaved?: boolean; // Cờ đánh dấu ca đã được lưu trên server
 }
 
-interface DailyAvailability {
-  [dateKey: string]: TimeRange[];
-}
-
-// Interface hứng dữ liệu từ Server
 interface ServerSchedule {
   maLichRanh: string;
-  ngay: string; // YYYY-MM-DD
-  gioBatDau: string; // HH:mm:ss
-  gioKetThuc: string; // HH:mm:ss
+  ngay: string;
+  chiTietCaLam: {
+    maCaLamViec: string;
+    gioBatDau: string;
+    gioKetThuc: string;
+    ghiChu?: string;
+  }[];
 }
-
-// Cấu hình Base URL API của bạn
-const API_BASE_URL = "https://localhost:7095/api";
 
 export default function HelperAvailability() {
   const [isMounted, setIsMounted] = useState(false);
-  const [activeDate, setActiveDate] = useState<Date | undefined>(new Date());
-
-  // State quản lý lịch đang thao tác (chưa lưu)
-  const [availability, setAvailability] = useState<DailyAvailability>({});
-
-  // State quản lý lịch đã lưu trên Server
+  const [selectedDates, setSelectedDates] = useState<Date[] | undefined>([]);
+  const [dateSlots, setDateSlots] = useState<Record<string, TimeRange[]>>({});
   const [existingSchedule, setExistingSchedule] = useState<
-    Record<string, ServerSchedule[]>
+    Record<string, ServerSchedule>
   >({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // --- State mới cho Dialog & Toast ---
+  const [openConfirm, setOpenConfirm] = useState(false);
+  const [toast, setToast] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "warning" | "info";
+  }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
   useEffect(() => {
     setIsMounted(true);
-    fetchMySchedule(); // Gọi API lấy danh sách khi component mount
+    fetchMySchedule();
   }, []);
 
-  // ==========================================
-  // API CALLS
-  // ==========================================
-  const getToken = () => localStorage.getItem("accessToken") || ""; // Thay bằng logic lấy token của bạn
+  const today = startOfDay(new Date());
+  const minDate = addDays(today, 3);
+  const maxDate = addDays(minDate, 30);
 
-  // Lấy lịch rảnh từ Server
+  const fullDays = Object.values(existingSchedule)
+    .filter((s) => s.chiTietCaLam.length >= 2)
+    .map((s) => new Date(s.ngay));
+
+  const partialDays = Object.values(existingSchedule)
+    .filter((s) => s.chiTietCaLam.length === 1)
+    .map((s) => new Date(s.ngay));
+
+  const disabledDates = [{ before: minDate }, { after: maxDate }, ...fullDays];
+
+  const handleSelectDates = (dates: Date[] | undefined) => {
+    const newDates = dates || [];
+    setSelectedDates(newDates);
+
+    const newDateSlots = { ...dateSlots };
+    const currentSelectedKeys = newDates.map((d) => format(d, "yyyy-MM-dd"));
+
+    Object.keys(newDateSlots).forEach((key) => {
+      if (!currentSelectedKeys.includes(key)) {
+        delete newDateSlots[key];
+      }
+    });
+
+    currentSelectedKeys.forEach((key) => {
+      if (!newDateSlots[key]) {
+        const existing = existingSchedule[key];
+        if (existing && existing.chiTietCaLam.length === 1) {
+          const shift = existing.chiTietCaLam[0];
+          newDateSlots[key] = [
+            {
+              start: shift.gioBatDau.substring(0, 5),
+              end: shift.gioKetThuc.substring(0, 5),
+              isSaved: true,
+            },
+          ];
+        } else {
+          newDateSlots[key] = [{ start: "08:00", end: "12:00" }];
+        }
+      }
+    });
+
+    setDateSlots(newDateSlots);
+  };
+
   const fetchMySchedule = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/LichRanh/my-schedule`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-          "Content-Type": "application/json",
-        },
+      const data = await api.get<ServerSchedule[]>("/LichRanh/my-schedule");
+      const grouped: Record<string, ServerSchedule> = {};
+      data.forEach((item) => {
+        grouped[item.ngay] = item;
       });
-
-      if (res.ok) {
-        const data: ServerSchedule[] = await res.json();
-        // Nhom du lieu theo ngày để hiển thị dễ hơn
-        const grouped: Record<string, ServerSchedule[]> = {};
-        data.forEach((item) => {
-          if (!grouped[item.ngay]) grouped[item.ngay] = [];
-          grouped[item.ngay].push(item);
-        });
-        setExistingSchedule(grouped);
-      } else if (res.status === 404) {
-        setExistingSchedule({}); // Chưa có lịch
-      } else {
-        console.error("Lỗi khi lấy lịch rảnh");
+      setExistingSchedule(grouped);
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.status === 404) {
+        setExistingSchedule({});
       }
-    } catch (error) {
-      console.error("Fetch error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Lưu lịch rảnh mới lên Server
-  const handleSaveSchedule = async () => {
+  // --- Hàm thực thi lưu API ---
+  const executeSave = async () => {
+    setOpenConfirm(false);
     setIsSaving(true);
-    const token = getToken();
-
-    // Gom tất cả các khung giờ đang tạo thành mảng request
     const requests: Promise<any>[] = [];
 
-    for (const [date, slots] of Object.entries(availability)) {
-      for (const slot of slots) {
-        const payload = {
-          ngay: date,
-          gioBatDau: `${slot.start}:00`, // Format chuẩn của TimeOnly
-          gioKetThuc: `${slot.end}:00`,
-        };
-        console.log(payload);
+    Object.entries(dateSlots).forEach(([dateStr, slots]) => {
+      if (slots.length > 0) {
+        const existing = existingSchedule[dateStr];
 
-        const req = fetch(`${API_BASE_URL}/LichRanh/dang-ky`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-        requests.push(req);
+        if (existing && existing.chiTietCaLam.length === 1) {
+          const newSlot = slots.find((s) => !s.isSaved);
+          if (newSlot) {
+            const payload = {
+              gioBatDau: `${newSlot.start}:00`,
+              gioKetThuc: `${newSlot.end}:00`,
+            };
+            requests.push(
+              api.post(`/LichRanh/bo-sung-ca/${existing.maLichRanh}`, payload),
+            );
+          }
+        } else if (!existing) {
+          const payload = {
+            ngay: dateStr,
+            danhSachCa: slots.map((slot) => ({
+              gioBatDau: `${slot.start}:00`,
+              gioKetThuc: `${slot.end}:00`,
+            })),
+          };
+          requests.push(api.post("/LichRanh/dang-ky", payload));
+        }
       }
-    }
+    });
 
     try {
-      // Chạy toàn bộ các request tạo lịch rảnh
-      const responses = await Promise.all(requests);
-      const hasError = responses.some((res) => !res.ok);
-
-      if (hasError) {
-        alert(
-          "Có lỗi xảy ra hoặc trùng lặp với lịch cũ. Vui lòng kiểm tra lại!",
-        );
-      } else {
-        alert("Lưu lịch thành công!");
-        setAvailability({}); // Xóa nháp
-        fetchMySchedule(); // Load lại lịch từ server
-      }
-    } catch (error) {
-      console.error("Lỗi khi lưu:", error);
-      alert("Lỗi kết nối máy chủ");
+      await Promise.all(requests);
+      setToast({
+        open: true,
+        message: "Lưu lịch thành công!",
+        severity: "success",
+      });
+      setSelectedDates([]);
+      setDateSlots({});
+      fetchMySchedule();
+    } catch (error: any) {
+      setToast({
+        open: true,
+        message:
+          error.response?.data?.message ||
+          "Có lỗi xảy ra, vui lòng kiểm tra lại!",
+        severity: "error",
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
-  // ==========================================
-  // LOGIC XỬ LÝ FORM TẠO LỊCH (DRAFT)
-  // ==========================================
+  const handleSaveSchedule = () => {
+    if (Object.keys(dateSlots).length === 0) return;
+    setOpenConfirm(true);
+  };
+
   const allHours = Array.from({ length: 25 }, (_, i) => {
     const hour = i < 10 ? `0${i}` : `${i}`;
     return `${hour}:00`;
   });
-
-  const dateKey = activeDate ? format(activeDate, "yyyy-MM-dd") : "";
-  const currentDaySlots = availability[dateKey] || [];
-
-  const addSlot = () => {
-    if (currentDaySlots.length >= 2) return;
-    const defaultStart = currentDaySlots.length === 0 ? "08:00" : "14:00";
-    const defaultEnd = currentDaySlots.length === 0 ? "12:00" : "18:00";
-    setAvailability({
-      ...availability,
-      [dateKey]: [...currentDaySlots, { start: defaultStart, end: defaultEnd }],
-    });
-  };
-
-  const updateSlot = (index: number, field: keyof TimeRange, value: string) => {
-    const updatedSlots = [...currentDaySlots];
-    updatedSlots[index] = { ...updatedSlots[index], [field]: value };
-
-    if (field === "start") {
-      const startMin = toMinutes(value);
-      const endMin = toMinutes(updatedSlots[index].end);
-      if (endMin - startMin < 240) {
-        const newEndMin = startMin + 240;
-        if (newEndMin <= 1440) {
-          const h = Math.floor(newEndMin / 60);
-          updatedSlots[index].end = `${h < 10 ? `0${h}` : h}:00`;
-        }
-      }
-    }
-    setAvailability({ ...availability, [dateKey]: updatedSlots });
-  };
-
-  const removeSlot = (index: number) => {
-    const updatedSlots = currentDaySlots.filter((_, i) => i !== index);
-    const newAvail = { ...availability };
-    updatedSlots.length === 0
-      ? delete newAvail[dateKey]
-      : (newAvail[dateKey] = updatedSlots);
-    setAvailability(newAvail);
-  };
 
   const toMinutes = (time: string) => {
     const [h, m] = time.split(":").map(Number);
     return h * 60 + (m || 0);
   };
 
-  const isOverlapping = () => {
-    if (currentDaySlots.length < 2) return false;
-    const s1 = toMinutes(currentDaySlots[0].start),
-      e1 = toMinutes(currentDaySlots[0].end);
-    const s2 = toMinutes(currentDaySlots[1].start),
-      e2 = toMinutes(currentDaySlots[1].end);
+  const addSlot = (dateKey: string) => {
+    setDateSlots((prev) => {
+      const currentSlots = [...(prev[dateKey] ?? [])];
+
+      if (currentSlots.length >= 2) return prev;
+
+      let startMin = 8 * 60; // mặc định 08:00
+
+      if (currentSlots.length > 0) {
+        const prevEnd = currentSlots[0]?.end;
+        if (prevEnd) {
+          const prevEndMin = toMinutes(prevEnd);
+          startMin = Math.min(prevEndMin, 20 * 60);
+        }
+      }
+
+      const hStart = Math.floor(startMin / 60);
+      const defaultStart = `${hStart < 10 ? `0${hStart}` : hStart}:00`;
+
+      const newEndMin = Math.min(startMin + 240, 24 * 60);
+      const hEnd = Math.floor(newEndMin / 60);
+      const defaultEnd = `${hEnd < 10 ? `0${hEnd}` : hEnd}:00`;
+
+      currentSlots.push({
+        start: defaultStart,
+        end: defaultEnd,
+      });
+
+      return {
+        ...prev,
+        [dateKey]: currentSlots,
+      };
+    });
+  };
+
+  const updateSlot = (
+    dateKey: string,
+    index: number,
+    field: keyof TimeRange,
+    value: string,
+  ) => {
+    setDateSlots((prev) => {
+      const currentSlots = [...(prev[dateKey] ?? [])];
+      const slot = currentSlots[index];
+
+      if (!slot) return prev;
+
+      const updatedSlot: TimeRange = {
+        ...slot,
+        [field]: value,
+      };
+
+      if (field === "start") {
+        const startMin = toMinutes(value);
+        const endMin = toMinutes(updatedSlot.end);
+
+        if (endMin - startMin < 240) {
+          const newEndMin = Math.min(startMin + 240, 1440);
+          const h = Math.floor(newEndMin / 60);
+          updatedSlot.end = `${h < 10 ? `0${h}` : h}:00`;
+        }
+      }
+
+      currentSlots[index] = updatedSlot;
+
+      return {
+        ...prev,
+        [dateKey]: currentSlots,
+      };
+    });
+  };
+
+  const removeSlot = (dateKey: string, index: number) => {
+    const currentSlots = dateSlots[dateKey].filter((_, i) => i !== index);
+    setDateSlots({ ...dateSlots, [dateKey]: currentSlots });
+  };
+
+  const isOverlapping = (dateKey: string) => {
+    const slots = dateSlots[dateKey] || [];
+    if (slots.length < 2) return false;
+    const s1 = toMinutes(slots[0].start),
+      e1 = toMinutes(slots[0].end);
+    const s2 = toMinutes(slots[1].start),
+      e2 = toMinutes(slots[1].end);
     return s1 < e2 && s2 < e1;
   };
 
+  const hasAnyOverlap = Object.keys(dateSlots).some((key) =>
+    isOverlapping(key),
+  );
+
+  // ==========================================
+  // LOGIC KIỂM TRA CÓ CA MỚI ĐỂ LƯU HAY KHÔNG
+  // ==========================================
+  const hasNewChanges = Object.values(dateSlots).some((slots) =>
+    slots.some((slot) => !slot.isSaved),
+  );
+
   if (!isMounted) return null;
 
-  const overlapError = isOverlapping();
-  // Khóa nút lưu nếu đang lỗi trùng, đang save, hoặc chưa có nháp nào
+  const selectedKeys = Object.keys(dateSlots).sort();
+
+  // Nút lưu bị Disable nếu: Lồng giờ | Đang lưu | Không chọn ngày | KHÔNG CÓ THAY ĐỔI MỚI
   const isSaveDisabled =
-    overlapError || isSaving || Object.keys(availability).length === 0;
+    hasAnyOverlap || isSaving || selectedKeys.length === 0 || !hasNewChanges;
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f1f5f9", py: 6 }}>
-      <Container sx={{ maxWidth: "900px !important", px: { xs: 2, md: 4 } }}>
-        {/* ================= PHẦN TRÊN: TẠO LỊCH MỚI ================= */}
+      <Container sx={{ maxWidth: "1000px !important", px: { xs: 2, md: 4 } }}>
         <Box sx={{ mb: 5, display: "flex", flexDirection: "column", gap: 1 }}>
           <Typography
             sx={{ fontSize: "2rem", fontWeight: 700, color: "#0f172a" }}
           >
-            Thiết lập lịch rảnh mới
+            Đăng ký lịch rảnh
+          </Typography>
+          <Typography sx={{ color: "#64748b" }}>
+            Chọn nhiều ngày và thiết lập thời gian làm việc riêng biệt cho từng
+            ngày. Những ngày viền cam là ngày bạn có thể bổ sung thêm ca.
           </Typography>
         </Box>
 
@@ -244,154 +346,247 @@ export default function HelperAvailability() {
             gap: { xs: 4, md: 0 },
           }}
         >
-          <Grid sx={{ width: { xs: "100%", md: "50%" }, pr: { md: 2 } }}>
-            <Paper
-              sx={{
-                p: 2,
-                borderRadius: "24px",
-                bgcolor: "white",
-                display: "flex",
-                justifyContent: "center",
-                border: "1px solid #e2e8f0",
-                boxShadow: "none",
-                "& .rdp-day_selected": {
-                  bgcolor: "#0ea5e9 !important",
-                  borderRadius: "8px",
-                },
-              }}
-            >
-              <DayPicker
-                mode="single"
-                selected={activeDate}
-                onSelect={setActiveDate}
-                locale={vi}
-                disabled={{ before: new Date() }}
-              />
-            </Paper>
-          </Grid>
-
-          <Grid sx={{ width: { xs: "100%", md: "50%" }, pl: { md: 2 } }}>
-            <Stack sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <Box
+          <Grid sx={{ width: { xs: "100%", md: "40%" }, pr: { md: 2 } }}>
+            <Box sx={{ position: "sticky", top: 20 }}>
+              <Paper
                 sx={{
                   p: 2,
-                  bgcolor: "#f0f9ff",
-                  borderRadius: "16px",
-                  border: "1px solid #bae6fd",
+                  borderRadius: "24px",
+                  bgcolor: "white",
                   display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
+                  justifyContent: "center",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "none",
+                  "& .rdp-day_selected": {
+                    bgcolor: "#0ea5e9 !important",
+                    borderRadius: "8px",
+                    color: "white",
+                  },
                 }}
               >
-                <Typography sx={{ fontWeight: 700, color: "#0369a1" }}>
-                  Ngày: {activeDate ? format(activeDate, "dd/MM/yyyy") : "---"}
-                </Typography>
-              </Box>
+                <DayPicker
+                  mode="multiple"
+                  selected={selectedDates}
+                  onSelect={handleSelectDates}
+                  locale={vi}
+                  disabled={disabledDates}
+                  modifiers={{ hasOneShift: partialDays }}
+                  modifiersStyles={{
+                    hasOneShift: {
+                      border: "2px dashed #f59e0b",
+                      color: "#d97706",
+                      fontWeight: "bold",
+                      borderRadius: "8px",
+                    },
+                  }}
+                />
+              </Paper>
+            </Box>
+          </Grid>
 
-              {overlapError && (
-                <Typography
+          <Grid sx={{ width: { xs: "100%", md: "60%" }, pl: { md: 2 } }}>
+            <Stack sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {selectedKeys.length === 0 ? (
+                <Box
                   sx={{
-                    color: "#e11d48",
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
+                    p: 4,
                     textAlign: "center",
-                    bgcolor: "#fff1f2",
-                    p: 1,
-                    borderRadius: "8px",
-                    border: "1px solid #fca5a5",
+                    border: "2px dashed #cbd5e1",
+                    borderRadius: "20px",
+                    color: "#94a3b8",
                   }}
                 >
-                  Các khung giờ đang bị trùng lặp!
-                </Typography>
-              )}
-
-              {currentDaySlots.map((slot, index) => {
-                const filteredEndHours = allHours.filter(
-                  (h) => toMinutes(h) >= toMinutes(slot.start) + 240,
-                );
-                return (
-                  <Card
-                    key={index}
-                    sx={{
-                      p: 2.5,
-                      borderRadius: "20px",
-                      border: "2px solid",
-                      borderColor: overlapError ? "#fca5a5" : "#e2e8f0",
-                      boxShadow: "none",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel sx={{ fontWeight: 600 }}>
-                          Bắt đầu
-                        </InputLabel>
-                        <Select
-                          value={slot.start}
-                          label="Bắt đầu"
-                          onChange={(e: SelectChangeEvent) =>
-                            updateSlot(index, "start", e.target.value)
-                          }
-                          sx={{ borderRadius: "12px" }}
-                        >
-                          {allHours.slice(0, 21).map((h) => (
-                            <MenuItem key={h} value={h}>
-                              {h}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel sx={{ fontWeight: 600 }}>
-                          Kết thúc
-                        </InputLabel>
-                        <Select
-                          value={slot.end}
-                          label="Kết thúc"
-                          onChange={(e: SelectChangeEvent) =>
-                            updateSlot(index, "end", e.target.value)
-                          }
-                          sx={{ borderRadius: "12px" }}
-                        >
-                          {filteredEndHours.map((h) => (
-                            <MenuItem key={h} value={h}>
-                              {h}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <IconButton
-                        onClick={() => removeSlot(index)}
+                  Vui lòng chọn ngày trên lịch để thiết lập thời gian.
+                </Box>
+              ) : (
+                selectedKeys.map((dateKey) => {
+                  const slotsForDate = dateSlots[dateKey];
+                  const hasOverlap = isOverlapping(dateKey);
+                  return (
+                    <Paper
+                      key={dateKey}
+                      sx={{
+                        p: 3,
+                        borderRadius: "20px",
+                        border: "1px solid",
+                        borderColor: hasOverlap ? "#fca5a5" : "#e2e8f0",
+                        bgcolor: hasOverlap ? "#fff1f2" : "white",
+                      }}
+                    >
+                      <Box
                         sx={{
-                          bgcolor: "#fff1f2",
-                          color: "#e11d48",
-                          borderRadius: "10px",
-                          "&:hover": { bgcolor: "#ffe4e6" },
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          mb: 2,
                         }}
                       >
-                        <DeleteOutlineIcon />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                );
-              })}
+                        <Typography
+                          sx={{
+                            fontWeight: 700,
+                            color: "#0369a1",
+                            fontSize: "1.1rem",
+                          }}
+                        >
+                          Ngày {format(new Date(dateKey), "dd/MM/yyyy")}
+                          {existingSchedule[dateKey] && (
+                            <Typography
+                              component="span"
+                              sx={{
+                                color: "#f59e0b",
+                                ml: 1,
+                                fontSize: "0.85rem",
+                              }}
+                            >
+                              (Bổ sung ca làm việc)
+                            </Typography>
+                          )}
+                        </Typography>
+                        {hasOverlap && (
+                          <Typography
+                            sx={{
+                              color: "#e11d48",
+                              fontSize: "0.85rem",
+                              fontWeight: 700,
+                            }}
+                          >
+                            Lỗi lồng giờ!
+                          </Typography>
+                        )}
+                      </Box>
 
-              {currentDaySlots.length < 2 && activeDate && (
-                <Button
-                  onClick={addSlot}
-                  sx={{
-                    py: 1.5,
-                    borderRadius: "16px",
-                    border: "2px dashed #bae6fd",
-                    textTransform: "none",
-                    fontWeight: 700,
-                    color: "#0ea5e9",
-                    "&:hover": { borderColor: "#0ea5e9", bgcolor: "#f0f9ff" },
-                  }}
-                >
-                  + Thêm khung giờ rảnh
-                </Button>
+                      <Stack sx={{ gap: 2 }}>
+                        {slotsForDate.map((slot, index) => {
+                          const filteredEndHours = allHours.filter(
+                            (h) => toMinutes(h) >= toMinutes(slot.start) + 240,
+                          );
+                          return (
+                            <Box
+                              key={index}
+                              sx={{
+                                display: "flex",
+                                gap: 2,
+                                alignItems: "center",
+                              }}
+                            >
+                              <FormControl
+                                sx={{ flex: 1 }}
+                                size="small"
+                                disabled={slot.isSaved}
+                              >
+                                <InputLabel>Bắt đầu</InputLabel>
+                                <Select
+                                  value={slot.start}
+                                  label="Bắt đầu"
+                                  onChange={(e) =>
+                                    updateSlot(
+                                      dateKey,
+                                      index,
+                                      "start",
+                                      e.target.value,
+                                    )
+                                  }
+                                  sx={{
+                                    borderRadius: "12px",
+                                    bgcolor: slot.isSaved ? "#f8fafc" : "#fff",
+                                  }}
+                                >
+                                  {allHours.slice(0, 21).map((h) => (
+                                    <MenuItem key={h} value={h}>
+                                      {h}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                              <FormControl
+                                sx={{ flex: 1 }}
+                                size="small"
+                                disabled={slot.isSaved}
+                              >
+                                <InputLabel>Kết thúc</InputLabel>
+                                <Select
+                                  value={slot.end}
+                                  label="Kết thúc"
+                                  onChange={(e) =>
+                                    updateSlot(
+                                      dateKey,
+                                      index,
+                                      "end",
+                                      e.target.value,
+                                    )
+                                  }
+                                  sx={{
+                                    borderRadius: "12px",
+                                    bgcolor: slot.isSaved ? "#f8fafc" : "#fff",
+                                  }}
+                                >
+                                  {filteredEndHours.map((h) => (
+                                    <MenuItem key={h} value={h}>
+                                      {h}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                              {slot.isSaved ? (
+                                <Box
+                                  sx={{
+                                    width: 40,
+                                    display: "flex",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      color: "#059669",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    Đã lưu
+                                  </Typography>
+                                </Box>
+                              ) : (
+                                <IconButton
+                                  onClick={() => removeSlot(dateKey, index)}
+                                  sx={{
+                                    bgcolor: "#f1f5f9",
+                                    color: "#64748b",
+                                    borderRadius: "10px",
+                                    "&:hover": {
+                                      bgcolor: "#ffe4e6",
+                                      color: "#e11d48",
+                                    },
+                                  }}
+                                >
+                                  <DeleteOutlineIcon />
+                                </IconButton>
+                              )}
+                            </Box>
+                          );
+                        })}
+                        {slotsForDate.length < 2 && (
+                          <Button
+                            onClick={() => addSlot(dateKey)}
+                            sx={{
+                              py: 1,
+                              borderRadius: "12px",
+                              border: "1px dashed #bae6fd",
+                              textTransform: "none",
+                              fontWeight: 600,
+                              color: "#0ea5e9",
+                              "&:hover": {
+                                borderColor: "#0ea5e9",
+                                bgcolor: "#f0f9ff",
+                              },
+                            }}
+                          >
+                            + Thêm ca
+                          </Button>
+                        )}
+                      </Stack>
+                    </Paper>
+                  );
+                })
               )}
             </Stack>
           </Grid>
@@ -409,9 +604,7 @@ export default function HelperAvailability() {
             borderRadius: "16px",
             fontSize: "1.1rem",
             textTransform: "none",
-            boxShadow: "none",
             "&:hover": { bgcolor: isSaveDisabled ? "#cbd5e1" : "#0284c7" },
-            transition: "all 0.2s",
           }}
         >
           {isSaving ? (
@@ -423,7 +616,6 @@ export default function HelperAvailability() {
 
         <Divider sx={{ my: 6, borderColor: "#e2e8f0" }} />
 
-        {/* ================= PHẦN DƯỚI: DANH SÁCH LỊCH TỪ SERVER ================= */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <EventAvailableIcon sx={{ color: "#10b981", fontSize: "2.2rem" }} />
@@ -457,89 +649,135 @@ export default function HelperAvailability() {
               ) : (
                 Object.keys(existingSchedule)
                   .sort()
-                  .map((dateStr) => (
-                    <Grid
-                      key={dateStr}
-                      sx={{ width: { xs: "100%", sm: "calc(50% - 8px)" } }}
-                    >
-                      <Card
-                        sx={{
-                          p: 2.5,
-                          borderRadius: "20px",
-                          border: "1px solid #e2e8f0",
-                          boxShadow: "none",
-                          bgcolor: "white",
-                        }}
+                  .map((dateStr) => {
+                    const schedule = existingSchedule[dateStr];
+                    return (
+                      <Grid
+                        key={dateStr}
+                        sx={{ width: { xs: "100%", sm: "calc(50% - 8px)" } }}
                       >
-                        <Typography
+                        <Card
                           sx={{
-                            fontWeight: 700,
-                            color: "#10b981",
-                            mb: 2,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
+                            p: 2.5,
+                            borderRadius: "20px",
+                            border: "1px solid #e2e8f0",
+                            boxShadow: "none",
+                            bgcolor: "white",
                           }}
                         >
-                          <Box
-                            component="span" // <--- THÊM DÒNG NÀY VÀO
+                          <Typography
                             sx={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              bgcolor: "#10b981",
+                              fontWeight: 700,
+                              color: "#10b981",
+                              mb: 2,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
                             }}
-                          />
-                          {format(new Date(dateStr), "dd/MM/yyyy")}
-                        </Typography>
-                        <Stack
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 1,
-                          }}
-                        >
-                          {existingSchedule[dateStr].map((slot, idx) => (
+                          >
                             <Box
-                              key={slot.maLichRanh}
+                              component="span"
                               sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                p: 1.5,
-                                bgcolor: "#f8fafc",
-                                borderRadius: "12px",
-                                border: "1px solid #f1f5f9",
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                bgcolor: "#10b981",
                               }}
-                            >
-                              <Typography
+                            />
+                            {format(new Date(dateStr), "dd/MM/yyyy")}
+                          </Typography>
+                          <Stack
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 1,
+                            }}
+                          >
+                            {schedule.chiTietCaLam.map((slot, index) => (
+                              <Box
+                                key={index}
                                 sx={{
-                                  fontWeight: 700,
-                                  fontSize: "0.95rem",
-                                  color: "#334155",
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  p: 1.5,
+                                  bgcolor: "#f8fafc",
+                                  borderRadius: "12px",
+                                  border: "1px solid #f1f5f9",
                                 }}
                               >
-                                {slot.gioBatDau.substring(0, 5)} —{" "}
-                                {slot.gioKetThuc.substring(0, 5)}
-                              </Typography>
-                              <Typography
-                                sx={{
-                                  fontSize: "0.75rem",
-                                  color: "#059669",
-                                  fontWeight: 700,
-                                }}
-                              >
-                                Đã lưu
-                              </Typography>
-                            </Box>
-                          ))}
-                        </Stack>
-                      </Card>
-                    </Grid>
-                  ))
+                                <Typography
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: "0.95rem",
+                                    color: "#334155",
+                                  }}
+                                >
+                                  {slot.gioBatDau.substring(0, 5)} —{" "}
+                                  {slot.gioKetThuc.substring(0, 5)}
+                                </Typography>
+                                <Typography
+                                  sx={{
+                                    fontSize: "0.75rem",
+                                    color: "#059669",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  Đã lưu
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Card>
+                      </Grid>
+                    );
+                  })
               )}
             </Grid>
           )}
         </Box>
+
+        {/* --- Dialog & Toast components --- */}
+        <Dialog
+          open={openConfirm}
+          onClose={() => setOpenConfirm(false)}
+          slotProps={{
+            paper: {
+              sx: { borderRadius: "20px" },
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: 700 }}>
+            Xác nhận lưu lịch rảnh
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Hệ thống sẽ ghi nhận thiết lập thời gian của bạn cho các ngày đã
+              chọn. Bạn có chắc chắn không?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button
+              onClick={() => setOpenConfirm(false)}
+              sx={{ color: "#64748b" }}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={executeSave}
+              variant="contained"
+              sx={{ bgcolor: "#0ea5e9" }}
+            >
+              Đồng ý lưu
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <NotificationToast
+          open={toast.open}
+          message={toast.message}
+          severity={toast.severity}
+          onClose={() => setToast({ ...toast, open: false })}
+        />
       </Container>
     </Box>
   );

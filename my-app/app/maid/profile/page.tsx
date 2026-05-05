@@ -2,36 +2,92 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  TextField,
   Button,
-  Avatar,
-  Chip,
   OutlinedInput,
   MenuItem,
-  FormControl,
+  InputAdornment,
+  ThemeProvider,
+  createTheme,
   Select,
-  Paper,
-  Typography,
-  Box,
-  Divider,
+  FormControl,
   SelectChangeEvent,
   CircularProgress,
-  InputLabel,
+  FormHelperText,
+  Snackbar,
+  Alert,
+  Checkbox,
 } from "@mui/material";
-import Grid from "@mui/material/Grid";
-import {
-  Save,
-  ContactPhone,
-  Engineering,
-  PersonOutline,
-} from "@mui/icons-material";
 
-// Khai báo Interface cho dữ liệu Kỹ năng từ API
+// Icons Thông tin chung
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import WcIcon from "@mui/icons-material/Wc";
+import ContactPhoneOutlinedIcon from "@mui/icons-material/ContactPhoneOutlined";
+import SaveIcon from "@mui/icons-material/Save";
+import StarsIcon from "@mui/icons-material/Stars";
+
+// Icons Kỹ năng
+import CleaningServicesOutlinedIcon from "@mui/icons-material/CleaningServicesOutlined";
+import SoupKitchenOutlinedIcon from "@mui/icons-material/SoupKitchenOutlined";
+import SentimentSatisfiedAltOutlinedIcon from "@mui/icons-material/SentimentSatisfiedAltOutlined";
+import ElderlyOutlinedIcon from "@mui/icons-material/ElderlyOutlined";
+import IronOutlinedIcon from "@mui/icons-material/IronOutlined";
+import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
+
+import api from "@/services/api";
+
+// Map Icon cho các kỹ năng từ DB
+const ICON_MAP: Record<string, React.ReactNode> = {
+  cleaning: <CleaningServicesOutlinedIcon />,
+  cooking: <SoupKitchenOutlinedIcon />,
+  childcare: <SentimentSatisfiedAltOutlinedIcon />,
+  eldercare: <ElderlyOutlinedIcon />,
+  laundry: <IronOutlinedIcon />,
+  other: <MoreHorizOutlinedIcon />,
+};
+
+// Cấu hình Theme
+const theme = createTheme({
+  palette: {
+    primary: { main: "#047857" },
+    error: { main: "#d32f2f" },
+  },
+  typography: { fontFamily: "inherit" },
+  components: {
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#f8faf9",
+          borderRadius: "0.5rem",
+          "& fieldset": { borderColor: "#e5e7eb" },
+          "&:hover fieldset": { borderColor: "#047857" },
+          "&.Mui-focused fieldset": {
+            borderColor: "#047857",
+            borderWidth: "1px",
+          },
+          "&.Mui-disabled": {
+            backgroundColor: "#f3f4f6",
+            "& fieldset": { borderColor: "transparent" },
+          },
+        },
+      },
+    },
+  },
+});
+
 interface SkillItem {
   id: string;
   title: string;
   desc?: string;
   iconKey?: string;
+}
+
+// Cập nhật lại Interface theo Backend mới
+interface SelectedSkill {
+  maKyNang: string;
+  kinhNghiem: string;
 }
 
 interface WorkerProfile {
@@ -41,20 +97,17 @@ interface WorkerProfile {
   email: string;
   diaChi: string;
   anhChanDung: string;
-  kinhNghiem: string;
-  moTaChiTietKinhNghiem: string;
   tenNguoiThan: string;
   sdtnguoiThan: string;
-  danhSachKyNang: string[];
+  danhSachKyNang: SelectedSkill[]; // Chuyển từ mảng string sang mảng Object
 }
 
-export default function ProfileUpdate() {
+export default function ProfileUpdatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+  const BACKEND_URL = "https://localhost:7095"; // Chú ý: Đổi URL nếu server bạn khác
 
-  // Thêm state để chứa danh sách kỹ năng từ API
   const [skillsList, setSkillsList] = useState<SkillItem[]>([]);
-
   const [profile, setProfile] = useState<WorkerProfile>({
     maNguoiDung: "",
     hoTen: "",
@@ -62,138 +115,218 @@ export default function ProfileUpdate() {
     email: "",
     diaChi: "",
     anhChanDung: "",
-    kinhNghiem: "Chưa có kinh nghiệm",
-    moTaChiTietKinhNghiem: "",
     tenNguoiThan: "",
     sdtnguoiThan: "",
     danhSachKyNang: [],
   });
 
-  // Gọi đồng thời API Profile và API Skills
+  const [originalProfile, setOriginalProfile] = useState<WorkerProfile | null>(
+    null,
+  );
+
+  const [toast, setToast] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error",
+  });
+
+  // Hàm bóc tách dữ liệu kỹ năng từ chuỗi của C# trả về (Ví dụ: "Dọn dẹp nhà cửa (1 - 3 năm)")
+  const parseBackendSkills = (
+    backendSkills: any[],
+    dbSkills: SkillItem[],
+  ): SelectedSkill[] => {
+    if (!backendSkills || !Array.isArray(backendSkills)) return [];
+
+    return backendSkills
+      .map((item) => {
+        if (typeof item === "string") {
+          // Tìm xem chuỗi có khớp với kỹ năng nào trong DB không
+          const foundSkill = dbSkills.find(
+            (s) =>
+              item.toLowerCase().includes(s.title.toLowerCase()) ||
+              item.includes(s.id),
+          );
+
+          // Tách lấy kinh nghiệm nằm trong dấu ngoặc đơn (...)
+          const expMatch = item.match(/\(([^)]+)\)/);
+          const exp = expMatch ? expMatch[1].trim() : "";
+
+          return {
+            maKyNang: foundSkill?.id || "",
+            kinhNghiem: exp,
+          };
+        }
+        // Đề phòng trường hợp C# trả về thẳng object luôn
+        return {
+          maKyNang: item.maKyNang || item.id,
+          kinhNghiem: item.kinhNghiem || item.experienceYears || "",
+        };
+      })
+      .filter((s) => s.maKyNang !== ""); // Lọc bỏ những kỹ năng không lấy được ID
+  };
+
+  // 1. Fetch Dữ liệu
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
-        if (!token) return;
-
-        const baseUrl = "https://localhost:7095";
-
-        const [profileRes, skillsRes] = await Promise.all([
-          fetch(`${baseUrl}/api/v1/maid/profile`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch(`${baseUrl}/api/KyNang/skills`, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-          }),
+        const [profileData, skillsData] = await Promise.all([
+          api.get<any>("/v1/maid/profile"),
+          api.get<SkillItem[]>("/KyNang/getAll"),
         ]);
 
-        if (skillsRes.ok) {
-          const skillsData: SkillItem[] = await skillsRes.json();
-          setSkillsList(skillsData);
-        }
+        if (skillsData) setSkillsList(skillsData);
+        if (profileData && skillsData) {
+          const parsedSkills = parseBackendSkills(
+            profileData.danhSachKyNang,
+            skillsData,
+          );
 
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setProfile(profileData);
+          const mappedProfile: WorkerProfile = {
+            maNguoiDung: profileData.maNguoiDung || "",
+            hoTen: profileData.hoTen || "",
+            soDienThoai: profileData.soDienThoai || "",
+            email: profileData.email || "",
+            diaChi: profileData.diaChi || "",
+            anhChanDung: profileData.anhChanDung || "",
+            tenNguoiThan: profileData.tenNguoiThan || "",
+            sdtnguoiThan: profileData.sdtnguoiThan || "",
+            danhSachKyNang: parsedSkills,
+          };
+
+          setProfile(mappedProfile);
+          setOriginalProfile(JSON.parse(JSON.stringify(mappedProfile)));
         }
-      } catch (error) {
-        console.error("Lỗi kết nối API:", error);
+      } catch (error: any) {
+        console.error("Lỗi kết nối API:", error.message);
+        setToast({
+          open: true,
+          message: "Không thể tải dữ liệu hồ sơ.",
+          severity: "error",
+        });
       } finally {
         setIsFetching(false);
       }
     };
-
     fetchAllData();
   }, []);
 
-  // --- CẬP NHẬT: Lọc chỉ cho phép nhập số cho trường sdtnguoiThan ---
+  // 2. Handlers Thông tin cơ bản
   const handleTextChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-
     if (name === "sdtnguoiThan") {
-      // Dùng regex thay thế tất cả ký tự không phải số (0-9) thành chuỗi rỗng
       const onlyNums = value.replace(/[^0-9]/g, "");
-
-      // Giới hạn tối đa 10 số (phòng hờ trường hợp người dùng copy-paste chuỗi dài)
-      if (onlyNums.length <= 10) {
+      if (onlyNums.length <= 10)
         setProfile((prev) => ({ ...prev, [name]: onlyNums }));
-      }
     } else {
       setProfile((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleSkillChange = (event: SelectChangeEvent<string[]>) => {
-    const {
-      target: { value },
-    } = event;
+  // 3. Handlers Kỹ năng & Kinh nghiệm
+  const toggleSkill = (skill: SkillItem) => {
+    setProfile((prev) => {
+      const currentSkills = prev.danhSachKyNang;
+      const exists = currentSkills.find((s) => s.maKyNang === skill.id);
+
+      if (exists) {
+        return {
+          ...prev,
+          danhSachKyNang: currentSkills.filter((s) => s.maKyNang !== skill.id),
+        };
+      } else {
+        return {
+          ...prev,
+          danhSachKyNang: [
+            ...currentSkills,
+            { maKyNang: skill.id, kinhNghiem: "" },
+          ],
+        };
+      }
+    });
+  };
+
+  const handleExperienceChange = (skillId: string, value: string) => {
     setProfile((prev) => ({
       ...prev,
-      danhSachKyNang: typeof value === "string" ? value.split(",") : value,
+      danhSachKyNang: prev.danhSachKyNang.map((s) =>
+        s.maKyNang === skillId ? { ...s, kinhNghiem: value } : s,
+      ),
     }));
   };
 
-  const handleExperienceChange = (event: SelectChangeEvent<string>) => {
-    setProfile((prev) => ({ ...prev, kinhNghiem: event.target.value }));
+  // 4. Logic Validation & Kiểm tra thay đổi
+  const isNameValid = profile.tenNguoiThan.trim() !== "";
+  const isPhoneValid = profile.sdtnguoiThan.length === 10;
+
+  // Mảng kỹ năng phải có ít nhất 3 cái VÀ tất cả đều phải chọn kinh nghiệm
+  const isSkillsLengthValid = profile.danhSachKyNang.length >= 3;
+  const isSkillsExpValid = profile.danhSachKyNang.every(
+    (s) => s.kinhNghiem && s.kinhNghiem.trim() !== "",
+  );
+  const isSkillsValid = isSkillsLengthValid && isSkillsExpValid;
+
+  const isFormValid = isNameValid && isPhoneValid && isSkillsValid;
+  const isPhoneError = profile.sdtnguoiThan.length > 0 && !isPhoneValid;
+
+  const checkChanges = () => {
+    if (!originalProfile) return false;
+
+    const currentData = {
+      ten: profile.tenNguoiThan,
+      sdt: profile.sdtnguoiThan,
+      // Sắp xếp mảng để compare chính xác không bị sai do thứ tự click
+      kyNang: [...profile.danhSachKyNang].sort((a, b) =>
+        a.maKyNang.localeCompare(b.maKyNang),
+      ),
+    };
+
+    const originalData = {
+      ten: originalProfile.tenNguoiThan,
+      sdt: originalProfile.sdtnguoiThan,
+      kyNang: [...originalProfile.danhSachKyNang].sort((a, b) =>
+        a.maKyNang.localeCompare(b.maKyNang),
+      ),
+    };
+
+    return JSON.stringify(currentData) !== JSON.stringify(originalData);
   };
 
+  const hasChanges = checkChanges();
+
+  // 5. Submit Update
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    // --- CẬP NHẬT: Kiểm tra độ dài trước khi gọi API ---
-    if (profile.sdtnguoiThan.length > 0 && profile.sdtnguoiThan.length !== 10) {
-      alert("Số điện thoại khẩn cấp phải bao gồm đúng 10 chữ số!");
-      return;
-    }
-
+    if (!isFormValid || !hasChanges) return;
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
-        return;
-      }
-
       const payload = {
         TenNguoiThan: profile.tenNguoiThan,
         SdtnguoiThan: profile.sdtnguoiThan,
-        KinhNghiem: profile.kinhNghiem,
-        MoTaChiTietKinhNghiem: profile.moTaChiTietKinhNghiem,
-        DanhSachMaKyNang: profile.danhSachKyNang.map(
-          (skill) => skill.split(" - ")[0],
-        ),
+        // Gửi DanhSachKyNang đúng chuẩn DTO mới
+        DanhSachKyNang: profile.danhSachKyNang.map((s) => ({
+          MaKyNang: s.maKyNang,
+          KinhNghiem: s.kinhNghiem,
+        })),
       };
 
-      const response = await fetch(
-        "https://localhost:7095/api/v1/maid/update-profile",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        },
-      );
+      await api.put("/v1/maid/update-profile", payload);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Lỗi cập nhật hồ sơ");
-      }
-
-      alert("Cập nhật thông tin thành công!");
+      setOriginalProfile(JSON.parse(JSON.stringify(profile)));
+      setToast({
+        open: true,
+        message: "Cập nhật hồ sơ thành công!",
+        severity: "success",
+      });
     } catch (error: any) {
       console.error(error);
-      alert(error.message);
+      setToast({
+        open: true,
+        message: error.message || "Đã xảy ra lỗi khi cập nhật hồ sơ",
+        severity: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -201,320 +334,347 @@ export default function ProfileUpdate() {
 
   if (isFetching) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <CircularProgress />
-      </Box>
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center">
+        <CircularProgress color="success" />
+        <p className="mt-4 text-emerald-700 font-bold animate-pulse">
+          Đang tải hồ sơ của bạn...
+        </p>
+      </div>
     );
   }
 
-  // Biến kiểm tra lỗi hiển thị UI cho số điện thoại
-  const isPhoneError =
-    profile.sdtnguoiThan.length > 0 && profile.sdtnguoiThan.length !== 10;
-
   return (
-    <Box sx={{ minHeight: "100vh", py: 4, px: 2 }}>
-      <Paper
-        elevation={0}
-        sx={{
-          maxWidth: 700,
-          mx: "auto",
-          borderRadius: 6,
-          overflow: "hidden",
-          border: "1px solid #eceff1",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.04)",
-        }}
-      >
-        {/* Header Section */}
-        <Box sx={{ p: 4, textAlign: "center", bgcolor: "#fff" }}>
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 700, color: "#000000", mb: 3 }}
-          >
-            HỒ SƠ CÁ NHÂN
-          </Typography>
-          <Box sx={{ position: "relative", display: "inline-block", mb: 2 }}>
-            <Avatar
-              src={profile.anhChanDung}
-              sx={{
-                width: 120,
-                height: 120,
-                border: "4px solid #fff",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-              }}
-            />
-          </Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: "#000000" }}>
-            {profile.hoTen}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Mã số: {profile.maNguoiDung}
-          </Typography>
-        </Box>
-
-        <Divider />
-
-        <form onSubmit={handleSubmit}>
-          <Box
-            sx={{
-              p: { xs: 3, md: 5 },
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-            }}
-          >
-            {/* Section 1: Thông tin cơ bản */}
-            <Box>
-              <SectionHeader
-                icon={<PersonOutline fontSize="small" />}
-                title="Thông tin cơ bản"
+    <ThemeProvider theme={theme}>
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8 flex justify-center font-sans">
+        <div className="max-w-4xl w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* HEADER PROFILE */}
+          <div className="bg-emerald-700 p-8 text-center text-white">
+            <div className="inline-block relative mb-4">
+              <img
+                src={
+                  profile.anhChanDung && profile.anhChanDung.startsWith("/")
+                    ? `${BACKEND_URL}${profile.anhChanDung}`
+                    : profile.anhChanDung || "/avatar.png"
+                }
+                alt="Avatar"
+                className="w-28 h-28 rounded-full border-4 border-white object-cover shadow-lg bg-white"
               />
-              <Grid container spacing={2}>
-                <Grid size={12}>
-                  <TextField
-                    label="Họ và tên"
-                    value={profile.hoTen}
-                    fullWidth
-                    disabled
-                    sx={disabledFieldStyle}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    label="Số điện thoại"
-                    value={profile.soDienThoai}
-                    fullWidth
-                    disabled
-                    sx={disabledFieldStyle}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    label="Email"
-                    value={profile.email}
-                    fullWidth
-                    disabled
-                    sx={disabledFieldStyle}
-                  />
-                </Grid>
-                <Grid size={12}>
-                  <TextField
-                    label="Địa chỉ thường trú"
-                    value={profile.diaChi}
-                    fullWidth
-                    disabled
-                    sx={disabledFieldStyle}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
+            </div>
+            <h1 className="text-3xl font-bold">{profile.hoTen}</h1>
+            <p className="text-emerald-100 mt-1 font-medium">
+              Mã nhân viên: {profile.maNguoiDung}
+            </p>
+          </div>
 
-            {/* Section 2: Kỹ năng & Kinh nghiệm */}
-            <Box>
-              <SectionHeader
-                icon={<Engineering fontSize="small" />}
-                title="Kỹ năng & Chuyên môn"
-              />
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <FormControl fullWidth>
-                  <Typography
-                    variant="caption"
-                    sx={{ mb: 1, fontWeight: 600, color: "#667085" }}
-                  >
-                    CÁC KỸ NĂNG CỦA BẠN
-                  </Typography>
-                  <Select
-                    multiple
-                    name="danhSachKyNang"
-                    value={profile.danhSachKyNang}
-                    onChange={handleSkillChange}
-                    input={<OutlinedInput sx={{ borderRadius: 3 }} />}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip
-                            key={value}
-                            label={value.split(" - ")[1] || value}
-                            size="small"
-                            sx={{
-                              borderRadius: 1.5,
-                              bgcolor: "#E3F2FD",
-                              color: "#0D47A1",
-                              fontWeight: 500,
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    )}
-                  >
-                    {skillsList.map((skill) => {
-                      const skillString = `${skill.id} - ${skill.title}`;
-                      return (
-                        <MenuItem key={skill.id} value={skillString}>
-                          {skillString}
-                        </MenuItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
-
-                <FormControl fullWidth sx={inputFieldStyle}>
-                  <InputLabel id="kinh-nghiem-label">
-                    Thời gian kinh nghiệm
-                  </InputLabel>
-                  <Select
-                    labelId="kinh-nghiem-label"
-                    id="kinh-nghiem-select"
-                    name="kinhNghiem"
-                    value={profile.kinhNghiem}
-                    label="Thời gian kinh nghiệm"
-                    onChange={handleExperienceChange}
-                    displayEmpty
-                  >
-                    <MenuItem value="Chưa có kinh nghiệm">
-                      Chưa có kinh nghiệm
-                    </MenuItem>
-                    <MenuItem value="Dưới 1 năm">Dưới 1 năm</MenuItem>
-                    <MenuItem value="1 - 3 năm">1 - 3 năm</MenuItem>
-                    <MenuItem value="3 - 5 năm">3 - 5 năm</MenuItem>
-                    <MenuItem value="Trên 5 năm">Trên 5 năm</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <TextField
-                  label="Mô tả chi tiết kinh nghiệm"
-                  name="moTaChiTietKinhNghiem"
-                  value={profile.moTaChiTietKinhNghiem}
-                  onChange={handleTextChange}
-                  multiline
-                  rows={4}
-                  fullWidth
-                  placeholder="Mô tả chi tiết các công việc bạn từng làm..."
-                  sx={inputFieldStyle}
+          <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-12">
+            {/* SECTION 1: THÔNG TIN CƠ BẢN (CHỈ ĐỌC) */}
+            <section>
+              <div className="flex items-center gap-2 mb-6 border-b pb-3">
+                <PersonOutlineIcon
+                  className="text-emerald-700"
+                  fontSize="large"
                 />
-              </Box>
-            </Box>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Thông tin cơ bản
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 pointer-events-none">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Họ và tên
+                  </label>
+                  <OutlinedInput
+                    fullWidth
+                    disabled
+                    value={profile.hoTen}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <PersonOutlineIcon />
+                      </InputAdornment>
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Số điện thoại
+                  </label>
+                  <OutlinedInput
+                    fullWidth
+                    disabled
+                    value={profile.soDienThoai}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <PhoneOutlinedIcon />
+                      </InputAdornment>
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <OutlinedInput
+                    fullWidth
+                    disabled
+                    value={profile.email}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <EmailOutlinedIcon />
+                      </InputAdornment>
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Địa chỉ
+                  </label>
+                  <OutlinedInput
+                    fullWidth
+                    disabled
+                    value={profile.diaChi}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <LocationOnOutlinedIcon />
+                      </InputAdornment>
+                    }
+                  />
+                </div>
+              </div>
+            </section>
 
-            {/* Section 3: Liên hệ khẩn cấp */}
-            <Box>
-              <SectionHeader
-                icon={<ContactPhone fontSize="small" />}
-                title="Liên hệ khẩn cấp"
-              />
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    label="Tên người liên hệ"
+            {/* SECTION 2: KỸ NĂNG & KINH NGHIỆM */}
+            <section>
+              <div className="flex items-center gap-2 mb-6 border-b pb-3">
+                <StarsIcon className="text-emerald-700" fontSize="large" />
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Kỹ năng & Kinh nghiệm
+                </h2>
+              </div>
+              <div className="mb-8">
+                <label className="block text-sm font-semibold text-gray-700 mb-4">
+                  Chọn ít nhất 3 kỹ năng và cập nhật kinh nghiệm{" "}
+                  <span className="text-red-500">*</span>
+                </label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {skillsList.map((skill) => {
+                    const selectedSkillData = profile.danhSachKyNang.find(
+                      (s) => s.maKyNang === skill.id,
+                    );
+                    const isSelected = !!selectedSkillData;
+                    const isMissingExp =
+                      isSelected && !selectedSkillData.kinhNghiem;
+
+                    return (
+                      <div
+                        key={skill.id}
+                        className={`relative rounded-xl transition-all duration-200 border-2 ${
+                          isSelected
+                            ? "border-emerald-700 bg-white shadow-sm"
+                            : !isSkillsValid &&
+                                profile.danhSachKyNang.length > 0
+                              ? "border-red-200 bg-red-50 hover:bg-red-100"
+                              : "border-transparent bg-[#f8faf9] hover:bg-gray-100"
+                        }`}
+                      >
+                        {/* VÙNG CLICK CHỌN KỸ NĂNG */}
+                        <div
+                          onClick={() => toggleSkill(skill)}
+                          className="flex items-start gap-4 p-4 cursor-pointer"
+                        >
+                          <div
+                            className={`mt-1 p-2 rounded-lg ${isSelected ? "text-emerald-700" : "text-gray-500 bg-white"}`}
+                          >
+                            {ICON_MAP[skill.iconKey || "other"] || (
+                              <MoreHorizOutlinedIcon />
+                            )}
+                          </div>
+                          <div className="flex-1 pr-8">
+                            <h4
+                              className={`font-bold mb-1 ${isSelected ? "text-emerald-900" : "text-gray-800"}`}
+                            >
+                              {skill.title}
+                            </h4>
+                            <p className="text-sm text-gray-500 leading-snug">
+                              {skill.desc || "Cung cấp dịch vụ chuyên nghiệp"}
+                            </p>
+                          </div>
+                          <Checkbox
+                            checked={isSelected}
+                            className="absolute top-4 right-4 p-0 pointer-events-none"
+                            color="success"
+                          />
+                        </div>
+
+                        {/* VÙNG CHỌN KINH NGHIỆM */}
+                        {isSelected && (
+                          <div className="px-4 pb-4 pl-[4.5rem]">
+                            <FormControl
+                              fullWidth
+                              size="small"
+                              error={isMissingExp}
+                            >
+                              <Select
+                                value={selectedSkillData.kinhNghiem}
+                                onChange={(e) =>
+                                  handleExperienceChange(
+                                    skill.id,
+                                    e.target.value,
+                                  )
+                                }
+                                displayEmpty
+                                className="bg-white"
+                              >
+                                <MenuItem value="" disabled>
+                                  <span className="text-gray-400">
+                                    Chọn số năm kinh nghiệm
+                                  </span>
+                                </MenuItem>
+                                <MenuItem value="Chưa có kinh nghiệm">
+                                  Chưa có kinh nghiệm
+                                </MenuItem>
+                                <MenuItem value="Dưới 1 năm">
+                                  Dưới 1 năm
+                                </MenuItem>
+                                <MenuItem value="1 - 3 năm">1 - 3 năm</MenuItem>
+                                <MenuItem value="3 - 5 năm">3 - 5 năm</MenuItem>
+                                <MenuItem value="Trên 5 năm">
+                                  Trên 5 năm
+                                </MenuItem>
+                              </Select>
+                              {isMissingExp && (
+                                <FormHelperText>
+                                  Vui lòng chọn số năm kinh nghiệm
+                                </FormHelperText>
+                              )}
+                            </FormControl>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* HIỂN THỊ LỖI CHUNG */}
+                {!isSkillsLengthValid && profile.danhSachKyNang.length > 0 && (
+                  <p className="text-red-500 text-sm font-medium mt-3">
+                    Vui lòng chọn thêm kỹ năng (cần ít nhất 3).
+                  </p>
+                )}
+                {isSkillsLengthValid && !isSkillsExpValid && (
+                  <p className="text-red-500 text-sm font-medium mt-3">
+                    Vui lòng cung cấp kinh nghiệm cho tất cả các kỹ năng đã
+                    chọn.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* SECTION 3: LIÊN HỆ KHẨN CẤP */}
+            <section>
+              <div className="flex items-center gap-2 mb-6 border-b pb-3">
+                <ContactPhoneOutlinedIcon
+                  className="text-emerald-700"
+                  fontSize="large"
+                />
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Liên hệ khẩn cấp
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tên người thân <span className="text-red-500">*</span>
+                  </label>
+                  <OutlinedInput
+                    fullWidth
+                    required
                     name="tenNguoiThan"
                     value={profile.tenNguoiThan}
                     onChange={handleTextChange}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <WcIcon className="text-gray-500" />
+                      </InputAdornment>
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Số điện thoại người thân{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <OutlinedInput
                     fullWidth
                     required
-                    sx={inputFieldStyle}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  {/* --- CẬP NHẬT: Thêm inputProps và error handling --- */}
-                  <TextField
-                    label="SĐT khẩn cấp"
                     name="sdtnguoiThan"
                     value={profile.sdtnguoiThan}
                     onChange={handleTextChange}
-                    fullWidth
-                    required
-                    sx={inputFieldStyle}
-                    // Thay inputProps bằng slotProps.htmlInput
-                    slotProps={{
-                      htmlInput: {
-                        maxLength: 10,
-                        inputMode: "numeric" as const,
-                      },
-                    }}
                     error={isPhoneError}
-                    helperText={isPhoneError ? "Vui lòng nhập đủ 10 số" : ""}
+                    inputProps={{ maxLength: 10, inputMode: "numeric" }}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <PhoneOutlinedIcon
+                          className={
+                            isPhoneError ? "text-red-500" : "text-emerald-600"
+                          }
+                        />
+                      </InputAdornment>
+                    }
                   />
-                </Grid>
-              </Grid>
-            </Box>
+                  {isPhoneError && (
+                    <FormHelperText error>
+                      Vui lòng nhập đủ 10 số
+                    </FormHelperText>
+                  )}
+                </div>
+              </div>
+            </section>
 
-            {/* Action Button */}
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              disabled={isLoading || isPhoneError} // Chặn bấm nếu SĐT đang bị lỗi
-              startIcon={
-                isLoading ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  <Save />
-                )
-              }
-              sx={{
-                py: 1.5,
-                borderRadius: 3,
-                textTransform: "none",
-                fontSize: "1rem",
-                fontWeight: 700,
-                bgcolor: "#007AFF",
-                boxShadow: "0 4px 12px rgba(0, 122, 255, 0.24)",
-                "&:hover": { bgcolor: "#0062cc" },
-                mt: 2,
-              }}
-            >
-              {isLoading ? "Đang cập nhật..." : "Cập nhật hồ sơ"}
-            </Button>
-          </Box>
-        </form>
-      </Paper>
-    </Box>
+            {/* ACTION BUTTON */}
+            <div className="pt-6 border-t border-gray-200 flex justify-end">
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={isLoading || !isFormValid || !hasChanges}
+                startIcon={
+                  isLoading ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    <SaveIcon />
+                  )
+                }
+                className={`px-10 py-3 rounded-xl font-bold shadow-md text-lg transition-colors ${
+                  isLoading || !isFormValid || !hasChanges
+                    ? "bg-gray-400"
+                    : "bg-emerald-700 hover:bg-emerald-800 text-white"
+                }`}
+              >
+                {isLoading
+                  ? "Đang lưu..."
+                  : !hasChanges
+                    ? "Chưa có thay đổi"
+                    : "Cập nhật hồ sơ"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={() => setToast({ ...toast, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setToast({ ...toast, open: false })}
+          severity={toast.severity}
+          sx={{ width: "100%" }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
+    </ThemeProvider>
   );
 }
-
-// Sub-components & Styles
-const SectionHeader = ({
-  icon,
-  title,
-}: {
-  icon: React.ReactNode;
-  title: string;
-}) => (
-  <Box sx={{ display: "flex", alignItems: "center", mb: 2, gap: 1.5 }}>
-    <Box
-      sx={{
-        display: "flex",
-        color: "#007AFF",
-        bgcolor: "#E3F2FD",
-        p: 0.8,
-        borderRadius: 2,
-      }}
-    >
-      {icon}
-    </Box>
-    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#1D2939" }}>
-      {title}
-    </Typography>
-  </Box>
-);
-
-const disabledFieldStyle = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 3,
-    bgcolor: "#F9FAFB",
-    "& fieldset": { borderColor: "#EAECF0" },
-  },
-  "& .MuiInputLabel-root": { color: "#667085" },
-};
-
-const inputFieldStyle = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 3,
-    "&:hover fieldset": { borderColor: "#007AFF" },
-  },
-};

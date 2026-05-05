@@ -3,13 +3,11 @@
 import React, { useState, useEffect } from "react";
 import {
   Button,
-  OutlinedInput,
   MenuItem,
   ThemeProvider,
   createTheme,
   Select,
   FormControl,
-  SelectChangeEvent,
   Checkbox,
   CircularProgress,
   FormHelperText,
@@ -19,7 +17,6 @@ import { useRouter } from "next/navigation";
 
 // Icons
 import StarsIcon from "@mui/icons-material/Stars";
-import WorkIcon from "@mui/icons-material/Work";
 import CleaningServicesOutlinedIcon from "@mui/icons-material/CleaningServicesOutlined";
 import SoupKitchenOutlinedIcon from "@mui/icons-material/SoupKitchenOutlined";
 import SentimentSatisfiedAltOutlinedIcon from "@mui/icons-material/SentimentSatisfiedAltOutlined";
@@ -67,8 +64,6 @@ export default function SkillsAndExperienceStep() {
   useEffect(() => {
     const fetchSkills = async () => {
       try {
-        // TỐI ƯU: Sử dụng api.get thay vì fetch thủ công
-        // apiService sẽ tự động xử lý BaseURL, Token và bắt lỗi 401
         const data = await api.get<any[]>("/KyNang/getAll");
         if (data) {
           setDbSkills(data);
@@ -85,11 +80,15 @@ export default function SkillsAndExperienceStep() {
 
   const toggleSkill = (skill: { id: string; title: string }) => {
     const currentSkills = step4_skills.selectedSkills;
-    const isAlreadySelected = currentSkills.some((s: any) => s.id === skill.id);
+    const isAlreadySelected = currentSkills.some((s) => s.id === skill.id);
 
+    // Mặc định kinh nghiệm là rỗng khi mới chọn kỹ năng
     const newSkills = isAlreadySelected
-      ? currentSkills.filter((s: any) => s.id !== skill.id)
-      : [...currentSkills, { id: skill.id, name: skill.title }];
+      ? currentSkills.filter((s) => s.id !== skill.id)
+      : [
+          ...currentSkills,
+          { id: skill.id, name: skill.title, experienceYears: "" },
+        ];
 
     updateSkills({ selectedSkills: newSkills });
 
@@ -98,18 +97,16 @@ export default function SkillsAndExperienceStep() {
     }
   };
 
-  const handleSelectChange = (e: SelectChangeEvent<string>) => {
-    updateSkills({ experienceYears: e.target.value });
+  // Hàm cập nhật riêng số năm kinh nghiệm cho từng kỹ năng
+  const updateSkillExperience = (skillId: string, years: string) => {
+    const newSkills = step4_skills.selectedSkills.map((s) =>
+      s.id === skillId ? { ...s, experienceYears: years } : s,
+    );
+    updateSkills({ selectedSkills: newSkills });
 
     if (errors.years) {
       setErrors((prev) => ({ ...prev, years: undefined }));
     }
-  };
-
-  const handleTextChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    updateSkills({ experienceDesc: e.target.value });
   };
 
   const handleNextSubmit = () => {
@@ -121,8 +118,14 @@ export default function SkillsAndExperienceStep() {
       isValid = false;
     }
 
-    if (!step4_skills.experienceYears) {
-      newErrors.years = "Vui lòng chọn số năm kinh nghiệm làm việc.";
+    // Kiểm tra xem có kỹ năng nào đã chọn mà chưa nhập kinh nghiệm không
+    const hasMissingExperience = step4_skills.selectedSkills.some(
+      (skill) => !skill.experienceYears || skill.experienceYears === "",
+    );
+
+    if (hasMissingExperience && step4_skills.selectedSkills.length > 0) {
+      newErrors.years =
+        "Vui lòng chọn đầy đủ số năm kinh nghiệm cho các kỹ năng đã chọn.";
       isValid = false;
     }
 
@@ -148,7 +151,6 @@ export default function SkillsAndExperienceStep() {
               </h2>
             </div>
 
-            {/* PHẦN 1: KỸ NĂNG CỦA BẠN */}
             <div className="mb-10">
               <div className="flex items-center gap-2 mb-6">
                 <StarsIcon className="text-emerald-700" />
@@ -165,20 +167,23 @@ export default function SkillsAndExperienceStep() {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {dbSkills.map((skill) => {
-                      const isSelected = step4_skills.selectedSkills.some(
-                        (s: any) => s.id === skill.id,
-                      );
+                      const selectedSkillData =
+                        step4_skills.selectedSkills.find(
+                          (s) => s.id === skill.id,
+                        );
+                      const isSelected = !!selectedSkillData;
                       const icon = ICON_MAP[skill.iconKey] || (
                         <MoreHorizOutlinedIcon />
                       );
+                      const isMissingExp =
+                        isSelected &&
+                        !selectedSkillData.experienceYears &&
+                        errors.years;
 
                       return (
                         <div
                           key={skill.id}
-                          onClick={() =>
-                            toggleSkill({ id: skill.id, title: skill.title })
-                          }
-                          className={`relative flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
+                          className={`relative rounded-xl transition-all duration-200 border-2 ${
                             isSelected
                               ? "border-emerald-700 bg-white shadow-sm"
                               : errors.skills
@@ -186,114 +191,113 @@ export default function SkillsAndExperienceStep() {
                                 : "border-transparent bg-[#f8faf9] hover:bg-gray-100"
                           }`}
                         >
+                          {/* Vùng Click Chọn Kỹ Năng */}
                           <div
-                            className={`mt-1 p-2 rounded-lg ${
-                              isSelected
-                                ? "text-emerald-700"
-                                : "text-gray-500 bg-white"
-                            }`}
+                            className="flex items-start gap-4 p-4 cursor-pointer"
+                            onClick={() =>
+                              toggleSkill({ id: skill.id, title: skill.title })
+                            }
                           >
-                            {icon}
-                          </div>
-
-                          <div className="flex-1 pr-8">
-                            <h4
-                              className={`font-bold mb-1 ${
+                            <div
+                              className={`mt-1 p-2 rounded-lg ${
                                 isSelected
-                                  ? "text-emerald-900"
-                                  : "text-gray-800"
+                                  ? "text-emerald-700"
+                                  : "text-gray-500 bg-white"
                               }`}
                             >
-                              {skill.title}
-                            </h4>
-                            <p className="text-sm text-gray-500 leading-snug">
-                              {skill.desc}
-                            </p>
+                              {icon}
+                            </div>
+
+                            <div className="flex-1 pr-8">
+                              <h4
+                                className={`font-bold mb-1 ${
+                                  isSelected
+                                    ? "text-emerald-900"
+                                    : "text-gray-800"
+                                }`}
+                              >
+                                {skill.title}
+                              </h4>
+                              <p className="text-sm text-gray-500 leading-snug">
+                                {skill.desc}
+                              </p>
+                            </div>
+
+                            <div className="absolute top-4 right-4 pointer-events-none">
+                              <Checkbox
+                                checked={isSelected}
+                                disableRipple
+                                className="p-0"
+                              />
+                            </div>
                           </div>
 
-                          <div className="absolute top-4 right-4 pointer-events-none">
-                            <Checkbox
-                              checked={isSelected}
-                              disableRipple
-                              className="p-0"
-                            />
-                          </div>
+                          {/* Vùng Chọn Kinh Nghiệm (Chỉ hiện khi đã chọn kỹ năng) */}
+                          {isSelected && (
+                            <div className="px-4 pb-4 pl-[4.5rem]">
+                              <FormControl
+                                fullWidth
+                                size="small"
+                                error={!!isMissingExp}
+                              >
+                                <Select
+                                  value={selectedSkillData.experienceYears}
+                                  onChange={(e) =>
+                                    updateSkillExperience(
+                                      skill.id,
+                                      e.target.value,
+                                    )
+                                  }
+                                  displayEmpty
+                                  className="bg-white"
+                                >
+                                  <MenuItem value="" disabled>
+                                    <span className="text-gray-400">
+                                      Chọn số năm kinh nghiệm
+                                    </span>
+                                  </MenuItem>
+                                  <MenuItem value="Chưa có kinh nghiệm">
+                                    Chưa có kinh nghiệm
+                                  </MenuItem>
+                                  <MenuItem value="Dưới 1 năm">
+                                    Dưới 1 năm
+                                  </MenuItem>
+                                  <MenuItem value="1 - 3 năm">
+                                    1 - 3 năm
+                                  </MenuItem>
+                                  <MenuItem value="3 - 5 năm">
+                                    3 - 5 năm
+                                  </MenuItem>
+                                  <MenuItem value="Trên 5 năm">
+                                    Trên 5 năm
+                                  </MenuItem>
+                                </Select>
+                                {isMissingExp && (
+                                  <FormHelperText>
+                                    Vui lòng chọn số năm kinh nghiệm
+                                  </FormHelperText>
+                                )}
+                              </FormControl>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
+
+                  {/* Hiển thị lỗi tổng quan */}
                   {errors.skills && (
                     <p className="text-red-500 text-sm font-medium mt-3">
                       {errors.skills}
                     </p>
                   )}
+                  {errors.years && (
+                    <p className="text-red-500 text-sm font-medium mt-3">
+                      {errors.years}
+                    </p>
+                  )}
                 </>
               )}
-            </div>
-
-            {/* PHẦN 2: KINH NGHIỆM LÀM VIỆC */}
-            <div>
-              <div className="flex items-center gap-2 mb-6">
-                <WorkIcon className="text-emerald-700" />
-                <h3 className="text-xl font-bold text-gray-800">
-                  Kinh nghiệm làm việc
-                </h3>
-              </div>
-
-              <div className="space-y-6">
-                <div className="max-w-xs">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                    Số năm kinh nghiệm <span className="text-red-500">*</span>
-                  </label>
-                  <FormControl
-                    fullWidth
-                    variant="outlined"
-                    error={!!errors.years}
-                  >
-                    <Select
-                      value={step4_skills.experienceYears}
-                      onChange={handleSelectChange}
-                      displayEmpty
-                    >
-                      <MenuItem value="" disabled>
-                        <span className="text-gray-400">
-                          Chọn số năm kinh nghiệm
-                        </span>
-                      </MenuItem>
-                      <MenuItem value="Chưa có kinh nghiệm">
-                        Chưa có kinh nghiệm
-                      </MenuItem>
-                      <MenuItem value="Dưới 1 năm">Dưới 1 năm</MenuItem>
-                      <MenuItem value="1 - 3 năm">1 - 3 năm</MenuItem>
-                      <MenuItem value="3 - 5 năm">3 - 5 năm</MenuItem>
-                      <MenuItem value="Trên 5 năm">Trên 5 năm</MenuItem>
-                    </Select>
-                    {errors.years && (
-                      <FormHelperText>{errors.years}</FormHelperText>
-                    )}
-                  </FormControl>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Mô tả chi tiết kinh nghiệm
-                    </label>
-                    <span className="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                      Không bắt buộc
-                    </span>
-                  </div>
-                  <OutlinedInput
-                    fullWidth
-                    multiline
-                    rows={4}
-                    value={step4_skills.experienceDesc}
-                    onChange={handleTextChange}
-                    placeholder="Chia sẻ về các công việc bạn đã từng làm..."
-                    className="font-medium text-gray-700 bg-[#eef2ed] rounded-lg [&>fieldset]:border-transparent hover:[&>fieldset]:border-emerald-700 focus-within:[&>fieldset]:border-emerald-700"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Actions */}
