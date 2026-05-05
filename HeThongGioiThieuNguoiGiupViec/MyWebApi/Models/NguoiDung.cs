@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MyWebApi.Models;
 
 [Table("NguoiDung")]
-[Index("Email", Name = "UQ__NguoiDun__A9D10534FC58D213", IsUnique = true)]
+[Index("Email", Name = "UQ__NguoiDun__A9D10534229D8F72", IsUnique = true)]
 public partial class NguoiDung
 {
     [Key]
@@ -62,6 +62,9 @@ public partial class NguoiDung
 
     [InverseProperty("MaNhanVienNavigation")]
     public virtual ICollection<KhieuNai> KhieuNaiMaNhanVienNavigations { get; set; } = new List<KhieuNai>();
+
+    [InverseProperty("MaNguoiGiupViecNavigation")]
+    public virtual ICollection<LichRanh> LichRanhs { get; set; } = new List<LichRanh>();
 
     [InverseProperty("MaNguoiGiupViecNavigation")]
     public virtual ICollection<NgayLamViec> NgayLamViecs { get; set; } = new List<NgayLamViec>();

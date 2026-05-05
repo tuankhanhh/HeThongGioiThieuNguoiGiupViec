@@ -28,7 +28,6 @@ public partial class HoSoNguoiGiupViec
     [StringLength(100)]
     public string? GioiTinh { get; set; }
 
-
     [StringLength(100)]
     public string? TenNguoiThan { get; set; }
 

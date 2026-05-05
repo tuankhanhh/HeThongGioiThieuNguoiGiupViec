@@ -22,4 +22,8 @@ public partial class LichRanh
 
     [InverseProperty("MaLichRanhNavigation")]
     public virtual ICollection<LichRanhCaLamViec> LichRanhCaLamViecs { get; set; } = new List<LichRanhCaLamViec>();
+
+    [ForeignKey("MaNguoiGiupViec")]
+    [InverseProperty("LichRanhs")]
+    public virtual NguoiDung MaNguoiGiupViecNavigation { get; set; } = null!;
 }

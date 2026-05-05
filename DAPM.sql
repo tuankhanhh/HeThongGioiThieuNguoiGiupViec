@@ -14,7 +14,7 @@ GO
 
 -- 1 NguoiDung
 CREATE TABLE NguoiDung(
-MaNguoiDung VARCHAR(5) PRIMARY KEY,
+MaNguoiDung CHAR(5) PRIMARY KEY,
 HoTen NVARCHAR(100),
 Email VARCHAR(100) UNIQUE,
 SoDienThoai VARCHAR(10),
@@ -29,15 +29,15 @@ NgayHetHanRefreshToken DATETIME
 
 -- 2 VaiTro
 CREATE TABLE VaiTro(
-MaVaiTro VARCHAR(5) PRIMARY KEY,
+MaVaiTro CHAR(5) PRIMARY KEY,
 TenVaiTro NVARCHAR(50),
 MoTa NVARCHAR(200)
 );
 
 -- 3 NguoiDungVaiTro (THÊM CỘT để EF tạo model)
 CREATE TABLE NguoiDungVaiTro(
-MaNguoiDung VARCHAR(5) NOT NULL,
-MaVaiTro VARCHAR(5) NOT NULL,
+MaNguoiDung CHAR(5) NOT NULL,
+MaVaiTro CHAR(5) NOT NULL,
 NgayGan DATETIME DEFAULT GETDATE(),
 PRIMARY KEY(MaNguoiDung,MaVaiTro),
 FOREIGN KEY(MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung),
@@ -46,8 +46,8 @@ FOREIGN KEY(MaVaiTro) REFERENCES VaiTro(MaVaiTro)
 
 -- 4 HoSoNguoiGiupViec
 CREATE TABLE HoSoNguoiGiupViec(
-MaHoSo VARCHAR(5) PRIMARY KEY,
-MaNguoiGiupViec VARCHAR(5) NOT NULL,
+MaHoSo CHAR(5) PRIMARY KEY,
+MaNguoiGiupViec CHAR(5) NOT NULL,
 SoCCCD VARCHAR(12),
 NgaySinh DATE,
 GioiTinh NVARCHAR(100),
@@ -73,7 +73,8 @@ GO
 CREATE TABLE LichRanh (
     MaLichRanh CHAR(5) PRIMARY KEY,
     MaNguoiGiupViec CHAR(5) NOT NULL,
-    Ngay DATE NOT NULL
+    Ngay DATE NOT NULL,
+FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 );
 GO
 
@@ -89,7 +90,7 @@ FOREIGN KEY(MaCaLamViec) REFERENCES CaLamViec(MaCaLamViec)
 
 -- 6 KyNang
 CREATE TABLE KyNang(
-MaKyNang VARCHAR(5) PRIMARY KEY,
+MaKyNang CHAR(5) PRIMARY KEY,
 TenKyNang NVARCHAR(50),
 MoTa NVARCHAR(255), 
 IconName VARCHAR(50)
@@ -97,8 +98,8 @@ IconName VARCHAR(50)
 
 -- 7 KyNangNguoiGiupViec (THÊM CỘT)
 CREATE TABLE KyNangNguoiGiupViec(
-MaKyNang VARCHAR(5) NOT NULL,
-MaHoSo VARCHAR(5) NOT NULL,
+MaKyNang CHAR(5) NOT NULL,
+MaHoSo CHAR(5) NOT NULL,
 KinhNghiem NVARCHAR(200),
 PRIMARY KEY(MaKyNang,MaHoSo),
 FOREIGN KEY(MaKyNang) REFERENCES KyNang(MaKyNang),
@@ -107,13 +108,13 @@ FOREIGN KEY(MaHoSo) REFERENCES HoSoNguoiGiupViec(MaHoSo)
 
 -- 8 ThanhPhan
 CREATE TABLE ThanhPhan(
-MaThanhPhan VARCHAR(5) PRIMARY KEY,
+MaThanhPhan CHAR(5) PRIMARY KEY,
 TenThanhPhan NVARCHAR(200)
 );
 
 -- 9 DichVu
 CREATE TABLE DichVu (
-    MaDichVu VARCHAR(5) PRIMARY KEY, -- VD: 'cleaning', 'combo', 'cooking'
+    MaDichVu CHAR(5) PRIMARY KEY, -- VD: 'cleaning', 'combo', 'cooking'
     TenDichVu NVARCHAR(100) NOT NULL,
     MoTa NVARCHAR(500),              -- Description từ code
     GiaTheoGio DECIMAL(18, 2),          -- Phần số của Price (VD: 60000)
@@ -124,8 +125,8 @@ CREATE TABLE DichVu (
 
 -- 10 DichVuThanhPhan (THÊM CỘT)
 CREATE TABLE DichVuThanhPhan(
-MaDichVu VARCHAR(5) NOT NULL,
-MaThanhPhan VARCHAR(5) NOT NULL,
+MaDichVu CHAR(5) NOT NULL,
+MaThanhPhan CHAR(5) NOT NULL,
 GhiChu NVARCHAR(100),
 PRIMARY KEY(MaDichVu,MaThanhPhan),
 FOREIGN KEY(MaDichVu) REFERENCES DichVu(MaDichVu),
@@ -134,9 +135,9 @@ FOREIGN KEY(MaThanhPhan) REFERENCES ThanhPhan(MaThanhPhan)
 
 -- 11 DonDat
 CREATE TABLE DonDat(
-MaDon VARCHAR(5) PRIMARY KEY,
-MaKhachhang VARCHAR(5) NOT NULL,
-MaNhanVien VARCHAR(5),
+MaDon CHAR(5) PRIMARY KEY,
+MaKhachhang CHAR(5) NOT NULL,
+MaNhanVien CHAR(5),
 DiaChi NVARCHAR(200),
 SoNgay INT,
 TongTien DECIMAL(10,2),
@@ -148,18 +149,18 @@ FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 
 -- 12 DonDatDichVu
 CREATE TABLE DonDatDichVu(
-MaDonDatDichVu VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
-MaDichVu VARCHAR(5) NOT NULL,
+MaDonDatDichVu CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
+MaDichVu CHAR(5) NOT NULL,
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
 FOREIGN KEY(MaDichVu) REFERENCES DichVu(MaDichVu)
 );
 
 -- 13 NgayLamViec
 CREATE TABLE NgayLamViec(
-MaNgayLamViec VARCHAR(5) PRIMARY KEY,
-MaDonDatDichVu VARCHAR(5) NOT NULL,
-MaNguoiGiupViec VARCHAR(5),
+MaNgayLamViec CHAR(5) PRIMARY KEY,
+MaDonDatDichVu CHAR(5) NOT NULL,
+MaNguoiGiupViec CHAR(5),
 GioBatDau TIME ,
 NgayLam DATE,
 ThoiGianPhanCong DATETIME,
@@ -170,8 +171,8 @@ FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 
 -- 14 DonDatDichVuNgayLamViec (THÊM CỘT)
 CREATE TABLE DonDatDichVuNgayLamViec(
-MaDonDatDichVu VARCHAR(5) NOT NULL,
-MaNgayLamViec VARCHAR(5) NOT NULL,
+MaDonDatDichVu CHAR(5) NOT NULL,
+MaNgayLamViec CHAR(5) NOT NULL,
 ThoiGianThucHien INT,
 PRIMARY KEY(MaDonDatDichVu,MaNgayLamViec),
 FOREIGN KEY(MaDonDatDichVu) REFERENCES DonDatDichVu(MaDonDatDichVu),
@@ -180,24 +181,24 @@ FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec)
 
 -- 15 ThuNhapNguoiGiupViec
 CREATE TABLE ThuNhapNguoiGiupViec(
-MaThuNhap VARCHAR(5) PRIMARY KEY,
-MaNgayLamViec VARCHAR(5) NOT NULL,
+MaThuNhap CHAR(5) PRIMARY KEY,
+MaNgayLamViec CHAR(5) NOT NULL,
 SoTien DECIMAL(10,2),
 FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec)
 );
 
 -- 16 ThanhToan
 CREATE TABLE ThanhToan(
-MaThanhToan VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
+MaThanhToan CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
 TrangThaiThanhToan NVARCHAR(50),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
 
 -- 17 LichSuTrangThaiDon
 CREATE TABLE LichSuTrangThaiDon(
-MaLichSu VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
+MaLichSu CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
 ThoiGianCapNhat DATETIME,
 TrangThai NVARCHAR(100),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
@@ -205,17 +206,17 @@ FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 
 -- 18 DanhGia
 CREATE TABLE DanhGia(
-MaDanhGia VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
+MaDanhGia CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
 SoSao INT,
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
 
 CREATE TABLE KhieuNai(
-    MaKhieuNai VARCHAR(5) PRIMARY KEY,
-    MaDon VARCHAR(5) NOT NULL,
-    MaKhachHang VARCHAR(5) NOT NULL,
-    MaNhanVien VARCHAR(5) NULL,
+    MaKhieuNai CHAR(5) PRIMARY KEY,
+    MaDon CHAR(5) NOT NULL,
+    MaKhachHang CHAR(5) NOT NULL,
+    MaNhanVien CHAR(5) NULL,
 
     NoiDung NVARCHAR(255),              
     ThoiGian DATETIME DEFAULT GETDATE(), 
