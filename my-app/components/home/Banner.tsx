@@ -92,6 +92,7 @@ export default function Banner() {
               alt="banner"
               fill
               style={{ objectFit: "cover" }}
+              priority={index === 0}
             />
 
             {/* Overlay */}

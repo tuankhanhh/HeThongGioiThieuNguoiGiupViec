@@ -322,3 +322,55 @@ GO
 UPDATE HoSoNguoiGiupViec
 SET TrangThaiXacMinh = N'Đã duyệt'
 WHERE MaNguoiGiupViec = 'GV661';
+GO
+
+-- ================= DỮ LIỆU KIỂM THỬ KIỂM DUYỆT HỒ SƠ =================
+-- 1. Đảm bảo có đủ các VaiTro
+IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R001') INSERT INTO VaiTro VALUES ('R001', 'Admin', N'Quản trị viên');
+IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R002') INSERT INTO VaiTro VALUES ('R002', 'Staff', N'Nhân viên điều hành');
+IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R003') INSERT INTO VaiTro VALUES ('R003', 'Maid', N'Người giúp việc');
+IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R004') INSERT INTO VaiTro VALUES ('R004', 'Customer', N'Khách hàng');
+
+-- 2. Chèn User mẫu (Người giúp việc đang chờ duyệt)
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'GV001')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('GV001', N'Nguyễn Thị Hoa', 'hoanguyen@example.com', '0912345678', 'password123', N'123 Hải Phòng, Đà Nẵng', 1);
+
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'GV002')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('GV002', N'Trần Văn Nam', 'namtran@example.com', '0987654321', 'password123', N'456 Lê Duẩn, Đà Nẵng', 1);
+
+-- 3. Chèn Hồ sơ mẫu với trạng thái 'Chờ duyệt'
+IF NOT EXISTS (SELECT 1 FROM HoSoNguoiGiupViec WHERE MaHoSo = 'HS001')
+INSERT INTO HoSoNguoiGiupViec (
+    MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, 
+    TenNguoiThan, SDTNguoiThan, 
+    AnhCCCDMatTruoc, AnhCCCDMatSau, AnhChanDung, GiayXacNhanCuTru, 
+    TrangThaiXacMinh
+)
+VALUES (
+    'HS001', 'GV001', '123456789012', '1990-05-15', N'Nữ', 
+    N'Nguyễn Văn Hùng', '0911223344',
+    'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400', 
+    'https://images.unsplash.com/photo-1615813967515-e1838c1c5116?w=400',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+    'https://images.unsplash.com/photo-1586281380349-631531a3d24d?w=400',
+    N'Chờ duyệt'
+);
+
+IF NOT EXISTS (SELECT 1 FROM HoSoNguoiGiupViec WHERE MaHoSo = 'HS002')
+INSERT INTO HoSoNguoiGiupViec (
+    MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, 
+    TenNguoiThan, SDTNguoiThan, 
+    AnhCCCDMatTruoc, AnhCCCDMatSau, AnhChanDung, GiayXacNhanCuTru, 
+    TrangThaiXacMinh
+)
+VALUES (
+    'HS002', 'GV002', '987654321098', '1985-10-20', N'Nam', 
+    N'Trần Thị Mai', '0922334455',
+    'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400', 
+    'https://images.unsplash.com/photo-1615813967515-e1838c1c5116?w=400',
+    'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
+    'https://images.unsplash.com/photo-1586281380349-631531a3d24d?w=400',
+    N'Chờ duyệt'
+);

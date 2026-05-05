@@ -63,6 +63,16 @@ export default function UsersManagement() {
     }
   };
 
+  const handleAssignRole = async (maNguoiDung: string, roleName: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn đổi vai trò của người dùng này sang ${roleName}?`)) return;
+    try {
+      await api.post("/user/assign-role", { maNguoiDung, roleName });
+      fetchUsers();
+    } catch (error) {
+      alert("Lỗi khi cập nhật vai trò: " + (error as any).message);
+    }
+  };
+
   const filteredUsers = users.filter(
     (user) =>
       user.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -216,11 +226,12 @@ export default function UsersManagement() {
                 }}
               >
                 {[
-                  "Người dùng",
+                   "Người dùng",
                   "Liên hệ",
                   "Vai trò",
                   "Trạng thái",
                   "Ngày tạo",
+                  "Thao tác",
                 ].map((h) => (
                   <th
                     key={h}
@@ -388,25 +399,48 @@ export default function UsersManagement() {
                         {user.trangThai ? "Hoạt động" : "Bị khóa"}
                       </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px 20px",
-                        fontSize: "13px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td style={{ padding: "16px 20px", fontSize: "13px", color: "#6b7280" }}>
                       {new Date(user.ngayTao).toLocaleDateString("vi-VN", {
                         year: "numeric",
                         month: "2-digit",
                         day: "2-digit",
                       })}
                     </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <select
+                        title="Gán vai trò"
+                        aria-label="Gán vai trò cho người dùng"
+                        onChange={(e) => handleAssignRole(user.maNguoiDung, e.target.value)}
+                        value={(user.roles && user.roles.length > 0) ? user.roles[0] : ""}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: "10px",
+                          border: "1.5px solid rgba(99,102,241,0.15)",
+                          fontSize: "13px",
+                          color: "#1e1b4b",
+                          fontWeight: 500,
+                          outline: "none",
+                          cursor: "pointer",
+                          background: "white",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+                          transition: "all 0.2s"
+                        }}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "#6366f1")}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(99,102,241,0.15)")}
+                      >
+                        <option value="" disabled>Gán vai trò</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Maid">Người giúp việc</option>
+                        <option value="Customer">Khách hàng</option>
+                      </select>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     style={{ padding: "60px 20px", textAlign: "center" }}
                   >
                     <svg

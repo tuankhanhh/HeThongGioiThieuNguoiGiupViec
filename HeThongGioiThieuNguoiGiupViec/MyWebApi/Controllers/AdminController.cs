@@ -186,6 +186,103 @@ namespace MyWebApi.Controllers
             int randomNum = new Random().Next(1000, 9999);
             return prefix + randomNum.ToString();
         }
+
+        // ================= KIỂM DUYỆT HỒ SƠ =================
+        [HttpGet("profiles-pending")]
+        public async Task<IActionResult> GetPendingProfiles()
+        {
+            try
+            {
+                var profiles = await _context.HoSoNguoiGiupViecs
+                    .Include(hs => hs.MaNguoiGiupViecNavigation)
+                    .Where(hs => hs.TrangThaiXacMinh == "Chờ duyệt")
+                    .Select(hs => new
+                    {
+                        maHoSo = hs.MaHoSo,
+                        maNguoiDung = hs.MaNguoiGiupViec,
+                        hoTen = hs.MaNguoiGiupViecNavigation.HoTen,
+                        email = hs.MaNguoiGiupViecNavigation.Email,
+                        soCccd = hs.SoCccd,
+                        ngaySinh = hs.NgaySinh,
+                        gioiTinh = hs.GioiTinh,
+                        anhCccdMatTruoc = hs.AnhCccdmatTruoc,
+                        anhCccdMatSau = hs.AnhCccdmatSau,
+                        anhChanDung = hs.AnhChanDung,
+                        giayXacNhanCuTru = hs.GiayXacNhanCuTru,
+                        trangThaiXacMinh = hs.TrangThaiXacMinh
+                    })
+                    .ToListAsync();
+
+                return Ok(new { success = true, data = profiles });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("profiles-approve/{maHoSo}")]
+        public async Task<IActionResult> ApproveProfile(string maHoSo)
+        {
+            try
+            {
+                var profile = await _context.HoSoNguoiGiupViecs
+                    .Include(hs => hs.MaNguoiGiupViecNavigation)
+                    .FirstOrDefaultAsync(hs => hs.MaHoSo == maHoSo);
+
+                if (profile == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy hồ sơ" });
+
+                profile.TrangThaiXacMinh = "Đã duyệt";
+                
+                // Đảm bảo user có role Maid
+                var roleMaid = await _context.VaiTros.FirstOrDefaultAsync(v => v.TenVaiTro == "Maid");
+                if (roleMaid != null)
+                {
+                    var hasRole = await _context.NguoiDungVaiTros
+                        .AnyAsync(ur => ur.MaNguoiDung == profile.MaNguoiGiupViec && ur.MaVaiTro == roleMaid.MaVaiTro);
+                    
+                    if (!hasRole)
+                    {
+                        _context.NguoiDungVaiTros.Add(new NguoiDungVaiTro
+                        {
+                            MaNguoiDung = profile.MaNguoiGiupViec,
+                            MaVaiTro = roleMaid.MaVaiTro,
+                            NgayGan = DateTime.Now
+                        });
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { success = true, message = "Duyệt hồ sơ thành công" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("profiles-reject/{maHoSo}")]
+        public async Task<IActionResult> RejectProfile(string maHoSo, [FromBody] RejectRequest request)
+        {
+            try
+            {
+                var profile = await _context.HoSoNguoiGiupViecs.FindAsync(maHoSo);
+                if (profile == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy hồ sơ" });
+
+                profile.TrangThaiXacMinh = "Từ chối";
+                profile.LyDoTuChoi = request.LyDo;
+
+                await _context.SaveChangesAsync();
+                return Ok(new { success = true, message = "Đã từ chối hồ sơ" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+    
     }
 
     // ================= DTO =================
@@ -197,4 +294,11 @@ namespace MyWebApi.Controllers
         public string HinhAnh { get; set; } = string.Empty;
         public bool PhoBien { get; set; }
     }
+
+    public class RejectRequest
+    {
+        public string LyDo { get; set; } = string.Empty;
+    }
 }
+
+
