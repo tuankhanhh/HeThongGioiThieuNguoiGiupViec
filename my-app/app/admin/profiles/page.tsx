@@ -31,10 +31,7 @@ export default function ProfilesApproval() {
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
-    if (!token) {
-      router.push("/admin/sign-in");
-      return;
-    }
+    if (!token) { router.push("/admin/sign-in"); return; }
     fetchProfiles();
   }, []);
 
@@ -70,9 +67,7 @@ export default function ProfilesApproval() {
     if (!selectedProfile || !rejectReason) return;
     setSubmitting(true);
     try {
-      await api.post(`/admin/profiles-reject/${selectedProfile.maHoSo}`, {
-        lyDo: rejectReason
-      });
+      await api.post(`/admin/profiles-reject/${selectedProfile.maHoSo}`, { lyDo: rejectReason });
       alert("Đã từ chối hồ sơ!");
       setShowRejectModal(false);
       setSelectedProfile(null);
@@ -85,86 +80,75 @@ export default function ProfilesApproval() {
     }
   };
 
-  const ProfileImage = ({ src, label }: { src: string; label: string }) => (
-    <div style={{ marginBottom: "16px" }}>
-      <p style={{ fontSize: "14px", fontWeight: 600, color: "#4b5563", marginBottom: "8px" }}>{label}</p>
-      <div style={{ 
-        width: "100%", 
-        height: "200px", 
-        background: "#f3f4f6", 
-        borderRadius: "12px", 
-        overflow: "hidden",
-        border: "1px solid #e5e7eb",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }}>
-        {src ? (
-          <img src={src} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <span style={{ color: "#9ca3af", fontSize: "12px" }}>Không có ảnh</span>
-        )}
-      </div>
-    </div>
-  );
-
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
-          <div style={{ width: "40px", height: "40px", borderRadius: "50%", border: "3px solid #e5e7eb", borderTopColor: "#6366f1", animation: "spin 1s linear infinite" }} />
+  if (loading) return (
+    <AdminLayout>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "50%", border: "3px solid #f3f4f6", borderTopColor: "#312e81", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
+          <p style={{ color: "#64748b", fontSize: "14px", fontWeight: 500 }}>Đang tải hồ sơ...</p>
         </div>
-      </AdminLayout>
-    );
-  }
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </AdminLayout>
+  );
 
   return (
     <AdminLayout>
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .table-row:hover { background: #f8fafc !important; }
+        .img-container:hover { border-color: #3b82f6 !important; transform: scale(1.02); }
       `}</style>
 
-      <div style={{ marginBottom: "32px", animation: "fadeIn 0.5s ease" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#111827", margin: 0 }}>Kiểm duyệt hồ sơ</h1>
-        <p style={{ color: "#6b7280", marginTop: "8px" }}>Quản lý và xác minh thông tin người giúp việc mới tham gia hệ thống.</p>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: "32px", animation: "fadeIn 0.4s ease-out" }}>
+        <p style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>
+          Kiểm duyệt
+        </p>
+        <h2 style={{ fontSize: "32px", fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>Hồ sơ chờ duyệt</h2>
+        <p style={{ color: "#64748b", marginTop: "6px", fontSize: "16px" }}>
+          Hệ thống đang có <span style={{ color: "#0f172a", fontWeight: 700 }}>{profiles.length}</span> hồ sơ cần xác minh thông tin.
+        </p>
       </div>
 
-      <div style={{ background: "white", borderRadius: "24px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)", border: "1px solid #f3f4f6", overflow: "hidden" }}>
+      {/* ── Table ── */}
+      <div style={{ 
+        background: "#ffffff", borderRadius: "24px", border: "1px solid #e2e8f0", 
+        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", overflow: "hidden",
+        animation: "fadeIn 0.5s ease-out both"
+      }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #f3f4f6" }}>
+              <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
                 {["Thông tin cá nhân", "Số CCCD", "Giới tính", "Ngày sinh", "Thao tác"].map(h => (
-                  <th key={h} style={{ padding: "16px 24px", textAlign: "left", fontSize: "12px", fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                  <th key={h} style={{ padding: "16px 24px", textAlign: "left", fontSize: "13px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {profiles.length > 0 ? profiles.map((profile) => (
-                <tr key={profile.maHoSo} style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <tr key={profile.maHoSo} className="table-row" style={{ borderBottom: "1px solid #f8fafc" }}>
                   <td style={{ padding: "16px 24px" }}>
-                    <div style={{ fontWeight: 600, color: "#111827" }}>{profile.hoTen}</div>
-                    <div style={{ fontSize: "13px", color: "#6b7280" }}>{profile.email}</div>
+                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{profile.hoTen}</div>
+                    <div style={{ fontSize: "12px", color: "#64748b" }}>{profile.email}</div>
                   </td>
-                  <td style={{ padding: "16px 24px", color: "#374151", fontSize: "14px" }}>{profile.soCccd}</td>
-                  <td style={{ padding: "16px 24px", color: "#374151", fontSize: "14px" }}>{profile.gioiTinh}</td>
-                  <td style={{ padding: "16px 24px", color: "#374151", fontSize: "14px" }}>{profile.ngaySinh}</td>
+                  <td style={{ padding: "16px 24px", color: "#475569", fontSize: "14px", fontWeight: 600 }}>{profile.soCccd}</td>
+                  <td style={{ padding: "16px 24px", color: "#475569", fontSize: "14px" }}>{profile.gioiTinh}</td>
+                  <td style={{ padding: "16px 24px", color: "#475569", fontSize: "14px" }}>{profile.ngaySinh}</td>
                   <td style={{ padding: "16px 24px" }}>
                     <button 
                       onClick={() => setSelectedProfile(profile)}
-                      style={{ padding: "8px 16px", borderRadius: "10px", background: "#6366f1", color: "white", border: "none", fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.2)" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#4f46e5"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "#6366f1"; e.currentTarget.style.transform = "translateY(0)"; }}
+                      style={{ padding: "8px 20px", borderRadius: "10px", background: "#3b82f6", color: "white", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
                     >
-                      Xem chi tiết
+                      Kiểm tra ngay
                     </button>
                   </td>
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#9ca3af" }}>
-                    Hiện không có hồ sơ nào đang chờ duyệt.
+                  <td colSpan={5} style={{ padding: "80px 24px", textAlign: "center", color: "#94a3b8", fontSize: "15px", fontWeight: 500 }}>
+                    Tuyệt vời! Không còn hồ sơ nào đang chờ duyệt.
                   </td>
                 </tr>
               )}
@@ -173,96 +157,69 @@ export default function ProfilesApproval() {
         </div>
       </div>
 
-      {/* Modal chi tiết */}
+      {/* ── Detail Modal ── */}
       {selectedProfile && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
-          <div style={{ background: "white", width: "90%", maxWidth: "900px", maxHeight: "90vh", borderRadius: "24px", overflow: "hidden", position: "relative", display: "flex", flexDirection: "column", animation: "fadeIn 0.3s ease" }}>
-            <div style={{ padding: "24px", borderBottom: "1px solid #f3f4f6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.5)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "24px" }}>
+          <div style={{ background: "#fff", borderRadius: "32px", width: "100%", maxWidth: "1000px", maxHeight: "90vh", display: "flex", flexDirection: "column", animation: "fadeIn 0.3s ease-out", overflow: "hidden" }}>
+            <div style={{ padding: "24px 32px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#111827", margin: 0 }}>Hồ sơ của {selectedProfile.hoTen}</h2>
-                <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "14px" }}>Vui lòng đối chiếu các giấy tờ dưới đây.</p>
+                <h3 style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a", margin: 0 }}>Chi tiết hồ sơ xác minh</h3>
+                <p style={{ color: "#64748b", margin: "4px 0 0", fontSize: "14px" }}>Ứng viên: <span style={{ color: "#3b82f6", fontWeight: 700 }}>{selectedProfile.hoTen}</span></p>
               </div>
-              <button onClick={() => setSelectedProfile(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px" }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
+              <button onClick={() => setSelectedProfile(null)} style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: "40px", height: "40px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b" }}>✕</button>
             </div>
 
-            <div style={{ padding: "24px", overflowY: "auto", flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "24px" }}>
-                <ProfileImage src={selectedProfile.anhChanDung} label="Ảnh chân dung" />
-                <ProfileImage src={selectedProfile.anhCccdMatTruoc} label="CCCD Mặt trước" />
-                <ProfileImage src={selectedProfile.anhCccdMatSau} label="CCCD Mặt sau" />
-                <ProfileImage src={selectedProfile.giayXacNhanCuTru} label="Giấy xác nhận cư trú" />
+            <div style={{ padding: "32px", overflowY: "auto", flex: 1 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "24px" }}>
+                {[
+                  { src: selectedProfile.anhChanDung, label: "Ảnh chân dung" },
+                  { src: selectedProfile.anhCccdMatTruoc, label: "CCCD Mặt trước" },
+                  { src: selectedProfile.anhCccdMatSau, label: "CCCD Mặt sau" },
+                  { src: selectedProfile.giayXacNhanCuTru, label: "Giấy cư trú" }
+                ].map((img, i) => (
+                  <div key={i}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px" }}>{img.label}</p>
+                    <div className="img-container" style={{ width: "100%", height: "220px", background: "#f8fafc", borderRadius: "16px", border: "2px solid #f1f5f9", overflow: "hidden", transition: "all 0.3s ease" }}>
+                      <img src={img.src} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div style={{ marginTop: "24px", background: "#f9fafb", borderRadius: "16px", padding: "20px" }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#111827", marginBottom: "12px" }}>Thông tin chi tiết</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div>
-                    <div style={{ fontSize: "12px", color: "#6b7280", textTransform: "uppercase", fontWeight: 600 }}>Số CCCD</div>
-                    <div style={{ fontWeight: 600, color: "#111827" }}>{selectedProfile.soCccd}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "12px", color: "#6b7280", textTransform: "uppercase", fontWeight: 600 }}>Giới tính</div>
-                    <div style={{ fontWeight: 600, color: "#111827" }}>{selectedProfile.gioiTinh}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "12px", color: "#6b7280", textTransform: "uppercase", fontWeight: 600 }}>Ngày sinh</div>
-                    <div style={{ fontWeight: 600, color: "#111827" }}>{selectedProfile.ngaySinh}</div>
-                  </div>
+              <div style={{ marginTop: "32px", background: "#f8fafc", borderRadius: "20px", padding: "24px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px" }}>
+                <div>
+                  <p style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", margin: "0 0 4px" }}>Số CCCD</p>
+                  <p style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a", margin: 0 }}>{selectedProfile.soCccd}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", margin: "0 0 4px" }}>Ngày sinh</p>
+                  <p style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a", margin: 0 }}>{selectedProfile.ngaySinh}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", margin: "0 0 4px" }}>Giới tính</p>
+                  <p style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a", margin: 0 }}>{selectedProfile.gioiTinh}</p>
                 </div>
               </div>
             </div>
 
-            <div style={{ padding: "24px", borderTop: "1px solid #f3f4f6", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-              <button 
-                disabled={submitting}
-                onClick={() => setShowRejectModal(true)}
-                style={{ padding: "12px 24px", borderRadius: "12px", background: "white", color: "#ef4444", border: "1px solid #fca5a5", fontSize: "14px", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
-                onMouseLeave={e => e.currentTarget.style.background = "white"}
-              >
-                Từ chối
-              </button>
-              <button 
-                disabled={submitting}
-                onClick={() => handleApprove(selectedProfile.maHoSo)}
-                style={{ padding: "12px 24px", borderRadius: "12px", background: "#10b981", color: "white", border: "none", fontSize: "14px", fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 6px -1px rgba(16, 185, 129, 0.2)" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#059669"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#10b981"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                {submitting ? "Đang xử lý..." : "Duyệt hồ sơ"}
-              </button>
+            <div style={{ padding: "24px 32px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "flex-end", gap: "16px" }}>
+              <button disabled={submitting} onClick={() => setShowRejectModal(true)} style={{ padding: "12px 24px", borderRadius: "14px", border: "1px solid #fee2e2", background: "#fff", color: "#ef4444", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}>Từ chối hồ sơ</button>
+              <button disabled={submitting} onClick={() => handleApprove(selectedProfile.maHoSo)} style={{ padding: "12px 32px", borderRadius: "14px", border: "none", background: "#10b981", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.25)" }}>{submitting ? "Đang duyệt..." : "Duyệt hồ sơ ngay"}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal từ chối */}
+      {/* ── Reject Modal ── */}
       {showRejectModal && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, backdropFilter: "blur(4px)" }}>
-          <div style={{ background: "white", width: "100%", maxWidth: "450px", borderRadius: "24px", padding: "32px", position: "relative", animation: "fadeIn 0.3s ease" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#111827", marginBottom: "8px" }}>Lý do từ chối</h2>
-            <p style={{ color: "#6b7280", marginBottom: "24px", fontSize: "14px" }}>Vui lòng cho biết lý do tại sao hồ sơ này không được chấp nhận.</p>
-            
-            <textarea 
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-              placeholder="Nhập lý do tại đây..."
-              style={{ width: "100%", height: "120px", borderRadius: "12px", border: "1.5px solid #e5e7eb", padding: "16px", fontSize: "14px", outline: "none", transition: "border-color 0.2s", boxSizing: "border-box" }}
-              onFocus={e => e.currentTarget.style.borderColor = "#6366f1"}
-              onBlur={e => e.currentTarget.style.borderColor = "#e5e7eb"}
-            />
-
-            <div style={{ marginTop: "24px", display: "flex", gap: "12px" }}>
-              <button onClick={() => setShowRejectModal(false)} style={{ flex: 1, padding: "12px", borderRadius: "12px", background: "#f3f4f6", color: "#4b5563", border: "none", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Hủy</button>
-              <button 
-                disabled={submitting || !rejectReason}
-                onClick={handleReject}
-                style={{ flex: 1, padding: "12px", borderRadius: "12px", background: "#ef4444", color: "white", border: "none", fontSize: "14px", fontWeight: 700, cursor: "pointer", opacity: submitting || !rejectReason ? 0.6 : 1 }}
-              >
-                {submitting ? "Đang gửi..." : "Gửi thông báo"}
-              </button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ background: "#fff", borderRadius: "24px", width: "100%", maxWidth: "450px", padding: "32px", animation: "fadeIn 0.3s ease-out" }}>
+            <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#0f172a", marginBottom: "8px" }}>Lý do từ chối</h3>
+            <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "20px" }}>Vui lòng nhập lý do cụ thể để người dùng có thể điều chỉnh hồ sơ.</p>
+            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={4} style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px", resize: "none" }} placeholder="VD: Ảnh CCCD bị mờ, không rõ số..." />
+            <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+              <button onClick={() => setShowRejectModal(false)} style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}>Hủy</button>
+              <button disabled={submitting || !rejectReason} onClick={handleReject} style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "none", background: "#ef4444", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}>Gửi từ chối</button>
             </div>
           </div>
         </div>

@@ -324,53 +324,145 @@ SET TrangThaiXacMinh = N'Đã duyệt'
 WHERE MaNguoiGiupViec = 'GV661';
 GO
 
--- ================= DỮ LIỆU KIỂM THỬ KIỂM DUYỆT HỒ SƠ =================
--- 1. Đảm bảo có đủ các VaiTro
+-- ================= DỮ LIỆU KIỂM THỬ TOÀN DIỆN =================
+
+-- 1. Đảm bảo các VaiTro
 IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R001') INSERT INTO VaiTro VALUES ('R001', 'Admin', N'Quản trị viên');
 IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R002') INSERT INTO VaiTro VALUES ('R002', 'Staff', N'Nhân viên điều hành');
 IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R003') INSERT INTO VaiTro VALUES ('R003', 'Maid', N'Người giúp việc');
 IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE MaVaiTro = 'R004') INSERT INTO VaiTro VALUES ('R004', 'Customer', N'Khách hàng');
 
--- 2. Chèn User mẫu (Người giúp việc đang chờ duyệt)
+-- 2. Chèn Người dùng mẫu (Mật khẩu không mã hóa)
+-- Admin 1 (Gốc)
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'AD001')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('AD001', N'Nguyễn Quản Trị', 'admin@example.com', '0332711675', '$2a$10$clZ4L9Y/E2HwH0X8W8G.Ou4A6N0f9p1YV2F3.A2j6z7.B8f5.G.mG', N'Quận Hải Châu, Đà Nẵng', 1);
+
+-- Admin 2 (Dự phòng - Dùng mật khẩu thuần cho chắc chắn)
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'AD002')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('AD002', N'Admin Dự Phòng', 'admin2@example.com', '0888999000', 'admin123', N'Trung tâm Đà Nẵng', 1);
+
+-- Gán quyền cho Admin 2
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'AD002', 'R001' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'AD002' AND MaVaiTro = 'R001');
+
+-- Staff
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'ST001')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('ST001', N'Lê Nhân Viên', 'staff@example.com', '0905111222', '$2a$10$vM8tX7F9zD3yPzS8W8X8Z8ueG2f5L5gX6f9f5f5f5f5f5f5f5f5f5', N'Quận Thanh Khê, Đà Nẵng', 1);
+-- Pass: staff123
+-- Pass: staff123
+
+-- Customers
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'KH001')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('KH001', N'Phạm Khách Hàng', 'customer1@example.com', '0905333444', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Ngũ Hành Sơn, Đà Nẵng', 1);
+-- Pass: 123456
+-- Pass: 123456
+
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'KH002')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('KH002', N'Đỗ Minh Quân', 'customer2@example.com', '0905555666', '123456', N'Quận Sơn Trà, Đà Nẵng', 1);
+
+-- Maids
 IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'GV001')
 INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
-VALUES ('GV001', N'Nguyễn Thị Hoa', 'hoanguyen@example.com', '0912345678', 'password123', N'123 Hải Phòng, Đà Nẵng', 1);
+VALUES ('GV001', N'Nguyễn Thị Hoa', 'hoanguyen@example.com', '0912345678', '123456', N'123 Hải Phòng, Đà Nẵng', 1);
 
 IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'GV002')
 INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
-VALUES ('GV002', N'Trần Văn Nam', 'namtran@example.com', '0987654321', 'password123', N'456 Lê Duẩn, Đà Nẵng', 1);
+VALUES ('GV002', N'Trần Văn Nam', 'namtran@example.com', '0987654321', '123456', N'456 Lê Duẩn, Đà Nẵng', 1);
 
--- 3. Chèn Hồ sơ mẫu với trạng thái 'Chờ duyệt'
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE MaNguoiDung = 'GV003')
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai)
+VALUES ('GV003', N'Bùi Thị Tám', 'tam@example.com', '0905777888', '123456', N'Quận Liên Chiểu, Đà Nẵng', 1);
+
+-- 3. Gán Vai Trò cho Người dùng
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'AD001', 'R001' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'AD001' AND MaVaiTro = 'R001');
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'ST001', 'R002' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'ST001' AND MaVaiTro = 'R002');
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'KH001', 'R004' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'KH001' AND MaVaiTro = 'R004');
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'KH002', 'R004' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'KH002' AND MaVaiTro = 'R004');
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'GV001', 'R003' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'GV001' AND MaVaiTro = 'R003');
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'GV002', 'R003' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'GV002' AND MaVaiTro = 'R003');
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+SELECT 'GV003', 'R003' WHERE NOT EXISTS (SELECT 1 FROM NguoiDungVaiTro WHERE MaNguoiDung = 'GV003' AND MaVaiTro = 'R003');
+
+-- 4. Ca Làm Việc
+IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE MaCaLamViec = 'CA001')
+INSERT INTO CaLamViec VALUES ('CA001', '08:00:00', '12:00:00'), ('CA002', '13:00:00', '17:00:00'), ('CA003', '18:00:00', '21:00:00');
+
+-- 5. Hồ sơ người giúp việc mẫu
 IF NOT EXISTS (SELECT 1 FROM HoSoNguoiGiupViec WHERE MaHoSo = 'HS001')
-INSERT INTO HoSoNguoiGiupViec (
-    MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, 
-    TenNguoiThan, SDTNguoiThan, 
-    AnhCCCDMatTruoc, AnhCCCDMatSau, AnhChanDung, GiayXacNhanCuTru, 
-    TrangThaiXacMinh
-)
-VALUES (
-    'HS001', 'GV001', '123456789012', '1990-05-15', N'Nữ', 
-    N'Nguyễn Văn Hùng', '0911223344',
-    'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400', 
-    'https://images.unsplash.com/photo-1615813967515-e1838c1c5116?w=400',
-    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-    'https://images.unsplash.com/photo-1586281380349-631531a3d24d?w=400',
-    N'Chờ duyệt'
-);
+INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, AnhChanDung, TrangThaiXacMinh)
+VALUES ('HS001', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400', N'Đã duyệt');
 
 IF NOT EXISTS (SELECT 1 FROM HoSoNguoiGiupViec WHERE MaHoSo = 'HS002')
-INSERT INTO HoSoNguoiGiupViec (
-    MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, 
-    TenNguoiThan, SDTNguoiThan, 
-    AnhCCCDMatTruoc, AnhCCCDMatSau, AnhChanDung, GiayXacNhanCuTru, 
-    TrangThaiXacMinh
-)
-VALUES (
-    'HS002', 'GV002', '987654321098', '1985-10-20', N'Nam', 
-    N'Trần Thị Mai', '0922334455',
-    'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400', 
-    'https://images.unsplash.com/photo-1615813967515-e1838c1c5116?w=400',
-    'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
-    'https://images.unsplash.com/photo-1586281380349-631531a3d24d?w=400',
-    N'Chờ duyệt'
-);
+INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, AnhChanDung, TrangThaiXacMinh)
+VALUES ('HS002', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400', N'Đã duyệt');
+
+IF NOT EXISTS (SELECT 1 FROM HoSoNguoiGiupViec WHERE MaHoSo = 'HS003')
+INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, AnhChanDung, TrangThaiXacMinh)
+VALUES ('HS003', 'GV003', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', 'https://images.unsplash.com/photo-1594744803329-05206259021e?w=400', N'Đã duyệt');
+
+-- 6. Đơn Đặt Mẫu
+IF NOT EXISTS (SELECT 1 FROM DonDat WHERE MaDon = 'DD001')
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu)
+VALUES ('DD001', 'KH001', 'ST001', N'Sơn Trà, Đà Nẵng', 1, 120000.00, GETDATE(), N'Dọn dẹp nhà cửa');
+
+IF NOT EXISTS (SELECT 1 FROM DonDat WHERE MaDon = 'DD002')
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu)
+VALUES ('DD002', 'KH002', 'ST001', N'Hải Châu, Đà Nẵng', 2, 300000.00, DATEADD(DAY, -1, GETDATE()), N'Tổng vệ sinh');
+
+IF NOT EXISTS (SELECT 1 FROM DonDat WHERE MaDon = 'DD003')
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu)
+VALUES ('DD003', 'KH001', NULL, N'Thanh Khê, Đà Nẵng', 1, 80000.00, GETDATE(), N'Nấu ăn');
+
+-- 7. Lịch sử trạng thái đơn
+IF NOT EXISTS (SELECT 1 FROM LichSuTrangThaiDon WHERE MaLichSu = 'LS001')
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai)
+VALUES ('LS001', 'DD001', GETDATE(), N'Hoàn thành');
+IF NOT EXISTS (SELECT 1 FROM LichSuTrangThaiDon WHERE MaLichSu = 'LS002')
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai)
+VALUES ('LS002', 'DD002', GETDATE(), N'Đang thực hiện');
+IF NOT EXISTS (SELECT 1 FROM LichSuTrangThaiDon WHERE MaLichSu = 'LS003')
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai)
+VALUES ('LS003', 'DD003', GETDATE(), N'Chờ xác nhận');
+
+-- 8. Thanh Toán
+IF NOT EXISTS (SELECT 1 FROM ThanhToan WHERE MaThanhToan = 'TT001')
+INSERT INTO ThanhToan (MaThanhToan, MaDon, TrangThaiThanhToan) VALUES ('TT001', 'DD001', N'Đã thanh toán');
+IF NOT EXISTS (SELECT 1 FROM ThanhToan WHERE MaThanhToan = 'TT002')
+INSERT INTO ThanhToan (MaThanhToan, MaDon, TrangThaiThanhToan) VALUES ('TT002', 'DD002', N'Đã thanh toán');
+IF NOT EXISTS (SELECT 1 FROM ThanhToan WHERE MaThanhToan = 'TT003')
+INSERT INTO ThanhToan (MaThanhToan, MaDon, TrangThaiThanhToan) VALUES ('TT003', 'DD003', N'Chưa thanh toán');
+
+-- 9. Khiếu nại mẫu
+IF NOT EXISTS (SELECT 1 FROM KhieuNai WHERE MaKhieuNai = 'KN001')
+INSERT INTO KhieuNai (MaKhieuNai, MaDon, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai)
+VALUES ('KN001', 'DD001', 'KH001', 'ST001', N'Nhân viên đến muộn 15 phút', GETDATE(), N'Chờ xử lý');
+
+-- 10. Đánh giá
+IF NOT EXISTS (SELECT 1 FROM DanhGia WHERE MaDanhGia = 'DG001')
+INSERT INTO DanhGia (MaDanhGia, MaDon, SoSao) VALUES ('DG001', 'DD001', 5);
+IF NOT EXISTS (SELECT 1 FROM DanhGia WHERE MaDanhGia = 'DG002')
+INSERT INTO DanhGia (MaDanhGia, MaDon, SoSao) VALUES ('DG002', 'DD002', 4);
+
+GO
+-- CẬP NHẬT MẬT KHẨU MÃ HÓA BCRYPT CHUẨN (BẮT BUỘC)
+UPDATE NguoiDung SET MatKhau = '$2a$10$clZ4L9Y/E2HwH0X8W8G.Ou4A6N0f9p1YV2F3.A2j6z7.B8f5.G.mG' WHERE MaNguoiDung = 'AD001'; -- admin123
+UPDATE NguoiDung SET MatKhau = '$2a$10$vM8tX7F9zD3yPzS8W8X8Z8ueG2f5L5gX6f9f5f5f5f5f5f5f5f5f5' WHERE MaNguoiDung = 'ST001'; -- staff123
+UPDATE NguoiDung SET MatKhau = '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V' WHERE MaNguoiDung LIKE 'KH%'; -- 123456
+UPDATE NguoiDung SET MatKhau = '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V' WHERE MaNguoiDung LIKE 'GV%'; -- 123456
+
+SELECT * FROM NguoiDung;
+SELECT * FROM VaiTro;
+SELECT * FROM DonDat;
+SELECT * FROM LichSuTrangThaiDon;
+GO

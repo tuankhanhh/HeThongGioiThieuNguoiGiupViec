@@ -187,6 +187,42 @@ namespace MyWebApi.Controllers
             return prefix + randomNum.ToString();
         }
 
+        // ================= QUẢN LÝ NGƯỜI DÙNG =================
+        [HttpPost("users/{maNguoiDung}/toggle-status")]
+        public async Task<IActionResult> ToggleUserStatus(string maNguoiDung)
+        {
+            try
+            {
+                var user = await _context.NguoiDungs
+                    .Include(u => u.NguoiDungVaiTros)
+                    .ThenInclude(ur => ur.MaVaiTroNavigation)
+                    .FirstOrDefaultAsync(u => u.MaNguoiDung == maNguoiDung);
+
+                if (user == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy người dùng" });
+
+                // Kiểm tra xem người dùng bị khóa có phải là Admin không
+                var isAdmin = user.NguoiDungVaiTros.Any(ur => ur.MaVaiTroNavigation.TenVaiTro == "Admin");
+                if (isAdmin)
+                {
+                    return BadRequest(new { success = false, message = "Không thể khóa tài khoản của Quản trị viên khác" });
+                }
+
+                user.TrangThai = !user.TrangThai; 
+                await _context.SaveChangesAsync();
+
+                return Ok(new { 
+                    success = true, 
+                    message = user.TrangThai ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản",
+                    trangThai = user.TrangThai
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
         // ================= KIỂM DUYỆT HỒ SƠ =================
         [HttpGet("profiles-pending")]
         public async Task<IActionResult> GetPendingProfiles()

@@ -1,4 +1,4 @@
-﻿using MyWebApi.DTO.Request;
+using MyWebApi.DTO.Request;
 using MyWebApi.DTO.Response;
 using MyWebApi.Models;
 using Microsoft.EntityFrameworkCore;
@@ -31,21 +31,31 @@ namespace MyWebApi.Service
 
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
+            Console.WriteLine($"--- Debug Đăng nhập ---");
+            Console.WriteLine($"SĐT nhập vào: {request.SoDienThoai}");
+
             var user = await _context.NguoiDungs
                 .Include(u => u.NguoiDungVaiTros)
                 .ThenInclude(ur => ur.MaVaiTroNavigation)
                 .FirstOrDefaultAsync(u => u.SoDienThoai == request.SoDienThoai);
 
-            if (user == null || !user.TrangThai || !_passwordService.VerifyPassword(request.MatKhau, user.MatKhau))
+            if (user == null) {
+                Console.WriteLine("Kết quả: KHÔNG tìm thấy người dùng với SĐT này trong DB.");
+                throw new UnauthorizedAccessException("Sai tài khoản hoặc mật khẩu");
+            }
+
+            Console.WriteLine($"Tìm thấy người dùng: {user.HoTen} (ID: {user.MaNguoiDung})");
+            Console.WriteLine($"Mật khẩu trong DB: {user.MatKhau}");
+
+            bool isPasswordValid = _passwordService.VerifyPassword(request.MatKhau, user.MatKhau);
+            Console.WriteLine($"Kết quả kiểm tra mật khẩu: {isPasswordValid}");
+
+            if (!user.TrangThai || !isPasswordValid)
             {
                 throw new UnauthorizedAccessException("Sai tài khoản hoặc mật khẩu");
             }
 
 
-            //CŨ
-            //var roles = user.NguoiDungVaiTros
-            //    .Select(ur => ur.MaVaiTroNavigation.TenVaiTro)
-            //    .ToList();
             // TRƯỜNG phân role
             var roles = user.NguoiDungVaiTros
             .Select(ur => ur.MaVaiTroNavigation.TenVaiTro switch
@@ -61,10 +71,9 @@ namespace MyWebApi.Service
             var accessToken = _tokenService.GenerateAccessToken(user, roles);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
-            // CẬP NHẬT Ở ĐÂY: Lưu cả token và thời gian hết hạn
             user.RefreshToken = refreshToken;
-            user.NgayTaoRefreshToken = DateTime.Now; // Ghi lại lúc tạo
-            user.NgayHetHanRefreshToken = DateTime.Now.AddDays(7); // Token này có giá trị trong 7 ngày
+            user.NgayTaoRefreshToken = DateTime.Now; 
+            user.NgayHetHanRefreshToken = DateTime.Now.AddDays(7); 
 
             await _context.SaveChangesAsync();
 
