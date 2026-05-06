@@ -223,7 +223,7 @@ CREATE TABLE KhieuNai(
 
     NoiDung NVARCHAR(255),              
     ThoiGian DATETIME DEFAULT GETDATE(), 
-    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chờ xử lý', N'Đang xử lý', N'Đã xử lý')),
+    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chưa xử lý', N'Đang xử lý', N'Đã giải quyết')),
     PhanHoi NVARCHAR(255),              
 
     FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
@@ -394,3 +394,152 @@ INSERT INTO LichRanhCaLamViec VALUES
 INSERT INTO LichRanhCaLamViec VALUES
 ('LR003', 'CA001', NULL),
 ('LR003', 'CA004', NULL);
+
+--TRƯỜNG TEST--
+-- 1) NGƯỜI DÙNG
+INSERT INTO NguoiDung
+(MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai, RefreshToken, NgayTao, NgayTaoRefreshToken, NgayHetHanRefreshToken)
+VALUES
+('ND010', N'Khách hàng A', 'nd010@gmail.com', '0909000010', '123456', N'Đà Nẵng', 1, NULL, GETDATE(), GETDATE(), NULL),
+('ND011', N'Khách hàng B', 'nd011@gmail.com', '0909000011', '123456', N'Đà Nẵng', 1, NULL, GETDATE(), GETDATE(), NULL),
+('ND012', N'Lê Thị Mai',   'nd012@gmail.com', '0909000012', '123456', N'Hải Châu, Đà Nẵng', 1, NULL, GETDATE(), GETDATE(), NULL),
+('ND013', N'Phạm Thị Hoa',  'nd013@gmail.com', '0909000013', '123456', N'Sơn Trà, Đà Nẵng', 1, NULL, GETDATE(), GETDATE(), NULL),
+('ND014', N'Võ Thị Hạnh',   'nd014@gmail.com', '0909000014', '123456', N'Thanh Khê, Đà Nẵng', 1, NULL, GETDATE(), GETDATE(), NULL);
+GO
+
+-- 2) GÁN VAI TRÒ
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro, NgayGan)
+VALUES
+('ND010', 'VT003', GETDATE()),
+('ND011', 'VT003', GETDATE()),
+('ND012', 'VT004', GETDATE()),
+('ND013', 'VT004', GETDATE()),
+('ND014', 'VT004', GETDATE());
+GO
+
+-- 3) HỒ SƠ NGƯỜI GIÚP VIỆC
+INSERT INTO HoSoNguoiGiupViec
+(MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan,
+ AnhCCCDMatTruoc, AnhCCCDMatSau, AnhChanDung, GiayXacNhanCuTru, TrangThaiXacMinh, LyDoTuChoi)
+VALUES
+('HS010', 'ND012', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010',
+ 'https://example.com/cccd_front_10.jpg', 'https://example.com/cccd_back_10.jpg',
+ 'https://example.com/avatar_10.jpg', 'https://example.com/ct_10.pdf',
+ N'Đã duyệt', NULL),
+
+('HS011', 'ND013', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011',
+ 'https://example.com/cccd_front_11.jpg', 'https://example.com/cccd_back_11.jpg',
+ 'https://example.com/avatar_11.jpg', 'https://example.com/ct_11.pdf',
+ N'Đã duyệt', NULL),
+
+('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012',
+ 'https://example.com/cccd_front_12.jpg', 'https://example.com/cccd_back_12.jpg',
+ 'https://example.com/avatar_12.jpg', 'https://example.com/ct_12.pdf',
+ N'Chờ duyệt', NULL);
+GO
+
+-- 4) KỸ NĂNG CỦA HỒ SƠ
+INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem)
+VALUES
+('KN001', 'HS010', N'3 năm'),
+('KN002', 'HS010', N'2 năm'),
+('KN001', 'HS011', N'4 năm'),
+('KN005', 'HS011', N'1 năm'),
+('KN003', 'HS012', N'6 tháng'),
+('KN004', 'HS012', N'1 năm'),
+('KN005', 'HS012', N'8 tháng');
+GO
+
+-- 5) ĐƠN ĐẶT
+INSERT INTO DonDat
+(MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu)
+VALUES
+('DD010', 'ND010', NULL, N'123 Lê Duẩn, Hải Châu, Đà Nẵng', 1, 180000, '2026-05-05 10:00:00', N'Nhà nhiều bụi, cần dọn dẹp kỹ'),
+('DD011', 'ND010', NULL, N'123 Lê Duẩn, Hải Châu, Đà Nẵng', 2, 300000, '2026-05-05 11:00:00', N'Có trẻ nhỏ, ưu tiên người chăm trẻ'),
+('DD012', 'ND011', NULL, N'45 Trần Phú, Hải Châu, Đà Nẵng', 1, 240000, '2026-05-06 09:00:00', N'Cần nấu ăn và phụ bếp'),
+('DD013', 'ND011', NULL, N'78 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng', 1, 160000, '2026-05-06 14:00:00', N'Có người lớn tuổi cần hỗ trợ');
+GO
+
+-- 6) ĐƠN - DỊCH VỤ
+INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu)
+VALUES
+('DDV10', 'DD010', 'DV001'),
+('DDV11', 'DD011', 'DV004'),
+('DDV12', 'DD012', 'DV003'),
+('DDV13', 'DD013', 'DV005');
+GO
+
+-- 7) NGÀY LÀM VIỆC
+INSERT INTO NgayLamViec
+(MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, GioBatDau, NgayLam, ThoiGianPhanCong, TrangThai)
+VALUES
+('NLV10', 'DDV10', NULL, '08:00:00', '2026-05-10', NULL, N'Chờ phân công'),
+('NLV11', 'DDV11', NULL, '09:00:00', '2026-05-10', NULL, N'Chờ phân công'),
+('NLV12', 'DDV12', NULL, '13:00:00', '2026-05-11', NULL, N'Chờ phân công'),
+('NLV13', 'DDV13', NULL, '14:00:00', '2026-05-11', NULL, N'Chờ phân công'),
+
+-- lịch đã phân công để test lọc bận
+('NLV90', 'DDV10', 'ND012', '08:00:00', '2026-05-10', GETDATE(), N'Đã phân công'),
+('NLV91', 'DDV12', 'ND013', '13:00:00', '2026-05-11', GETDATE(), N'Đã phân công');
+GO
+
+-- 8) ĐƠN ĐẶT DỊCH VỤ - NGÀY LÀM VIỆC
+INSERT INTO DonDatDichVuNgayLamViec
+(MaDonDatDichVu, MaNgayLamViec, ThoiGianThucHien)
+VALUES
+('DDV10', 'NLV10', 240),
+('DDV11', 'NLV11', 180),
+('DDV12', 'NLV12', 180),
+('DDV13', 'NLV13', 120),
+('DDV10', 'NLV90', 240),
+('DDV12', 'NLV91', 180);
+GO
+
+-- 9) LỊCH SỬ TRẠNG THÁI
+INSERT INTO LichSuTrangThaiDon
+(MaLichSu, MaDon, ThoiGianCapNhat, TrangThai)
+VALUES
+('LS010', 'DD010', '2026-05-05 10:00:00', N'Chờ xác nhận'),
+('LS011', 'DD011', '2026-05-05 11:00:00', N'Chờ xác nhận'),
+('LS012', 'DD012', '2026-05-06 09:00:00', N'Chờ xác nhận'),
+('LS013', 'DD013', '2026-05-06 14:00:00', N'Chờ xác nhận');
+GO
+
+-- 10) THANH TOÁN
+INSERT INTO ThanhToan (MaThanhToan, MaDon, TrangThaiThanhToan)
+VALUES
+('TT010', 'DD010', N'Chưa thanh toán'),
+('TT011', 'DD011', N'Đã thanh toán'),
+('TT012', 'DD012', N'Chưa thanh toán'),
+('TT013', 'DD013', N'Chưa thanh toán');
+GO
+
+-- 11) KHIẾU NẠI
+INSERT INTO KhieuNai
+(MaKhieuNai, MaDon, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai, PhanHoi)
+VALUES
+('KN010', 'DD010', 'ND010', NULL, N'Dọn chưa sạch một số khu vực.', '2026-05-06 15:00:00', N'Chưa xử lý', NULL),
+('KN011', 'DD011', 'ND010', NULL, N'Người giúp việc đến trễ.', '2026-05-06 16:00:00', N'Đang xử lý', NULL);
+GO
+
+-- 12) LỊCH RẢNH
+INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) VALUES
+('CA010', '08:00:00', '10:00:00'),
+('CA011', '10:00:00', '12:00:00'),
+('CA012', '13:00:00', '15:00:00'),
+('CA013', '15:00:00', '17:00:00');
+GO
+
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
+('LR010', 'ND012', '2026-05-12'),
+('LR011', 'ND013', '2026-05-12'),
+('LR012', 'ND014', '2026-05-13');
+GO
+
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec, GhiChu) VALUES
+('LR010', 'CA010', N'Rảnh buổi sáng'),
+('LR010', 'CA011', N'Rảnh buổi trưa'),
+('LR011', 'CA012', N'Rảnh buổi chiều'),
+('LR011', 'CA013', N'Rảnh buổi chiều muộn'),
+('LR012', 'CA010', N'Rảnh cả buổi sáng');
+GO
