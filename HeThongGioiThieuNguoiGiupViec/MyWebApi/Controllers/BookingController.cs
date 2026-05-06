@@ -475,7 +475,160 @@ namespace MyWebApi.Controllers
                 data = statuses
             });
         }
+        [HttpPost("kiemtralichranh")]
+        public async Task<IActionResult> KiemTraLichRanh([FromBody] KiemTraLichRanhRequest request)
+        {
+            if (request.ThoiGianThucHien <= 0)
+                return BadRequest("Thời lượng không hợp lệ.");
+
+            try
+            {
+                DateOnly targetDate = DateOnly.FromDateTime(request.NgayDat);
+                TimeOnly targetStartTime = TimeOnly.FromTimeSpan(request.ThoiGianBatDau);
+                TimeOnly targetEndTime = targetStartTime.AddHours(request.ThoiGianThucHien);
+
+                // ==============================================================================
+                // BƯỚC 1: Lấy danh sách NGV có lịch rảnh bao trùm khung giờ này
+                // ==============================================================================
+                var potentialHelpers = await _context.LichRanhs
+                    .Where(lr => lr.Ngay == targetDate)
+                    .Where(lr => lr.LichRanhCaLamViecs.Any(lrc =>
+                        lrc.MaCaLamViecNavigation.GioBatDau <= targetStartTime &&
+                        lrc.MaCaLamViecNavigation.GioKetThuc >= targetEndTime))
+                    .Select(lr => lr.MaNguoiGiupViec)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (!potentialHelpers.Any())
+                    return Ok(new { isAvailable = false, message = "Rất tiếc, không có nhân viên nào trống lịch vào khung giờ này." });
+
+                // ==============================================================================
+                // BƯỚC 2: Kiểm tra trùng lịch và tính toán công suất
+                // ==============================================================================
+                var jobsInDay = await _context.NgayLamViecs
+                    .Where(nlv => nlv.NgayLam == targetDate
+                               && (nlv.TrangThai == "Đang hoạt động" || nlv.TrangThai == "Đã phân công" ||
+                                   nlv.TrangThai == "Chờ thực hiện" || nlv.TrangThai == "Chờ phân công" || nlv.TrangThai == "Chưa phân công"))
+                    .Select(nlv => new
+                    {
+                        MaNguoiGiupViec = nlv.MaNguoiGiupViec,
+                        JobStartTime = nlv.GioBatDau,
+                        JobDuration = _context.DonDatDichVuNgayLamViecs
+                                        .Where(d => d.MaNgayLamViec == nlv.MaNgayLamViec)
+                                        .Sum(d => (int?)d.ThoiGianThucHien) ?? 0
+                    })
+                    .ToListAsync();
+
+                var overlappingJobs = jobsInDay.Where(job =>
+                {
+                    if (job.JobStartTime == null || job.JobDuration <= 0) return false;
+                    TimeOnly jobStart = job.JobStartTime.Value;
+                    TimeOnly jobEnd = jobStart.AddHours(job.JobDuration);
+                    return (jobStart < targetEndTime) && (jobEnd > targetStartTime);
+                }).ToList();
+
+                // NGV đã kẹt lịch
+                var busyHelpers = overlappingJobs.Where(j => !string.IsNullOrEmpty(j.MaNguoiGiupViec))
+                                                 .Select(j => j.MaNguoiGiupViec).Distinct().ToList();
+
+                // Đơn đang treo chờ phân công
+                var overlappingPendingJobsCount = overlappingJobs.Count(j => string.IsNullOrEmpty(j.MaNguoiGiupViec));
+
+                // Lấy ra danh sách NHỮNG NGƯỜI THỰC SỰ RẢNH
+                var actuallyFreeHelpers = potentialHelpers.Except(busyHelpers).ToList();
+
+                if (actuallyFreeHelpers.Count <= overlappingPendingJobsCount)
+                    return Ok(new { isAvailable = false, message = "Rất tiếc, khung giờ này đang có nhiều người đặt và đã hết nhân sự trống." });
+
+                // ==============================================================================
+                // BƯỚC 3: Xử lý logic 1 Dịch Vụ -> 1 Kỹ Năng
+                // ==============================================================================
+                if (request.DanhSachMaDichVu != null && request.DanhSachMaDichVu.Any())
+                {
+                    // 3.1 Truy vấn DB lấy thông tin Dịch vụ khách đặt kèm Mã Kỹ Năng tương ứng
+                    var dichVusYeuCau = await _context.DichVus
+                        .Where(dv => request.DanhSachMaDichVu.Contains(dv.MaDichVu))
+                        .Select(dv => new { dv.MaDichVu, dv.TenDichVu, dv.MaKyNang })
+                        .ToListAsync();
+
+                    var requiredSkillIds = dichVusYeuCau
+                        .Where(dv => !string.IsNullOrEmpty(dv.MaKyNang))
+                        .Select(dv => dv.MaKyNang)
+                        .Distinct()
+                        .ToList();
+
+                    // 3.2 Lấy hồ sơ (kèm kỹ năng) của những NGV ĐANG RẢNH
+                    var hoSoRanh = await _context.HoSoNguoiGiupViecs
+                        .Include(hs => hs.KyNangNguoiGiupViecs)
+                        .Where(hs => actuallyFreeHelpers.Contains(hs.MaNguoiGiupViec))
+                        .ToListAsync();
+
+                    bool hasPerfectHelper = false;
+
+                    // 3.3 Tìm xem có NGV rảnh nào sở hữu ĐỦ tất cả kỹ năng yêu cầu không
+                    foreach (var hs in hoSoRanh)
+                    {
+                        var helperSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList();
+
+                        bool canDoEverything = requiredSkillIds.All(req => helperSkills.Contains(req));
+
+                        if (canDoEverything)
+                        {
+                            hasPerfectHelper = true;
+                            break;
+                        }
+                    }
+
+                    // ==============================================================================
+                    // BƯỚC 4: Báo lỗi chính xác TÊN DỊCH VỤ nếu thiếu nhân sự có chuyên môn
+                    // ==============================================================================
+                    if (!hasPerfectHelper)
+                    {
+                        // Gom tất cả kỹ năng mà đội ngũ rảnh rỗi hiện có
+                        var allSkillsFromFreeHelpers = hoSoRanh
+                            .SelectMany(hs => hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang))
+                            .Distinct()
+                            .ToList();
+
+                        // Tìm ra Mã Kỹ Năng nào khách cần mà NGV rảnh KHÔNG CÓ
+                        var missingSkillIds = requiredSkillIds.Except(allSkillsFromFreeHelpers).ToList();
+
+                        if (missingSkillIds.Any())
+                        {
+                            // Map từ Mã Kỹ Năng thiếu ngược ra Tên Dịch Vụ
+                            var missingServiceNames = dichVusYeuCau
+                                .Where(dv => missingSkillIds.Contains(dv.MaKyNang))
+                                .Select(dv => dv.TenDichVu)
+                                .ToList();
+
+                            string names = string.Join(", ", missingServiceNames);
+                            return Ok(new
+                            {
+                                isAvailable = false,
+                                message = $"Có nhân viên rảnh, nhưng hệ thống đang thiếu nhân sự có chuyên môn để nhận gói: {names}. Vui lòng chọn giờ khác."
+                            });
+                        }
+                        else
+                        {
+                            // Trường hợp éo le: Các nhân viên rảnh gộp lại thì đủ kỹ năng, nhưng KHÔNG CÓ AI sở hữu TẤT CẢ cùng lúc
+                            return Ok(new
+                            {
+                                isAvailable = false,
+                                message = "Có nhân viên rảnh, nhưng không có cá nhân nào sở hữu CÙNG LÚC tất cả kỹ năng để nhận trọn gói đơn hàng này. Vui lòng tách đơn."
+                            });
+                        }
+                    }
+                }
+
+                return Ok(new { isAvailable = true, message = "Có nhân viên rảnh và đáp ứng đủ kỹ năng." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Lỗi server khi xử lý kiểm tra lịch rảnh: " + ex.Message);
+            }
+        }
     }
+
 
     // =========================================================================
     // DTOs: Các Class hứng dữ liệu JSON từ Frontend Next.js
@@ -503,5 +656,14 @@ namespace MyWebApi.Controllers
         public string MaDichVu { get; set; } = null!;
         public int ThoiLuong { get; set; }
         public decimal ThanhTien { get; set; }
+    }
+    //DTO kiểm tra lịch rãnh
+    // DTO nhận dữ liệu từ React gửi lên
+    public class KiemTraLichRanhRequest
+    {
+        public DateTime NgayDat { get; set; }
+        public TimeSpan ThoiGianBatDau { get; set; }
+        public int ThoiGianThucHien { get; set; }
+        public List<string> DanhSachMaDichVu { get; set; } // Sửa tên biến này cho chuẩn nghiệp vụ
     }
 }

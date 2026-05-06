@@ -158,19 +158,19 @@ using (var scope = app.Services.CreateScope())
     // =======================
     // 1. SEED ROLES
     // =======================
-    if (!context.VaiTros.Any())
-    {
-        var roles = new[]
-        {
-            new VaiTro { MaVaiTro = "VT001", TenVaiTro = "Admin", MoTa = "Quản trị viên hệ thống" },
-            new VaiTro { MaVaiTro = "VT002", TenVaiTro = "Staff", MoTa = "Nhân viên" },
-            new VaiTro { MaVaiTro = "VT003", TenVaiTro = "Customer", MoTa = "Khách hàng" },
-            new VaiTro { MaVaiTro = "VT004", TenVaiTro = "Maid", MoTa = "Người giúp việc" }
-        };
+    //if (!context.VaiTros.Any())
+    //{
+    //    var roles = new[]
+    //    {
+    //        new VaiTro { MaVaiTro = "VT001", TenVaiTro = "Admin", MoTa = "Quản trị viên hệ thống" },
+    //        new VaiTro { MaVaiTro = "VT002", TenVaiTro = "Staff", MoTa = "Nhân viên" },
+    //        new VaiTro { MaVaiTro = "VT003", TenVaiTro = "Customer", MoTa = "Khách hàng" },
+    //        new VaiTro { MaVaiTro = "VT004", TenVaiTro = "Maid", MoTa = "Người giúp việc" }
+    //    };
 
-        context.VaiTros.AddRange(roles);
-        await context.SaveChangesAsync();
-    }
+    //    context.VaiTros.AddRange(roles);
+    //    await context.SaveChangesAsync();
+    //}
 
     // =======================
     // 2. SEED ADMIN USER

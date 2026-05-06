@@ -115,12 +115,14 @@ TenThanhPhan NVARCHAR(200)
 -- 9 DichVu
 CREATE TABLE DichVu (
     MaDichVu CHAR(5) PRIMARY KEY, -- VD: 'cleaning', 'combo', 'cooking'
+	MaKyNang CHAR(5),
     TenDichVu NVARCHAR(100) NOT NULL,
     MoTa NVARCHAR(500),              -- Description từ code
     GiaTheoGio DECIMAL(18, 2),          -- Phần số của Price (VD: 60000)
     HinhAnh VARCHAR(255),             -- URL image
     PhoBien BIT DEFAULT 0,            -- popular (true/false)
-    TrangThai NVARCHAR(30) DEFAULT N'Đang hoạt động'
+    TrangThai NVARCHAR(30) DEFAULT N'Đang hoạt động',
+	FOREIGN KEY (MaKyNang) REFERENCES KyNang(MaKyNang)
 );
 
 -- 10 DichVuThanhPhan (THÊM CỘT)
@@ -131,6 +133,7 @@ GhiChu NVARCHAR(100),
 PRIMARY KEY(MaDichVu,MaThanhPhan),
 FOREIGN KEY(MaDichVu) REFERENCES DichVu(MaDichVu),
 FOREIGN KEY(MaThanhPhan) REFERENCES ThanhPhan(MaThanhPhan)
+
 );
 
 -- 11 DonDat
@@ -228,7 +231,13 @@ CREATE TABLE KhieuNai(
     FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 );
 GO 
-
+INSERT INTO VaiTro (MaVaiTro, TenVaiTro, MoTa)
+VALUES 
+    ('VT001', N'Admin', N'Quản trị viên hệ thống'),
+    ('VT002', N'Staff', N'Nhân viên'),
+    ('VT003', N'Customer', N'Khách hàng'),
+    ('VT004', N'Maid', N'Người giúp việc');
+	GO
 INSERT INTO KyNang (MaKyNang, TenKyNang, MoTa, IconName) VALUES 
 ('KN001', N'Dọn dẹp nhà', N'Vệ sinh, sắp xếp đồ đạc gọn gàng', 'cleaning'),
 ('KN002', N'Nấu ăn', N'Thực đơn đa dạng, đảm bảo dinh dưỡng', 'cooking'),
@@ -259,14 +268,17 @@ INSERT INTO ThanhPhan (MaThanhPhan, TenThanhPhan) VALUES
 ('TP016', N'Hút bụi bằng máy'),
 ('TP017', N'Tẩy ố bằng hơi nước'),
 ('TP018', N'Khử mùi diệt khuẩn');
-INSERT INTO DichVu (MaDichVu, TenDichVu, MoTa, GiaTheoGio, HinhAnh, PhoBien, TrangThai) VALUES 
-('DV001', N'Dọn dẹp nhà cửa', N'Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.', 60000, 'https://images.unsplash.com/photo-1581578731548-c64695cc6952', 1, N'Đang hoạt động'),
-('DV002', N'Tổng vệ sinh', N'Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.', 150000, 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac', 0, N'Đang hoạt động'),
-('DV003', N'Nấu ăn gia đình', N'Đi chợ và chuẩn bị những bữa ăn ngon miệng, đảm bảo dinh dưỡng cho gia đình.', 80000, 'https://images.unsplash.com/photo-1556910103-1c02745aae4d', 0, N'Đang hoạt động'),
-('DV004', N'Chăm sóc trẻ em', N'Trông nom, chơi đùa và chăm sóc bữa ăn, giấc ngủ cho các bé khi bạn bận rộn.', 70000, 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368', 1, N'Đang hoạt động'),
-('DV005', N'Chăm sóc người cao tuổi', N'Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.', 80000, 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289', 0, N'Đang hoạt động'),
-('DV006', N'Giặt sofa & nệm', N'Sử dụng máy móc chuyên dụng để hút bụi mịn, khử khuẩn và làm sạch sâu.', 250000, 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92', 0, N'Đang hoạt động');
+INSERT INTO DichVu (MaDichVu, MaKyNang, TenDichVu, MoTa, GiaTheoGio, HinhAnh, PhoBien, TrangThai) VALUES 
+('DV001','KN001', N'Dọn dẹp nhà cửa', N'Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.', 60000, 'https://images.unsplash.com/photo-1581578731548-c64695cc6952', 1, N'Đang hoạt động'),
+('DV002','KN002', N'Tổng vệ sinh', N'Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.', 150000, 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac', 0, N'Đang hoạt động'),
+('DV003','KN003', N'Nấu ăn gia đình', N'Đi chợ và chuẩn bị những bữa ăn ngon miệng, đảm bảo dinh dưỡng cho gia đình.', 80000, 'https://images.unsplash.com/photo-1556910103-1c02745aae4d', 0, N'Đang hoạt động'),
+('DV004','KN004', N'Chăm sóc trẻ em', N'Trông nom, chơi đùa và chăm sóc bữa ăn, giấc ngủ cho các bé khi bạn bận rộn.', 70000, 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368', 1, N'Đang hoạt động'),
+('DV005','KN005', N'Chăm sóc người cao tuổi', N'Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.', 80000, 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289', 0, N'Đang hoạt động'),
+('DV006','KN006', N'Giặt sofa & nệm', N'Sử dụng máy móc chuyên dụng để hút bụi mịn, khử khuẩn và làm sạch sâu.', 250000, 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92', 0, N'Đang hoạt động');
 -- Dọn dẹp nhà cửa (DV001) gồm TP001, TP002, TP003
+update KyNang
+set TenKyNang =N'Dọn dẹp nhà cửa'
+where MaKyNang = 'KN001'
 INSERT INTO DichVuThanhPhan (MaDichVu, MaThanhPhan, GhiChu) VALUES 
 ('DV001', 'TP001', N'Sử dụng nước lau sàn chuyên dụng'),
 ('DV001', 'TP002', NULL),
@@ -318,7 +330,67 @@ select * from LichSuTrangThaiDon
 select * from LichRanh
 select * from CaLamViec
 select * from LichRanhCaLamViec
+select * from DichVu
 GO
 UPDATE HoSoNguoiGiupViec
 SET TrangThaiXacMinh = N'Đã duyệt'
 WHERE MaNguoiGiupViec = 'GV661';
+
+
+
+INSERT INTO NguoiDung (
+    MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi
+)
+VALUES (
+    'ND001', 
+    N'Nguyễn Thị Lan', 
+    'lanmaid@gmail.com', 
+    '0912345678', 
+    '123456', 
+    N'Nha Trang'
+);
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+VALUES ('ND001', 'VT004');
+INSERT INTO HoSoNguoiGiupViec (
+    MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh,
+    TenNguoiThan, SDTNguoiThan,
+    TrangThaiXacMinh
+)
+VALUES (
+    'HS001', 
+    'ND001', 
+    '079123456789', 
+    '1995-05-10', 
+    N'Nữ',
+    N'Nguyễn Văn A',
+    '0987654321',
+    N'Đã duyệt'
+);
+INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES
+('KN001', 'HS001', N'2 năm kinh nghiệm dọn dẹp'),
+('KN002', 'HS001', N'Biết nấu ăn gia đình'),
+('KN005', 'HS001', N'Giặt ủi chuyên nghiệp');
+INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) VALUES
+('CA001', '08:00', '10:00'),
+('CA002', '10:00', '12:00'),
+('CA003', '13:00', '15:00'),
+('CA004', '15:00', '17:00');
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
+('LR001', 'ND001', '2026-05-06'),
+('LR002', 'ND001', '2026-05-07'),
+('LR003', 'ND001', '2026-05-08');
+
+-- Ngày 06
+INSERT INTO LichRanhCaLamViec VALUES
+('LR001', 'CA001', N'Rảnh buổi sáng'),
+('LR001', 'CA002', N'Rảnh tiếp');
+
+-- Ngày 07
+INSERT INTO LichRanhCaLamViec VALUES
+('LR002', 'CA003', N'Rảnh buổi chiều'),
+('LR002', 'CA004', N'Rảnh chiều muộn');
+
+-- Ngày 08
+INSERT INTO LichRanhCaLamViec VALUES
+('LR003', 'CA001', NULL),
+('LR003', 'CA004', NULL);

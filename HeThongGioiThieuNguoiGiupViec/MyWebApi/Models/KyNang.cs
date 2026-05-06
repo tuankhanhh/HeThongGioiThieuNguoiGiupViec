@@ -25,5 +25,8 @@ public partial class KyNang
     public string? IconName { get; set; }
 
     [InverseProperty("MaKyNangNavigation")]
+    public virtual ICollection<DichVu> DichVus { get; set; } = new List<DichVu>();
+
+    [InverseProperty("MaKyNangNavigation")]
     public virtual ICollection<KyNangNguoiGiupViec> KyNangNguoiGiupViecs { get; set; } = new List<KyNangNguoiGiupViec>();
 }

@@ -237,7 +237,7 @@ export default function TimeSelectionContent() {
   // ---------------- LOGIC XỬ LÝ UI ----------------
 
   // Thêm hàm kiểm tra trước khi chuyển trang
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedWorkDays.length === 0) {
       Swal.fire({
         title: "Thông báo",
@@ -280,14 +280,93 @@ export default function TimeSelectionContent() {
         icon: "error",
         confirmButtonColor: "#0d7660",
       });
-
-      // Tùy chọn: Tự động reset lại giờ hợp lệ cho ngày hôm nay để khách đỡ mất công
-      // const updatedDays = [...selectedWorkDays];
-      // ... logic reset ...
-
       return; // Chặn không cho chuyển trang
     }
-    // --- KẾT THÚC KIỂM TRA ---
+    // --- KẾT THÚC KIỂM TRA LỖI TREO MÁY ---
+
+    // --- BẮT ĐẦU: KIỂM TRA NHÂN VIÊN RẢNH VÀ ĐỦ KỸ NĂNG THÔNG QUA API ---
+    try {
+      // Hiển thị trạng thái Loading
+      Swal.fire({
+        title: "Đang kiểm tra...",
+        text: "Hệ thống đang tìm kiếm nhân viên phù hợp, vui lòng đợi.",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      for (const day of selectedWorkDays) {
+        // 1. Tính tổng thời lượng của tất cả dịch vụ trong ngày đó
+        const totalDurationHours = day.services.reduce(
+          (total, svc) => total + svc.duration,
+          0,
+        );
+
+        // 2. Lấy danh sách MÃ DỊCH VỤ (Đã đổi tên biến cho chuẩn với C# mới)
+        const serviceIds = day.services.map((svc) => svc.id);
+
+        // 3. Xử lý logic thời gian
+        const targetDate = parse(day.executionDate, "yyyy-MM-dd", new Date());
+        const [hours, minutes] = day.startTime.split(":").map(Number);
+        const fullDateTime = addMinutes(
+          addHours(startOfDay(targetDate), hours),
+          minutes,
+        );
+
+        // 4. CHUẨN BỊ PAYLOAD KHỚP 100% VỚI JSON CỦA C# (Đã đổi key thành danhSachMaDichVu)
+        const payload = {
+          ngayDat: fullDateTime.toISOString(),
+          thoiGianBatDau: `${day.startTime}:00`,
+          thoiGianThucHien: totalDurationHours,
+          danhSachMaDichVu: serviceIds, // <--- CẬP NHẬT Ở ĐÂY
+        };
+
+        // GỌI API
+        const response: any = await api.post(
+          "/Booking/kiemtralichranh",
+          payload,
+        );
+
+        // Lấy kết quả từ backend
+        const isAvailable =
+          response.isAvailable ?? response.data?.isAvailable ?? true;
+        const message = response.message ?? response.data?.message;
+
+        if (!isAvailable) {
+          Swal.fire({
+            title: "Không thể đặt lịch",
+            text:
+              message ||
+              `Rất tiếc, hiện tại không có nhân viên nào phù hợp vào lúc ${day.startTime} ngày ${format(targetDate, "dd/MM/yyyy")}. Vui lòng chọn thời gian khác.`,
+            icon: "warning",
+            confirmButtonColor: "#0d7660",
+          });
+          return; // Chặn không cho chuyển trang nếu 1 ngày không thoả mãn
+        }
+      }
+
+      Swal.close(); // Tắt popup loading nếu tất cả đều pass
+    } catch (error: any) {
+      console.error("Lỗi khi kiểm tra lịch:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data ||
+        "Không thể kiểm tra lịch trống lúc này. Vui lòng thử lại sau.";
+
+      Swal.fire({
+        title: "Lỗi kết nối",
+        text:
+          typeof errorMessage === "string"
+            ? errorMessage
+            : "Đã xảy ra lỗi không xác định từ máy chủ.",
+        icon: "error",
+        confirmButtonColor: "#0d7660",
+      });
+      return;
+    }
+    // --- KẾT THÚC KIỂM TRA API ---
 
     // Mọi thứ OK -> Chuyển sang trang nhập địa chỉ
     router.push(ROUTES.CUSTOMER.ADDRESS);
@@ -629,7 +708,7 @@ export default function TimeSelectionContent() {
                                 }
                                 className="bg-white border border-gray-200 rounded-lg text-sm p-1 px-2 outline-none focus:border-[#0d7660] cursor-pointer"
                               >
-                                {[2, 3, 4, 5, 6].map((h) => (
+                                {[1, 2, 3, 4].map((h) => (
                                   <option key={h} value={h}>
                                     {h} giờ
                                   </option>

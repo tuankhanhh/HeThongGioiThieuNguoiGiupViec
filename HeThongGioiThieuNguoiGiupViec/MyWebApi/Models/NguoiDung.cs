@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MyWebApi.Models;
 
 [Table("NguoiDung")]
-[Index("Email", Name = "UQ__NguoiDun__A9D10534229D8F72", IsUnique = true)]
+[Index("Email", Name = "UQ__NguoiDun__A9D10534F2E16356", IsUnique = true)]
 public partial class NguoiDung
 {
     [Key]

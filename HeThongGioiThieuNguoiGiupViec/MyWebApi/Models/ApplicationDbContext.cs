@@ -65,51 +65,54 @@ public partial class ApplicationDbContext : DbContext
     {
         modelBuilder.Entity<CaLamViec>(entity =>
         {
-            entity.HasKey(e => e.MaCaLamViec).HasName("PK__CaLamVie__E545F62523B3347D");
+            entity.HasKey(e => e.MaCaLamViec).HasName("PK__CaLamVie__E545F6252F1D6F3D");
 
             entity.Property(e => e.MaCaLamViec).IsFixedLength();
         });
 
         modelBuilder.Entity<DanhGium>(entity =>
         {
-            entity.HasKey(e => e.MaDanhGia).HasName("PK__DanhGia__AA9515BFDA0F8380");
+            entity.HasKey(e => e.MaDanhGia).HasName("PK__DanhGia__AA9515BF5D1F2E05");
 
             entity.Property(e => e.MaDanhGia).IsFixedLength();
             entity.Property(e => e.MaDon).IsFixedLength();
 
             entity.HasOne(d => d.MaDonNavigation).WithMany(p => p.DanhGia)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DanhGia__MaDon__76969D2E");
+                .HasConstraintName("FK__DanhGia__MaDon__778AC167");
         });
 
         modelBuilder.Entity<DichVu>(entity =>
         {
-            entity.HasKey(e => e.MaDichVu).HasName("PK__DichVu__C0E6DE8F0C617C48");
+            entity.HasKey(e => e.MaDichVu).HasName("PK__DichVu__C0E6DE8FA8EC613E");
 
             entity.Property(e => e.MaDichVu).IsFixedLength();
+            entity.Property(e => e.MaKyNang).IsFixedLength();
             entity.Property(e => e.PhoBien).HasDefaultValue(false);
             entity.Property(e => e.TrangThai).HasDefaultValue("Đang hoạt động");
+
+            entity.HasOne(d => d.MaKyNangNavigation).WithMany(p => p.DichVus).HasConstraintName("FK__DichVu__MaKyNang__59063A47");
         });
 
         modelBuilder.Entity<DichVuThanhPhan>(entity =>
         {
-            entity.HasKey(e => new { e.MaDichVu, e.MaThanhPhan }).HasName("PK__DichVuTh__3B626B8BC8F7B45D");
+            entity.HasKey(e => new { e.MaDichVu, e.MaThanhPhan }).HasName("PK__DichVuTh__3B626B8B73941F58");
 
             entity.Property(e => e.MaDichVu).IsFixedLength();
             entity.Property(e => e.MaThanhPhan).IsFixedLength();
 
             entity.HasOne(d => d.MaDichVuNavigation).WithMany(p => p.DichVuThanhPhans)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DichVuTha__MaDic__5AEE82B9");
+                .HasConstraintName("FK__DichVuTha__MaDic__5BE2A6F2");
 
             entity.HasOne(d => d.MaThanhPhanNavigation).WithMany(p => p.DichVuThanhPhans)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DichVuTha__MaTha__5BE2A6F2");
+                .HasConstraintName("FK__DichVuTha__MaTha__5CD6CB2B");
         });
 
         modelBuilder.Entity<DonDat>(entity =>
         {
-            entity.HasKey(e => e.MaDon).HasName("PK__DonDat__3D89F5689E6974EC");
+            entity.HasKey(e => e.MaDon).HasName("PK__DonDat__3D89F5687FF69074");
 
             entity.Property(e => e.MaDon).IsFixedLength();
             entity.Property(e => e.MaKhachhang).IsFixedLength();
@@ -117,14 +120,14 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasOne(d => d.MaKhachhangNavigation).WithMany(p => p.DonDatMaKhachhangNavigations)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DonDat__MaKhachh__5EBF139D");
+                .HasConstraintName("FK__DonDat__MaKhachh__5FB337D6");
 
-            entity.HasOne(d => d.MaNhanVienNavigation).WithMany(p => p.DonDatMaNhanVienNavigations).HasConstraintName("FK__DonDat__MaNhanVi__5FB337D6");
+            entity.HasOne(d => d.MaNhanVienNavigation).WithMany(p => p.DonDatMaNhanVienNavigations).HasConstraintName("FK__DonDat__MaNhanVi__60A75C0F");
         });
 
         modelBuilder.Entity<DonDatDichVu>(entity =>
         {
-            entity.HasKey(e => e.MaDonDatDichVu).HasName("PK__DonDatDi__71609B6352F72D3F");
+            entity.HasKey(e => e.MaDonDatDichVu).HasName("PK__DonDatDi__71609B63124E4F51");
 
             entity.Property(e => e.MaDonDatDichVu).IsFixedLength();
             entity.Property(e => e.MaDichVu).IsFixedLength();
@@ -132,32 +135,32 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasOne(d => d.MaDichVuNavigation).WithMany(p => p.DonDatDichVus)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DonDatDic__MaDic__6383C8BA");
+                .HasConstraintName("FK__DonDatDic__MaDic__6477ECF3");
 
             entity.HasOne(d => d.MaDonNavigation).WithMany(p => p.DonDatDichVus)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DonDatDic__MaDon__628FA481");
+                .HasConstraintName("FK__DonDatDic__MaDon__6383C8BA");
         });
 
         modelBuilder.Entity<DonDatDichVuNgayLamViec>(entity =>
         {
-            entity.HasKey(e => new { e.MaDonDatDichVu, e.MaNgayLamViec }).HasName("PK__DonDatDi__0957E64385F1D27E");
+            entity.HasKey(e => new { e.MaDonDatDichVu, e.MaNgayLamViec }).HasName("PK__DonDatDi__0957E643E22DF9C4");
 
             entity.Property(e => e.MaDonDatDichVu).IsFixedLength();
             entity.Property(e => e.MaNgayLamViec).IsFixedLength();
 
             entity.HasOne(d => d.MaDonDatDichVuNavigation).WithMany(p => p.DonDatDichVuNgayLamViecs)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DonDatDic__MaDon__6A30C649");
+                .HasConstraintName("FK__DonDatDic__MaDon__6B24EA82");
 
             entity.HasOne(d => d.MaNgayLamViecNavigation).WithMany(p => p.DonDatDichVuNgayLamViecs)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DonDatDic__MaNga__6B24EA82");
+                .HasConstraintName("FK__DonDatDic__MaNga__6C190EBB");
         });
 
         modelBuilder.Entity<HoSoNguoiGiupViec>(entity =>
         {
-            entity.HasKey(e => e.MaHoSo).HasName("PK__HoSoNguo__1666423C081257CC");
+            entity.HasKey(e => e.MaHoSo).HasName("PK__HoSoNguo__1666423CD208CB29");
 
             entity.Property(e => e.MaHoSo).IsFixedLength();
             entity.Property(e => e.MaNguoiGiupViec).IsFixedLength();
@@ -169,7 +172,7 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<KhieuNai>(entity =>
         {
-            entity.HasKey(e => e.MaKhieuNai).HasName("PK__KhieuNai__1D72BE52C0314369");
+            entity.HasKey(e => e.MaKhieuNai).HasName("PK__KhieuNai__1D72BE52232A31DD");
 
             entity.Property(e => e.MaKhieuNai).IsFixedLength();
             entity.Property(e => e.MaDon).IsFixedLength();
@@ -180,25 +183,25 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasOne(d => d.MaDonNavigation).WithMany(p => p.KhieuNais)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__KhieuNai__MaDon__7C4F7684");
+                .HasConstraintName("FK__KhieuNai__MaDon__7D439ABD");
 
             entity.HasOne(d => d.MaKhachHangNavigation).WithMany(p => p.KhieuNaiMaKhachHangNavigations)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__KhieuNai__MaKhac__7D439ABD");
+                .HasConstraintName("FK__KhieuNai__MaKhac__7E37BEF6");
 
-            entity.HasOne(d => d.MaNhanVienNavigation).WithMany(p => p.KhieuNaiMaNhanVienNavigations).HasConstraintName("FK__KhieuNai__MaNhan__7E37BEF6");
+            entity.HasOne(d => d.MaNhanVienNavigation).WithMany(p => p.KhieuNaiMaNhanVienNavigations).HasConstraintName("FK__KhieuNai__MaNhan__7F2BE32F");
         });
 
         modelBuilder.Entity<KyNang>(entity =>
         {
-            entity.HasKey(e => e.MaKyNang).HasName("PK__KyNang__796CFDAF47CF088F");
+            entity.HasKey(e => e.MaKyNang).HasName("PK__KyNang__796CFDAF27F1B376");
 
             entity.Property(e => e.MaKyNang).IsFixedLength();
         });
 
         modelBuilder.Entity<KyNangNguoiGiupViec>(entity =>
         {
-            entity.HasKey(e => new { e.MaKyNang, e.MaHoSo }).HasName("PK__KyNangNg__A80A998CF1AD2A9F");
+            entity.HasKey(e => new { e.MaKyNang, e.MaHoSo }).HasName("PK__KyNangNg__A80A998C642F2BF8");
 
             entity.Property(e => e.MaKyNang).IsFixedLength();
             entity.Property(e => e.MaHoSo).IsFixedLength();
@@ -214,7 +217,7 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<LichRanh>(entity =>
         {
-            entity.HasKey(e => e.MaLichRanh).HasName("PK__LichRanh__0942D646A0A36E59");
+            entity.HasKey(e => e.MaLichRanh).HasName("PK__LichRanh__0942D64683568DB2");
 
             entity.Property(e => e.MaLichRanh).IsFixedLength();
             entity.Property(e => e.MaNguoiGiupViec).IsFixedLength();
@@ -226,7 +229,7 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<LichRanhCaLamViec>(entity =>
         {
-            entity.HasKey(e => new { e.MaLichRanh, e.MaCaLamViec }).HasName("PK__LichRanh__47168924EFE629EC");
+            entity.HasKey(e => new { e.MaLichRanh, e.MaCaLamViec }).HasName("PK__LichRanh__4716892428056A3D");
 
             entity.Property(e => e.MaLichRanh).IsFixedLength();
             entity.Property(e => e.MaCaLamViec).IsFixedLength();
@@ -242,19 +245,19 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<LichSuTrangThaiDon>(entity =>
         {
-            entity.HasKey(e => e.MaLichSu).HasName("PK__LichSuTr__C443222AFA9B78D9");
+            entity.HasKey(e => e.MaLichSu).HasName("PK__LichSuTr__C443222A63188AB0");
 
             entity.Property(e => e.MaLichSu).IsFixedLength();
             entity.Property(e => e.MaDon).IsFixedLength();
 
             entity.HasOne(d => d.MaDonNavigation).WithMany(p => p.LichSuTrangThaiDons)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__LichSuTra__MaDon__73BA3083");
+                .HasConstraintName("FK__LichSuTra__MaDon__74AE54BC");
         });
 
         modelBuilder.Entity<NgayLamViec>(entity =>
         {
-            entity.HasKey(e => e.MaNgayLamViec).HasName("PK__NgayLamV__8377D206347F87E4");
+            entity.HasKey(e => e.MaNgayLamViec).HasName("PK__NgayLamV__8377D2061018FC50");
 
             entity.Property(e => e.MaNgayLamViec).IsFixedLength();
             entity.Property(e => e.MaDonDatDichVu).IsFixedLength();
@@ -262,14 +265,14 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasOne(d => d.MaDonDatDichVuNavigation).WithMany(p => p.NgayLamViecs)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__NgayLamVi__MaDon__66603565");
+                .HasConstraintName("FK__NgayLamVi__MaDon__6754599E");
 
-            entity.HasOne(d => d.MaNguoiGiupViecNavigation).WithMany(p => p.NgayLamViecs).HasConstraintName("FK__NgayLamVi__MaNgu__6754599E");
+            entity.HasOne(d => d.MaNguoiGiupViecNavigation).WithMany(p => p.NgayLamViecs).HasConstraintName("FK__NgayLamVi__MaNgu__68487DD7");
         });
 
         modelBuilder.Entity<NguoiDung>(entity =>
         {
-            entity.HasKey(e => e.MaNguoiDung).HasName("PK__NguoiDun__C539D76286DF7CB4");
+            entity.HasKey(e => e.MaNguoiDung).HasName("PK__NguoiDun__C539D762DA3B82AE");
 
             entity.Property(e => e.MaNguoiDung).IsFixedLength();
             entity.Property(e => e.NgayTao).HasDefaultValueSql("(getdate())");
@@ -279,7 +282,7 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<NguoiDungVaiTro>(entity =>
         {
-            entity.HasKey(e => new { e.MaNguoiDung, e.MaVaiTro }).HasName("PK__NguoiDun__291D137E36F7B0BB");
+            entity.HasKey(e => new { e.MaNguoiDung, e.MaVaiTro }).HasName("PK__NguoiDun__291D137E655439F7");
 
             entity.Property(e => e.MaNguoiDung).IsFixedLength();
             entity.Property(e => e.MaVaiTro).IsFixedLength();
@@ -296,38 +299,38 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<ThanhPhan>(entity =>
         {
-            entity.HasKey(e => e.MaThanhPhan).HasName("PK__ThanhPha__B84B504E92402947");
+            entity.HasKey(e => e.MaThanhPhan).HasName("PK__ThanhPha__B84B504EE70EFE54");
 
             entity.Property(e => e.MaThanhPhan).IsFixedLength();
         });
 
         modelBuilder.Entity<ThanhToan>(entity =>
         {
-            entity.HasKey(e => e.MaThanhToan).HasName("PK__ThanhToa__D4B25844363E392A");
+            entity.HasKey(e => e.MaThanhToan).HasName("PK__ThanhToa__D4B25844AACCD8DB");
 
             entity.Property(e => e.MaThanhToan).IsFixedLength();
             entity.Property(e => e.MaDon).IsFixedLength();
 
             entity.HasOne(d => d.MaDonNavigation).WithMany(p => p.ThanhToans)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ThanhToan__MaDon__70DDC3D8");
+                .HasConstraintName("FK__ThanhToan__MaDon__71D1E811");
         });
 
         modelBuilder.Entity<ThuNhapNguoiGiupViec>(entity =>
         {
-            entity.HasKey(e => e.MaThuNhap).HasName("PK__ThuNhapN__959076B271AD92A5");
+            entity.HasKey(e => e.MaThuNhap).HasName("PK__ThuNhapN__959076B2B4E7D2D1");
 
             entity.Property(e => e.MaThuNhap).IsFixedLength();
             entity.Property(e => e.MaNgayLamViec).IsFixedLength();
 
             entity.HasOne(d => d.MaNgayLamViecNavigation).WithMany(p => p.ThuNhapNguoiGiupViecs)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ThuNhapNg__MaNga__6E01572D");
+                .HasConstraintName("FK__ThuNhapNg__MaNga__6EF57B66");
         });
 
         modelBuilder.Entity<VaiTro>(entity =>
         {
-            entity.HasKey(e => e.MaVaiTro).HasName("PK__VaiTro__C24C41CF53BDD5C8");
+            entity.HasKey(e => e.MaVaiTro).HasName("PK__VaiTro__C24C41CF95E5E8BB");
 
             entity.Property(e => e.MaVaiTro).IsFixedLength();
         });

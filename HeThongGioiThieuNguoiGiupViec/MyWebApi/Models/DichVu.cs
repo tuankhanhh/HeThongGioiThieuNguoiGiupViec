@@ -14,6 +14,10 @@ public partial class DichVu
     [Unicode(false)]
     public string MaDichVu { get; set; } = null!;
 
+    [StringLength(5)]
+    [Unicode(false)]
+    public string? MaKyNang { get; set; }
+
     [StringLength(100)]
     public string TenDichVu { get; set; } = null!;
 
@@ -37,4 +41,8 @@ public partial class DichVu
 
     [InverseProperty("MaDichVuNavigation")]
     public virtual ICollection<DonDatDichVu> DonDatDichVus { get; set; } = new List<DonDatDichVu>();
+
+    [ForeignKey("MaKyNang")]
+    [InverseProperty("DichVus")]
+    public virtual KyNang? MaKyNangNavigation { get; set; }
 }
