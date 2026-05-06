@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MyWebApi.Models; // Thay bằng namespace chứa các file Model của bạn
 
 namespace MyWebApi.Controllers
@@ -204,20 +205,22 @@ namespace MyWebApi.Controllers
         {
             try
             {
-                // Kiểm tra khách hàng tồn tại
+                // 1. Kiểm tra khách hàng tồn tại trong bảng NguoiDung
                 var customer = await _context.NguoiDungs.FindAsync(maKhachHang);
                 if (customer == null)
                 {
-                    return NotFound(new { message = "Khách hàng không tồn tại." });
+                    return NotFound(new { success = false, message = "Khách hàng không tồn tại." });
                 }
 
-                // Lấy danh sách đơn đặt
+                // 2. Query DonDat và Include các bảng liên quan theo Model
                 var query = _context.DonDats
                     .Where(d => d.MaKhachhang == maKhachHang)
                     .Include(d => d.LichSuTrangThaiDons)
+                    .Include(d => d.DonDatDichVus)
+                        .ThenInclude(dd => dd.MaDichVuNavigation) // Đã đổi thành MaDichVuNavigation theo model của bạn
                     .AsQueryable();
 
-                // Lọc theo trạng thái nếu có
+                // 3. Lọc theo trạng thái hiện hành (trạng thái có thời gian cập nhật mới nhất)
                 if (!string.IsNullOrEmpty(status) && status != "all")
                 {
                     query = query.Where(d => d.LichSuTrangThaiDons
@@ -225,26 +228,40 @@ namespace MyWebApi.Controllers
                         .FirstOrDefault()!.TrangThai == status);
                 }
 
-                // Sắp xếp theo ngày đặt mới nhất
+                // 4. Sắp xếp theo ngày đặt (mới nhất lên đầu)
                 query = query.OrderByDescending(d => d.NgayDat);
 
-                // Phân trang
+                // 5. Phân trang
                 var total = await query.CountAsync();
+
                 var bookings = await query
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .Select(d => new
                     {
                         maDon = d.MaDon,
-                        maKhachHang = d.MaKhachhang,
-                        diaChi = d.DiaChi,
-                        soNgay = d.SoNgay,
-                        tongTien = d.TongTien,
+
+                        // Nối chuỗi tên dịch vụ thông qua MaDichVuNavigation
+                        tenDichVu = d.DonDatDichVus.Any()
+                            ? string.Join(" + ", d.DonDatDichVus.Select(dd => dd.MaDichVuNavigation.TenDichVu))
+                            : "Chưa xác định dịch vụ",
+
                         ngayDat = d.NgayDat,
-                        ghiChu = d.GhiChu,
-                        trangThaiHienTai = d.LichSuTrangThaiDons
+
+                        // Trạng thái mới nhất từ LichSuTrangThaiDon
+                        trangThai = d.LichSuTrangThaiDons
                             .OrderByDescending(l => l.ThoiGianCapNhat)
-                            .FirstOrDefault()!.TrangThai
+                            .Select(l => l.TrangThai)
+                            .FirstOrDefault() ?? "Đang xử lý",
+
+                        soTien = d.TongTien,
+
+                        // Logic hiển thị "Thành tiền"
+                        thanhTien = d.LichSuTrangThaiDons.OrderByDescending(l => l.ThoiGianCapNhat).FirstOrDefault()!.TrangThai == "Đã huỷ"
+                            ? 0
+                            : (d.LichSuTrangThaiDons.OrderByDescending(l => l.ThoiGianCapNhat).FirstOrDefault()!.TrangThai == "Đang xử lý"
+                                ? (decimal?)null
+                                : d.TongTien)
                     })
                     .ToListAsync();
 
@@ -266,128 +283,133 @@ namespace MyWebApi.Controllers
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "Lỗi khi lấy danh sách đơn đặt.",
+                    message = "Lỗi khi lấy danh sách lịch sử đơn đặt.",
                     detail = ex.Message
                 });
             }
         }
 
-        /// <summary>
         /// Lấy chi tiết một đơn đặt dịch vụ
-        /// </summary>
-        //[HttpGet("GetDetail/{maDon}")]
-        //public async Task<IActionResult> GetBookingDetail(string maDon)
-        //{
-        //    try
-        //    {
-        //        var booking = await _context.DonDats
-        //            .Where(d => d.MaDon == maDon)
-        //            .Include(d => d.DonDatDichVus)
-        //                .ThenInclude(dv => dv.DichVu)
-        //            .Include(d => d.DonDatDichVus)
-        //                .ThenInclude(dv => dv.NgayLamViecs)
-        //                    .ThenInclude(nlv => nlv.DonDatDichVuNgayLamViecs)
-        //            .Include(d => d.LichSuTrangThaiDons)
-        //            .Include(d => d.ThanhToans)
-        //            .FirstOrDefaultAsync();
+        [Authorize]
+        [HttpGet("GetOrderDetail/{maDon}")]
+        public async Task<IActionResult> GetOrderDetail(string maDon)
+        {
+            try
+            {
+                var maKhachHang = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(maKhachHang))
+                {
+                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập." });
+                }
 
-        //        if (booking == null)
-        //        {
-        //            return NotFound(new { message = "Đơn đặt không tồn tại." });
-        //        }
+                var order = await _context.DonDats
+                    .Where(d => d.MaDon == maDon && d.MaKhachhang == maKhachHang)
+                    .Include(d => d.LichSuTrangThaiDons)
+                    .Include(d => d.DonDatDichVus)
+                        .ThenInclude(dd => dd.MaDichVuNavigation)
+                    .Include(d => d.DonDatDichVus)
+                        .ThenInclude(dd => dd.DonDatDichVuNgayLamViecs)
+                            .ThenInclude(tg => tg.MaNgayLamViecNavigation)
+                                .ThenInclude(nl => nl.MaNguoiGiupViecNavigation)
+                    .Include(d => d.DanhGia)
+                    .Include(d => d.ThanhToans)
+                    .FirstOrDefaultAsync();
 
-        //        // Lấy thông tin khách hàng
-        //        var customer = await _context.NguoiDungs.FindAsync(booking.MaKhachhang);
+                if (order == null)
+                {
+                    return NotFound(new { success = false, message = "Không tìm thấy đơn đặt hoặc bạn không có quyền truy cập." });
+                }
 
-        //        // Lấy thông tin nhân viên nếu có
-        //        NguoiDung? staff = null;
-        //        if (!string.IsNullOrEmpty(booking.MaNhanVien))
-        //        {
-        //            staff = await _context.NguoiDungs.FindAsync(booking.MaNhanVien);
-        //        }
+                // Lấy trạng thái hiện tại
+                var currentStatus = order.LichSuTrangThaiDons
+                    .OrderByDescending(l => l.ThoiGianCapNhat)
+                    .Select(l => l.TrangThai)
+                    .FirstOrDefault() ?? "Chờ xác nhận";
 
-        //        // Xây dựng chi tiết dịch vụ và ngày làm việc
-        //        var services = booking.DonDatDichVus.Select(dv => new
-        //        {
-        //            maDonDatDichVu = dv.MaDonDatDichVu,
-        //            maDichVu = dv.MaDichVu,
-        //            tenDichVu = dv.DichVu.TenDichVu,
-        //            moDa = dv.DichVu.MoTa,
-        //            gia = dv.DichVu.GiaTheoGio,
-        //            hinhAnh = dv.DichVu.HinhAnh,
-        //            ngayLamViecs = dv.NgayLamViecs.Select(nlv => new
-        //            {
-        //                maNgayLamViec = nlv.MaNgayLamViec,
-        //                ngayLam = nlv.NgayLam,
-        //                gioBatDau = nlv.GioBatDau,
-        //                trangThai = nlv.TrangThai,
-        //                maNguoiGiupViec = nlv.MaNguoiGiupViec,
-        //                thoiGianThucHien = nlv.DonDatDichVuNgayLamViecs
-        //                    .FirstOrDefault()?.ThoiGianThucHien
-        //            }).ToList()
-        //        }).ToList();
+                var mainService = order.DonDatDichVus.FirstOrDefault()?.MaDichVuNavigation;
 
-        //        // Lấy lịch sử trạng thái
-        //        var statusHistory = booking.LichSuTrangThaiDons
-        //            .OrderByDescending(l => l.ThoiGianCapNhat)
-        //            .Select(l => new
-        //            {
-        //                maLichSu = l.MaLichSu,
-        //                trangThai = l.TrangThai,
-        //                thoiGianCapNhat = l.ThoiGianCapNhat
-        //            })
-        //            .ToList();
+                // Lấy thời gian của tất cả các trạng thái
+                var statusTimes = order.LichSuTrangThaiDons
+                    .Where(l => l.TrangThai != null && l.ThoiGianCapNhat != null)
+                    .GroupBy(l => l.TrangThai)
+                    .ToDictionary(
+                        g => g.Key!,
+                        g => g.OrderByDescending(x => x.ThoiGianCapNhat).First().ThoiGianCapNhat!.Value.ToString("HH:mm dd-MM-yyyy")
+                    );
 
-        //        // Lấy thông tin thanh toán
-        //        var payment = booking.ThanhToans.FirstOrDefault();
+                var thanhToanDb = order.ThanhToans.FirstOrDefault();
+                var danhGiaDb = order.DanhGia.FirstOrDefault();
 
-        //        return Ok(new
-        //        {
-        //            success = true,
-        //            data = new
-        //            {
-        //                maDon = booking.MaDon,
-        //                khachHang = new
-        //                {
-        //                    maKhachHang = customer?.MaNguoiDung,
-        //                    hoTen = customer?.HoTen,
-        //                    email = customer?.Email,
-        //                    soDienThoai = customer?.SoDienThoai,
-        //                    diaChi = customer?.DiaChi
-        //                },
-        //                nhanVien = staff == null ? null : new
-        //                {
-        //                    maNhanVien = staff.MaNguoiDung,
-        //                    hoTen = staff.HoTen,
-        //                    email = staff.Email,
-        //                    soDienThoai = staff.SoDienThoai
-        //                },
-        //                diaChi = booking.DiaChi,
-        //                soNgay = booking.SoNgay,
-        //                tongTien = booking.TongTien,
-        //                ngayDat = booking.NgayDat,
-        //                ghiChu = booking.GhiChu,
-        //                trangThaiHienTai = statusHistory.FirstOrDefault()?.TrangThai,
-        //                lichSuTrangThai = statusHistory,
-        //                dichVus = services,
-        //                thanhToan = payment == null ? null : new
-        //                {
-        //                    maThanhToan = payment.MaThanhToan,
-        //                    trangThaiThanhToan = payment.TrangThaiThanhToan
-        //                }
-        //            }
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, new
-        //        {
-        //            success = false,
-        //            message = "Lỗi khi lấy chi tiết đơn đặt.",
-        //            detail = ex.Message
-        //        });
-        //    }
-        //}
+                var ngayLamViecs = order.DonDatDichVus
+                    .SelectMany(dd => dd.DonDatDichVuNgayLamViecs)
+                    .Where(tg => tg.MaNgayLamViecNavigation != null)
+                    .Select(tg =>
+                    {
+                        var nl = tg.MaNgayLamViecNavigation;
+                        var nguoiGiupViec = nl.MaNguoiGiupViecNavigation;
+                        var thoiGian = tg.ThoiGianThucHien ?? 0;
+
+                        string gioKetThucStr = "Đang cập nhật";
+
+                        if (nl.GioBatDau.HasValue && thoiGian > 0)
+                        {
+                            gioKetThucStr = nl.GioBatDau.Value.AddHours(thoiGian).ToString("HH:mm");
+                        }
+
+                        return new
+                        {
+                            ngay = nl.NgayLam.HasValue ? nl.NgayLam.Value.ToString("yyyy-MM-dd") : null,
+                            gioBatDau = nl.GioBatDau.HasValue ? nl.GioBatDau.Value.ToString("HH:mm") : "00:00",
+                            gioKetThuc = gioKetThucStr,
+                            trangThai = nl.TrangThai ?? "Chờ làm việc",
+
+                            tenNhanVien = nguoiGiupViec?.HoTen,
+                            sdtNhanVien = nguoiGiupViec?.SoDienThoai
+                        };
+                    })
+                    .OrderBy(nl => nl.ngay)
+                    .ToList();
+
+                var result = new
+                {
+                    maDon = order.MaDon,
+                    tenDichVu = order.DonDatDichVus.Any()
+                        ? string.Join(" + ", order.DonDatDichVus.Select(dd => dd.MaDichVuNavigation.TenDichVu))
+                        : "Chưa xác định",
+                    moTa = mainService?.MoTa ?? "Không có mô tả",
+                    ngayDat = order.NgayDat,
+                    trangThai = currentStatus, // <-- Trả về chính xác "Đã xác nhận", "Hoàn thành", v.v.
+                    soTien = order.TongTien,
+                    thanhTien = currentStatus == "Hủy đơn" ? 0 : (currentStatus == "Chờ xác nhận" ? (decimal?)null : order.TongTien),
+                    diaChi = order.DiaChi,
+                    soNgay = order.SoNgay ?? 1,
+                    ghiChu = order.GhiChu,
+
+                    ngayLamViec = ngayLamViecs,
+
+                    danhGia = danhGiaDb != null ? new
+                    {
+                        soSao = danhGiaDb.SoSao ?? 5,
+                        noiDung = danhGiaDb.NoiDung ?? "Không có"
+                    } : null,
+
+                    thanhToan = new
+                    {
+                        trangThai = thanhToanDb?.TrangThaiThanhToan ?? "Chưa thanh toán",
+                        phuongThuc = "Thanh toán trực tuyến",
+                        ngayThanhToan = order.NgayDat
+                    },
+
+                    statusTimes = statusTimes // <-- Các key ở đây cũng là "Chờ xác nhận", v.v.
+                };
+
+                return Ok(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi lấy chi tiết đơn.", detail = ex.Message });
+            }
+        }
 
         /// <summary>
         /// Hủy đơn đặt (chỉ được phép nếu đơn đang chờ xác nhận)
@@ -427,7 +449,7 @@ namespace MyWebApi.Controllers
                 {
                     MaLichSu = GenerateId("LS"),
                     MaDon = maDon,
-                    TrangThai = "Hủy đơn",
+                    TrangThai = "Đã hủy",
                     ThoiGianCapNhat = DateTime.Now
                 };
                 _context.LichSuTrangThaiDons.Add(lichSuTrangThai);

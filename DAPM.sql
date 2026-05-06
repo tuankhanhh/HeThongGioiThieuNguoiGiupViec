@@ -212,9 +212,9 @@ CREATE TABLE DanhGia(
 MaDanhGia CHAR(5) PRIMARY KEY,
 MaDon CHAR(5) NOT NULL,
 SoSao INT,
+NoiDung NVARCHAR(255),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
-
 CREATE TABLE KhieuNai(
     MaKhieuNai CHAR(5) PRIMARY KEY,
     MaDon CHAR(5) NOT NULL,
@@ -322,6 +322,7 @@ select * from HoSoNguoiGiupViec
 select * from KyNang
 select * from KyNangNguoiGiupViec
 
+
 select * from DonDat
 select * from DonDatDichVu
 select * from DonDatDichVuNgayLamViec
@@ -331,12 +332,8 @@ select * from LichRanh
 select * from CaLamViec
 select * from LichRanhCaLamViec
 select * from DichVu
+select * from DanhGia
 GO
-UPDATE HoSoNguoiGiupViec
-SET TrangThaiXacMinh = N'Đã duyệt'
-WHERE MaNguoiGiupViec = 'GV661';
-
-
 
 INSERT INTO NguoiDung (
     MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi
@@ -394,3 +391,8 @@ INSERT INTO LichRanhCaLamViec VALUES
 INSERT INTO LichRanhCaLamViec VALUES
 ('LR003', 'CA001', NULL),
 ('LR003', 'CA004', NULL);
+-- INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai)
+--VALUES ('LS131', 'DD130', GETDATE(), N'Hoàn thành');
+update HoSoNguoiGiupViec
+set TrangThaiXacMinh = N'Đã duyệt'
+where MaNguoiGiupViec = 'GV234'
