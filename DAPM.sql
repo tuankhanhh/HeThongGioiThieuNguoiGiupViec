@@ -77,11 +77,11 @@ CREATE TABLE LichRanh (
 FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 );
 GO
-
 -- Tạo bảng trung gian LichRanh_CaLamViec
 CREATE TABLE LichRanhCaLamViec (
     MaLichRanh CHAR(5) NOT NULL,
     MaCaLamViec CHAR(5) NOT NULL,
+	ThoiGianTao DATETIME DEFAULT GETDATE(),
 	GhiChu NVARCHAR (100),
 PRIMARY KEY(MaLichRanh,MaCaLamViec),
 FOREIGN KEY(MaLichRanh) REFERENCES LichRanh(MaLichRanh),

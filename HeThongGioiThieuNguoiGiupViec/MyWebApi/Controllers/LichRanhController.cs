@@ -21,7 +21,7 @@ namespace MyWebApi.Controllers
             _context = context;
         }
 
-        // GET: api/LichRanh/my-schedule
+
         [HttpGet("my-schedule")]
         public async Task<IActionResult> GetMySchedule()
         {
@@ -48,7 +48,6 @@ namespace MyWebApi.Controllers
             return Ok(schedules);
         }
 
-        // POST: api/LichRanh/dang-ky
         [HttpPost("dang-ky")]
         public async Task<IActionResult> TaoLichRanh([FromBody] TaoLichRanhRequest request)
         {
@@ -77,7 +76,15 @@ namespace MyWebApi.Controllers
 
             // Bắt đầu giao dịch lưu dữ liệu
             string maLichRanh = "LR" + Guid.NewGuid().ToString().Substring(0, 3).ToUpper();
-            var lichRanh = new LichRanh { MaLichRanh = maLichRanh, MaNguoiGiupViec = userId, Ngay = request.Ngay };
+
+            var lichRanh = new LichRanh
+            {
+                MaLichRanh = maLichRanh,
+                MaNguoiGiupViec = userId,
+                Ngay = request.Ngay,
+                // Khởi tạo List để tránh lỗi NullReferenceException khi Add ca làm việc
+                LichRanhCaLamViecs = new List<LichRanhCaLamViec>()
+            };
 
             foreach (var caReq in request.DanhSachCa)
             {
@@ -100,7 +107,8 @@ namespace MyWebApi.Controllers
                 {
                     MaLichRanh = maLichRanh,
                     MaCaLamViec = caDb.MaCaLamViec,
-                    GhiChu = caReq.GhiChu
+                    GhiChu = caReq.GhiChu,
+                    ThoiGianTao = DateTime.Now // CẬP NHẬT TRƯỜNG MỚI TẠI ĐÂY
                 });
             }
 
@@ -109,7 +117,7 @@ namespace MyWebApi.Controllers
 
             return CreatedAtAction(nameof(GetMySchedule), new { message = "Đăng ký lịch rảnh thành công!" });
         }
-        // POST: api/LichRanh/bo-sung-ca/{maLichRanh}
+
         [HttpPost("bo-sung-ca/{maLichRanh}")]
         public async Task<IActionResult> BoSungCaLamViec(string maLichRanh, [FromBody] ChiTietCaLamRequest newShift)
         {
@@ -175,5 +183,96 @@ namespace MyWebApi.Controllers
 
             return Ok(new { message = "Bổ sung ca làm việc thành công!" });
         }
-    }
+
+        // 1. API Kiểm tra xem có được phép hủy không
+        // GET: api/LichRanh/kiem-tra-huy/{maLichRanh}/{maCaLamViec}
+        [HttpGet("kiem-tra-huy/{maLichRanh}/{maCaLamViec}")]
+        public async Task<IActionResult> KiemTraHuyCa(string maLichRanh, string maCaLamViec)
+        {
+            var caLamViec = await _context.LichRanhCaLamViecs
+                .FirstOrDefaultAsync(x => x.MaLichRanh == maLichRanh && x.MaCaLamViec == maCaLamViec);
+
+            if (caLamViec == null)
+            {
+                return NotFound(new { message = "Không tìm thấy ca làm việc này!" });
+            }
+
+            // Tính khoảng cách thời gian từ lúc tạo đến hiện tại
+            var timeDifference = DateTime.Now - caLamViec.ThoiGianTao;
+            var minutesDiff = timeDifference.TotalMinutes;
+
+            if (minutesDiff <= 15)
+            {
+                return Ok(new
+                {
+                    canCancel = true,
+                    minutesLeft = Math.Floor(15 - minutesDiff),
+                    message = "Ca này vẫn có thể hủy."
+                });
+            }
+            else
+            {
+                return Ok(new
+                {
+                    canCancel = false,
+                    message = "Đã quá 15 phút, không thể hủy ca này."
+                });
+            }
+        }
+
+        // 2. API Thực thi Hủy (Xóa)
+        // DELETE: api/LichRanh/huy-ca/{maLichRanh}/{maCaLamViec}
+        [HttpDelete("huy-ca/{maLichRanh}/{maCaLamViec}")]
+        public async Task<IActionResult> HuyCaLamViec(string maLichRanh, string maCaLamViec)
+        {
+            // 1. Bắt buộc kiểm tra lại thời gian ở Backend để tránh người dùng gọi API trực tiếp
+            var caLamViec = await _context.LichRanhCaLamViecs
+                .FirstOrDefaultAsync(x => x.MaLichRanh == maLichRanh && x.MaCaLamViec == maCaLamViec);
+
+            if (caLamViec == null)
+            {
+                return NotFound(new { message = "Không tìm thấy ca làm việc này!" });
+            }
+
+            var timeDifference = DateTime.Now - caLamViec.ThoiGianTao;
+            if (timeDifference.TotalMinutes > 15)
+            {
+                return BadRequest(new { message = "Đã quá 15 phút kể từ lúc đăng ký. Bạn không thể hủy ca này nữa!" });
+            }
+
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    // 2. Xóa ca làm việc trong bảng trung gian (LichRanhCaLamViec)
+                    _context.LichRanhCaLamViecs.Remove(caLamViec);
+                    await _context.SaveChangesAsync();
+
+                    // 3. Cleanup: Kiểm tra xem Lịch rảnh của ngày đó còn ca nào không?
+                    var soCaConLai = await _context.LichRanhCaLamViecs
+                        .CountAsync(x => x.MaLichRanh == maLichRanh);
+
+                    // 4. Nếu không còn ca nào, xóa luôn ngày đó khỏi bảng LichRanh để dọn rác
+                    if (soCaConLai == 0)
+                    {
+                        var lichRanh = await _context.LichRanhs.FindAsync(maLichRanh);
+                        if (lichRanh != null)
+                        {
+                            _context.LichRanhs.Remove(lichRanh);
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+
+                    return Ok(new { message = "Đã hủy (xóa) ca làm việc thành công!" });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return StatusCode(500, new { message = "Lỗi hệ thống trong quá trình hủy ca!", details = ex.Message });
+                }
+            }
+        }
+        }
 }

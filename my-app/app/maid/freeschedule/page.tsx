@@ -21,7 +21,6 @@ import {
   Select,
   FormControl,
   InputLabel,
-  SelectChangeEvent,
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -38,7 +37,7 @@ import NotificationToast from "@/components/NotificationToast";
 interface TimeRange {
   start: string;
   end: string;
-  isSaved?: boolean; // Cờ đánh dấu ca đã được lưu trên server
+  isSaved?: boolean;
 }
 
 interface ServerSchedule {
@@ -59,11 +58,22 @@ export default function HelperAvailability() {
   const [existingSchedule, setExistingSchedule] = useState<
     Record<string, ServerSchedule>
   >({});
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // --- State mới cho Dialog & Toast ---
+  // State loading RIÊNG cho việc click kiểm tra hủy (tránh unmount UI)
+  const [checkingSlotId, setCheckingSlotId] = useState<string | null>(null);
+
   const [openConfirm, setOpenConfirm] = useState(false);
+
+  const [cancelConfirm, setCancelConfirm] = useState({
+    open: false,
+    maLichRanh: "",
+    maCaLamViec: "",
+    isDeleting: false,
+  });
+
   const [toast, setToast] = useState<{
     open: boolean;
     message: string;
@@ -132,7 +142,11 @@ export default function HelperAvailability() {
     try {
       const data = await api.get<ServerSchedule[]>("/LichRanh/my-schedule");
       const grouped: Record<string, ServerSchedule> = {};
-      data.forEach((item) => {
+
+      // Xử lý trường hợp data bị bọc thêm 1 lớp (phòng hờ)
+      const listData = Array.isArray(data) ? data : (data as any).data || [];
+
+      listData.forEach((item: ServerSchedule) => {
         grouped[item.ngay] = item;
       });
       setExistingSchedule(grouped);
@@ -145,7 +159,6 @@ export default function HelperAvailability() {
     }
   };
 
-  // --- Hàm thực thi lưu API ---
   const executeSave = async () => {
     setOpenConfirm(false);
     setIsSaving(true);
@@ -202,6 +215,84 @@ export default function HelperAvailability() {
     }
   };
 
+  // ========================================================
+  // XỬ LÝ HỦY CA LÀM VIỆC ĐÃ LƯU
+  // ========================================================
+  const handleInitiateCancel = async (
+    maLichRanh: string,
+    maCaLamViec: string,
+  ) => {
+    setCheckingSlotId(maCaLamViec);
+
+    try {
+      const res: any = await api.get(
+        `/LichRanh/kiem-tra-huy/${maLichRanh}/${maCaLamViec}`,
+      );
+
+      const responseData = res.data ? res.data : res;
+      const canCancel = responseData.canCancel ?? responseData.CanCancel;
+      const message =
+        responseData.message ??
+        responseData.Message ??
+        "Đã quá thời gian cho phép hủy ca.";
+
+      if (canCancel) {
+        setCancelConfirm({
+          open: true,
+          maLichRanh,
+          maCaLamViec,
+          isDeleting: false,
+        });
+      } else {
+        setToast({ open: true, message: message, severity: "error" });
+      }
+    } catch (error: any) {
+      // IN LOG RA ĐÂY ĐỂ XEM LỖI GÌ
+      console.error("Lỗi khi gọi API kiem-tra-huy:", error);
+      console.log("Cấu trúc error.response:", error.response);
+
+      const errorMsg =
+        error.response?.data?.message ||
+        error.response?.data?.Message ||
+        "Không thể kiểm tra lịch lúc này.";
+      setToast({ open: true, message: errorMsg, severity: "error" });
+    } finally {
+      setCheckingSlotId(null);
+    }
+  };
+
+  const executeCancel = async () => {
+    setCancelConfirm((prev) => ({ ...prev, isDeleting: true }));
+    try {
+      await api.delete(
+        `/LichRanh/huy-ca/${cancelConfirm.maLichRanh}/${cancelConfirm.maCaLamViec}`,
+      );
+
+      setToast({
+        open: true,
+        message: "Hủy ca làm việc thành công!",
+        severity: "success",
+      });
+      setCancelConfirm({
+        open: false,
+        maLichRanh: "",
+        maCaLamViec: "",
+        isDeleting: false,
+      });
+
+      // Load lại danh sách mới
+      fetchMySchedule();
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.message ||
+        error.response?.data?.Message ||
+        "Có lỗi xảy ra khi hủy ca!";
+      setToast({ open: true, message: errorMsg, severity: "error" });
+      setCancelConfirm((prev) => ({ ...prev, isDeleting: false }));
+    }
+  };
+  // ========================================================
+
   const handleSaveSchedule = () => {
     if (Object.keys(dateSlots).length === 0) return;
     setOpenConfirm(true);
@@ -220,11 +311,9 @@ export default function HelperAvailability() {
   const addSlot = (dateKey: string) => {
     setDateSlots((prev) => {
       const currentSlots = [...(prev[dateKey] ?? [])];
-
       if (currentSlots.length >= 2) return prev;
 
-      let startMin = 8 * 60; // mặc định 08:00
-
+      let startMin = 8 * 60;
       if (currentSlots.length > 0) {
         const prevEnd = currentSlots[0]?.end;
         if (prevEnd) {
@@ -240,15 +329,8 @@ export default function HelperAvailability() {
       const hEnd = Math.floor(newEndMin / 60);
       const defaultEnd = `${hEnd < 10 ? `0${hEnd}` : hEnd}:00`;
 
-      currentSlots.push({
-        start: defaultStart,
-        end: defaultEnd,
-      });
-
-      return {
-        ...prev,
-        [dateKey]: currentSlots,
-      };
+      currentSlots.push({ start: defaultStart, end: defaultEnd });
+      return { ...prev, [dateKey]: currentSlots };
     });
   };
 
@@ -263,11 +345,7 @@ export default function HelperAvailability() {
       const slot = currentSlots[index];
 
       if (!slot) return prev;
-
-      const updatedSlot: TimeRange = {
-        ...slot,
-        [field]: value,
-      };
+      const updatedSlot: TimeRange = { ...slot, [field]: value };
 
       if (field === "start") {
         const startMin = toMinutes(value);
@@ -281,11 +359,7 @@ export default function HelperAvailability() {
       }
 
       currentSlots[index] = updatedSlot;
-
-      return {
-        ...prev,
-        [dateKey]: currentSlots,
-      };
+      return { ...prev, [dateKey]: currentSlots };
     });
   };
 
@@ -307,10 +381,6 @@ export default function HelperAvailability() {
   const hasAnyOverlap = Object.keys(dateSlots).some((key) =>
     isOverlapping(key),
   );
-
-  // ==========================================
-  // LOGIC KIỂM TRA CÓ CA MỚI ĐỂ LƯU HAY KHÔNG
-  // ==========================================
   const hasNewChanges = Object.values(dateSlots).some((slots) =>
     slots.some((slot) => !slot.isSaved),
   );
@@ -318,8 +388,6 @@ export default function HelperAvailability() {
   if (!isMounted) return null;
 
   const selectedKeys = Object.keys(dateSlots).sort();
-
-  // Nút lưu bị Disable nếu: Lồng giờ | Đang lưu | Không chọn ngày | KHÔNG CÓ THAY ĐỔI MỚI
   const isSaveDisabled =
     hasAnyOverlap || isSaving || selectedKeys.length === 0 || !hasNewChanges;
 
@@ -686,6 +754,7 @@ export default function HelperAvailability() {
                             />
                             {format(new Date(dateStr), "dd/MM/yyyy")}
                           </Typography>
+
                           <Stack
                             sx={{
                               display: "flex",
@@ -699,6 +768,7 @@ export default function HelperAvailability() {
                                 sx={{
                                   display: "flex",
                                   justifyContent: "space-between",
+                                  alignItems: "center",
                                   p: 1.5,
                                   bgcolor: "#f8fafc",
                                   borderRadius: "12px",
@@ -715,15 +785,57 @@ export default function HelperAvailability() {
                                   {slot.gioBatDau.substring(0, 5)} —{" "}
                                   {slot.gioKetThuc.substring(0, 5)}
                                 </Typography>
-                                <Typography
+
+                                <Box
                                   sx={{
-                                    fontSize: "0.75rem",
-                                    color: "#059669",
-                                    fontWeight: 700,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
                                   }}
                                 >
-                                  Đã lưu
-                                </Typography>
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.75rem",
+                                      color: "#059669",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    Đã lưu
+                                  </Typography>
+
+                                  {/* ICON HỦY CA MỚI VỚI VÒNG XOAY LOADING */}
+                                  <IconButton
+                                    size="small"
+                                    disabled={
+                                      checkingSlotId === slot.maCaLamViec
+                                    }
+                                    onClick={() =>
+                                      handleInitiateCancel(
+                                        schedule.maLichRanh,
+                                        slot.maCaLamViec,
+                                      )
+                                    }
+                                    sx={{
+                                      bgcolor:
+                                        checkingSlotId === slot.maCaLamViec
+                                          ? "transparent"
+                                          : "#ffe4e6",
+                                      color: "#e11d48",
+                                      "&:hover": { bgcolor: "#fecdd3" },
+                                      p: 0.5,
+                                    }}
+                                  >
+                                    {checkingSlotId === slot.maCaLamViec ? (
+                                      <CircularProgress
+                                        size={20}
+                                        color="error"
+                                      />
+                                    ) : (
+                                      <DeleteOutlineIcon fontSize="small" />
+                                    )}
+                                  </IconButton>
+                                  {/* -------------------------------------- */}
+                                </Box>
                               </Box>
                             ))}
                           </Stack>
@@ -736,15 +848,11 @@ export default function HelperAvailability() {
           )}
         </Box>
 
-        {/* --- Dialog & Toast components --- */}
+        {/* --- Dialog XÁC NHẬN LƯU --- */}
         <Dialog
           open={openConfirm}
           onClose={() => setOpenConfirm(false)}
-          slotProps={{
-            paper: {
-              sx: { borderRadius: "20px" },
-            },
-          }}
+          slotProps={{ paper: { sx: { borderRadius: "20px" } } }}
         >
           <DialogTitle sx={{ fontWeight: 700 }}>
             Xác nhận lưu lịch rảnh
@@ -768,6 +876,49 @@ export default function HelperAvailability() {
               sx={{ bgcolor: "#0ea5e9" }}
             >
               Đồng ý lưu
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* --- Dialog MỚI: XÁC NHẬN HỦY CA --- */}
+        <Dialog
+          open={cancelConfirm.open}
+          onClose={() =>
+            !cancelConfirm.isDeleting &&
+            setCancelConfirm({ ...cancelConfirm, open: false })
+          }
+          slotProps={{ paper: { sx: { borderRadius: "20px" } } }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, color: "#e11d48" }}>
+            Xác nhận hủy ca làm việc
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Bạn chỉ có thể hủy ca trong vòng 15 phút sau khi đăng ký. Bạn có
+              chắc chắn muốn hủy ca này không?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button
+              disabled={cancelConfirm.isDeleting}
+              onClick={() =>
+                setCancelConfirm({ ...cancelConfirm, open: false })
+              }
+              sx={{ color: "#64748b" }}
+            >
+              Hủy
+            </Button>
+            <Button
+              disabled={cancelConfirm.isDeleting}
+              onClick={executeCancel}
+              variant="contained"
+              color="error"
+            >
+              {cancelConfirm.isDeleting ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Đồng ý Hủy"
+              )}
             </Button>
           </DialogActions>
         </Dialog>
