@@ -65,6 +65,26 @@ const menuItems = [
     ),
   },
   {
+    title: "Khiếu nại",
+    path: "/staff/khieu-nai",
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-5 h-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M8 10h.01M12 10h.01M16 10h.01M9 16h6M7 4h10a2 2 0 012 2v12l-4-3H7a2 2 0 01-2-2V6a2 2 0 012-2z"
+        />
+      </svg>
+    ),
+  },
+  {
     title: "Tài khoản",
     path: "/staff/tai-khoan",
     icon: (

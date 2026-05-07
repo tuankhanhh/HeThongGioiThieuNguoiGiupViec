@@ -28,6 +28,7 @@ const getImageUrl = (path?: string) => {
 interface KyNang {
   id: string;
   ten: string;
+  kinhNghiem?: string | null;
 }
 
 interface HoSoDetail {
@@ -243,28 +244,29 @@ export default function HoSoChiTietPage() {
               </h2>
             </div>
             <div className="px-5 py-1">
-              <InfoRow label="Kinh nghiệm" value={hoSo.kinhNghiem} />
+              <InfoRow
+                label="Kinh nghiệm"
+                value={
+                  hoSo.danhSachKyNang?.length
+                    ? hoSo.danhSachKyNang
+                        .map(
+                          (kn: KyNang) => `${kn.ten} (${kn.kinhNghiem ?? "—"})`,
+                        )
+                        .join(", ")
+                    : "—"
+                }
+              />
+
               <InfoRow
                 label="Mô tả chi tiết"
-                value={hoSo.moTaChiTietKinhNghiem}
-              />
-              <InfoRow
-                label="Kỹ năng"
                 value={
-                  hoSo.danhSachKyNang?.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {hoSo.danhSachKyNang.map((kn) => (
-                        <span
-                          key={kn.id}
-                          className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100"
-                        >
-                          {kn.ten}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    "—"
-                  )
+                  hoSo.danhSachKyNang?.length
+                    ? hoSo.danhSachKyNang
+                        .map(
+                          (kn: KyNang) => `${kn.ten}: ${kn.kinhNghiem ?? "—"}`,
+                        )
+                        .join(" | ")
+                    : "—"
                 }
               />
             </div>

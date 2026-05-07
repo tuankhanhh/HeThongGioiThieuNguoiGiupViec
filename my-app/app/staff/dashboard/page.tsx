@@ -151,6 +151,13 @@ export default function StaffDashboardPage() {
       btnText: "Đi đến",
       color: "border-l-indigo-400",
     },
+    {
+      title: "Khiếu nại",
+      desc: "Xem và xử lý khiếu nại từ khách hàng",
+      href: "/staff/khieu-nai",
+      btnText: "Đi đến",
+      color: "border-l-red-400",
+    },
   ];
 
   return (
