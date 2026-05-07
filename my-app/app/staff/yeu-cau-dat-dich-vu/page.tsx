@@ -73,34 +73,34 @@ export default function DanhSachYeuCauPage() {
       : "—";
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-[28px] font-bold text-slate-800 leading-tight">
             Yêu cầu đặt dịch vụ
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-[13.5px] text-slate-500 mt-1">
             Quản lý và xử lý các yêu cầu từ khách hàng
           </p>
         </div>
         {!loading && !error && (
-          <span className="self-start text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+          <span className="self-start mt-1 text-[12px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full shrink-0">
             {danhSach.length} đơn
           </span>
         )}
       </div>
 
       {/* Filter tabs */}
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-slate-100">
         {STATUS_OPTIONS.map((s) => (
           <button
             key={s}
             onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`px-4 py-2 rounded-full text-[12.5px] font-semibold transition-all cursor-pointer ${
               filterStatus === s
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+                ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200"
+                : "bg-white border border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50"
             }`}
           >
             {s}
@@ -119,9 +119,9 @@ export default function DanhSachYeuCauPage() {
         )}
         {!loading && !error && danhSach.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100">
-              <thead className="bg-slate-50">
-                <tr>
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
                   {[
                     "Khách hàng",
                     "Địa chỉ",
@@ -133,7 +133,7 @@ export default function DanhSachYeuCauPage() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide"
+                      className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest"
                     >
                       {h}
                     </th>
@@ -144,46 +144,46 @@ export default function DanhSachYeuCauPage() {
                 {danhSach.map((d) => (
                   <tr
                     key={d.maDon}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                     onClick={() =>
                       router.push(`/staff/yeu-cau-dat-dich-vu/${d.maDon}`)
                     }
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <div>
-                        <p className="text-sm font-medium text-slate-800">
+                        <p className="text-[14px] font-semibold text-slate-800">
                           {d.hoTenKhachHang}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-[12px] text-slate-400 mt-0.5">
                           {d.soDienThoai}
                         </p>
                       </div>
                     </td>
                     <td
-                      className="px-4 py-3 text-sm text-slate-600 max-w-[160px] truncate"
+                      className="px-5 py-4 text-[13.5px] text-slate-500 max-w-[160px] truncate"
                       title={d.diaChi}
                     >
                       {d.diaChi}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                    <td className="px-5 py-4 text-[13.5px] text-slate-500 whitespace-nowrap">
                       {formatDate(d.ngayDat)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
+                    <td className="px-5 py-4 text-[13.5px] text-slate-500">
                       {d.soNgay} ngày
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium text-slate-800">
+                    <td className="px-5 py-4 text-[14px] font-semibold text-slate-800">
                       {formatMoney(d.tongTien)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <StatusBadge status={d.trangThaiHienTai} type="don" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/staff/yeu-cau-dat-dich-vu/${d.maDon}`);
                         }}
-                        className="text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors whitespace-nowrap"
+                        className="text-[12.5px] font-semibold px-3.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all duration-150 whitespace-nowrap cursor-pointer group-hover:shadow-sm"
                       >
                         Chi tiết
                       </button>

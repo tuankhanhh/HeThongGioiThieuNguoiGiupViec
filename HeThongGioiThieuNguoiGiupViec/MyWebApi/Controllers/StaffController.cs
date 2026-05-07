@@ -1,12 +1,13 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyWebApi.DTO.Request.Staff;
 using MyWebApi.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace MyWebApi.Controllers
 {
@@ -326,8 +327,14 @@ namespace MyWebApi.Controllers
                 if (nguoiGiupViec == null)
                     return NotFound(new { success = false, message = "Không tìm thấy người giúp việc." });
 
-                don.MaNhanVien = request.MaNguoiGiupViec;
-                // Cập nhật MaNguoiGiupViec cho tất cả NgayLamViec của đơn
+                //CÂP NHẬT MÃ NHÂN VIÊN CHO ĐƠN ĐẶT
+                var maNhanVien = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(maNhanVien))
+                    return Unauthorized(new { success = false, message = "Không xác định được nhân viên." });
+
+                // ✅ GÁN NHÂN VIÊN DUYỆT ĐƠN
+                don.MaNhanVien = maNhanVien;
 
                 foreach (var dv in don.DonDatDichVus)
                 {
