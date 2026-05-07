@@ -1,44 +1,66 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation"; // Thêm useRouter
+import { usePathname, useRouter } from "next/navigation";
 import {
   AccountCircle,
   CalendarMonth,
   EventNote,
   History,
   Paid,
-  Logout, // Import icon Logout
+  Logout,
 } from "@mui/icons-material";
+import { ROUTES } from "@/lib/routes";
+import { useEffect, useState } from "react"; // Thêm useState
+import { api } from "@/services/api";
 
 const Sidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
 
+  // State lưu trữ tên người dùng
+  const [userName, setUserName] = useState("");
+
+  // Gọi API /me để lấy thông tin người dùng
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response: any = await api.get("/User/me");
+        // Lưu ý: Điều chỉnh 'response.data.name' tuỳ thuộc vào cấu trúc trả về thực tế của API của bạn
+        const name = response.hoTen;
+        setUserName(name);
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin người dùng:", error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
   // Danh sách các mục chính
   const menuItems = [
     {
       title: "Hồ sơ cá nhân",
-      path: "/maid/profile",
+      path: ROUTES.MAID.PROFILE,
       icon: <AccountCircle />,
     },
     {
       title: "Lịch rảnh của tôi",
-      path: "/maid/freeschedule",
+      path: ROUTES.MAID.FREE_SCHEDULE,
       icon: <CalendarMonth />,
     },
     {
       title: "Lịch làm việc",
-      path: "/maid/schedule",
+      path: ROUTES.MAID.SCHEDULE,
       icon: <EventNote />,
     },
     {
       title: "Lịch sử công việc",
-      path: "/maid/workhistory",
+      path: ROUTES.MAID.WORK_HISTORY,
       icon: <History />,
     },
     {
       title: "Thu nhập",
-      path: "/maid/income",
+      path: ROUTES.MAID.INCOME,
       icon: <Paid />,
     },
   ];
@@ -46,7 +68,20 @@ const Sidebar = () => {
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
-    router.push("/maid/sign-in"); // Điều hướng về trang đăng nhập sau khi đăng xuất
+    router.push(ROUTES.MAID.LOGIN);
+  };
+
+  // Hàm xử lý lấy 2 chữ cái đầu của tên
+  const getInitials = (name: string) => {
+    if (!name) return "";
+    const words = name.trim().split(" ");
+
+    // Nếu tên có từ 2 chữ trở lên (VD: "Nguyễn Văn A" -> "NA")
+    if (words.length >= 2) {
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    }
+    // Nếu tên chỉ có 1 chữ (VD: "Admin" -> "AD")
+    return name.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -96,17 +131,19 @@ const Sidebar = () => {
           className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200 group"
         >
           <Logout className="text-red-400 group-hover:text-red-500" />
-          <span className="text-sm font-medium">Đăng xuất</span>
+          <span className="text-sm font-medium cursor-pointer">Đăng xuất</span>
         </button>
 
         {/* Profile Stub */}
         <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-            TK
+            {/* Hiển thị 2 chữ cái đầu */}
+            {getInitials(userName) || "--"}
           </div>
           <div className="flex-1 min-w-0">
+            {/* Hiển thị tên đầy đủ */}
             <p className="text-sm font-medium text-gray-900 truncate">
-              Tuan Khanh
+              {userName || "Đang tải..."}
             </p>
             <p className="text-xs text-green-500 font-medium">
               Đang trực tuyến

@@ -14,7 +14,7 @@ GO
 
 -- 1 NguoiDung
 CREATE TABLE NguoiDung(
-MaNguoiDung VARCHAR(5) PRIMARY KEY,
+MaNguoiDung CHAR(5) PRIMARY KEY,
 HoTen NVARCHAR(100),
 Email VARCHAR(100) UNIQUE,
 SoDienThoai VARCHAR(10),
@@ -29,15 +29,15 @@ NgayHetHanRefreshToken DATETIME
 
 -- 2 VaiTro
 CREATE TABLE VaiTro(
-MaVaiTro VARCHAR(5) PRIMARY KEY,
+MaVaiTro CHAR(5) PRIMARY KEY,
 TenVaiTro NVARCHAR(50),
 MoTa NVARCHAR(200)
 );
 
 -- 3 NguoiDungVaiTro (THÊM CỘT để EF tạo model)
 CREATE TABLE NguoiDungVaiTro(
-MaNguoiDung VARCHAR(5) NOT NULL,
-MaVaiTro VARCHAR(5) NOT NULL,
+MaNguoiDung CHAR(5) NOT NULL,
+MaVaiTro CHAR(5) NOT NULL,
 NgayGan DATETIME DEFAULT GETDATE(),
 PRIMARY KEY(MaNguoiDung,MaVaiTro),
 FOREIGN KEY(MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung),
@@ -46,13 +46,11 @@ FOREIGN KEY(MaVaiTro) REFERENCES VaiTro(MaVaiTro)
 
 -- 4 HoSoNguoiGiupViec
 CREATE TABLE HoSoNguoiGiupViec(
-MaHoSo VARCHAR(5) PRIMARY KEY,
-MaNguoiGiupViec VARCHAR(5) NOT NULL,
+MaHoSo CHAR(5) PRIMARY KEY,
+MaNguoiGiupViec CHAR(5) NOT NULL,
 SoCCCD VARCHAR(12),
 NgaySinh DATE,
 GioiTinh NVARCHAR(100),
-KinhNghiem NVARCHAR(200),
-MoTaChiTietKinhNghiem NVARCHAR(200),
 TenNguoiThan NVARCHAR(100),
 SDTNguoiThan VARCHAR(10),
 AnhCCCDMatTruoc VARCHAR(255),
@@ -65,18 +63,34 @@ FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 );
 
 -- 5 LichRanh
-CREATE TABLE LichRanh(
-MaLichRanh VARCHAR(5) PRIMARY KEY,
-MaNguoiGiupViec VARCHAR(5) NOT NULL,
-Ngay DATE,
-GioBatDau TIME,
-GioKetThuc TIME,
+CREATE TABLE CaLamViec (
+    MaCaLamViec CHAR(5) PRIMARY KEY,
+    GioBatDau TIME NOT NULL,
+    GioKetThuc TIME NOT NULL
+);
+GO
+-- Tạo bảng LichRanh
+CREATE TABLE LichRanh (
+    MaLichRanh CHAR(5) PRIMARY KEY,
+    MaNguoiGiupViec CHAR(5) NOT NULL,
+    Ngay DATE NOT NULL,
 FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
+);
+GO
+-- Tạo bảng trung gian LichRanh_CaLamViec
+CREATE TABLE LichRanhCaLamViec (
+    MaLichRanh CHAR(5) NOT NULL,
+    MaCaLamViec CHAR(5) NOT NULL,
+	ThoiGianTao DATETIME DEFAULT GETDATE(),
+	GhiChu NVARCHAR (100),
+PRIMARY KEY(MaLichRanh,MaCaLamViec),
+FOREIGN KEY(MaLichRanh) REFERENCES LichRanh(MaLichRanh),
+FOREIGN KEY(MaCaLamViec) REFERENCES CaLamViec(MaCaLamViec)
 );
 
 -- 6 KyNang
 CREATE TABLE KyNang(
-MaKyNang VARCHAR(5) PRIMARY KEY,
+MaKyNang CHAR(5) PRIMARY KEY,
 TenKyNang NVARCHAR(50),
 MoTa NVARCHAR(255), 
 IconName VARCHAR(50)
@@ -84,9 +98,9 @@ IconName VARCHAR(50)
 
 -- 7 KyNangNguoiGiupViec (THÊM CỘT)
 CREATE TABLE KyNangNguoiGiupViec(
-MaKyNang VARCHAR(5) NOT NULL,
-MaHoSo VARCHAR(5) NOT NULL,
-NgayThem DATETIME DEFAULT GETDATE(),
+MaKyNang CHAR(5) NOT NULL,
+MaHoSo CHAR(5) NOT NULL,
+KinhNghiem NVARCHAR(200),
 PRIMARY KEY(MaKyNang,MaHoSo),
 FOREIGN KEY(MaKyNang) REFERENCES KyNang(MaKyNang),
 FOREIGN KEY(MaHoSo) REFERENCES HoSoNguoiGiupViec(MaHoSo)
@@ -94,36 +108,39 @@ FOREIGN KEY(MaHoSo) REFERENCES HoSoNguoiGiupViec(MaHoSo)
 
 -- 8 ThanhPhan
 CREATE TABLE ThanhPhan(
-MaThanhPhan VARCHAR(5) PRIMARY KEY,
+MaThanhPhan CHAR(5) PRIMARY KEY,
 TenThanhPhan NVARCHAR(200)
 );
 
 -- 9 DichVu
 CREATE TABLE DichVu (
-    MaDichVu VARCHAR(5) PRIMARY KEY, -- VD: 'cleaning', 'combo', 'cooking'
+    MaDichVu CHAR(5) PRIMARY KEY, -- VD: 'cleaning', 'combo', 'cooking'
+	MaKyNang CHAR(5),
     TenDichVu NVARCHAR(100) NOT NULL,
     MoTa NVARCHAR(500),              -- Description từ code
     GiaTheoGio DECIMAL(18, 2),          -- Phần số của Price (VD: 60000)
     HinhAnh VARCHAR(255),             -- URL image
     PhoBien BIT DEFAULT 0,            -- popular (true/false)
-    TrangThai NVARCHAR(30) DEFAULT N'Đang hoạt động'
+    TrangThai NVARCHAR(30) DEFAULT N'Đang hoạt động',
+	FOREIGN KEY (MaKyNang) REFERENCES KyNang(MaKyNang)
 );
 
 -- 10 DichVuThanhPhan (THÊM CỘT)
 CREATE TABLE DichVuThanhPhan(
-MaDichVu VARCHAR(5) NOT NULL,
-MaThanhPhan VARCHAR(5) NOT NULL,
+MaDichVu CHAR(5) NOT NULL,
+MaThanhPhan CHAR(5) NOT NULL,
 GhiChu NVARCHAR(100),
 PRIMARY KEY(MaDichVu,MaThanhPhan),
 FOREIGN KEY(MaDichVu) REFERENCES DichVu(MaDichVu),
 FOREIGN KEY(MaThanhPhan) REFERENCES ThanhPhan(MaThanhPhan)
+
 );
 
 -- 11 DonDat
 CREATE TABLE DonDat(
-MaDon VARCHAR(5) PRIMARY KEY,
-MaKhachhang VARCHAR(5) NOT NULL,
-MaNhanVien VARCHAR(5),
+MaDon CHAR(5) PRIMARY KEY,
+MaKhachhang CHAR(5) NOT NULL,
+MaNhanVien CHAR(5),
 DiaChi NVARCHAR(200),
 SoNgay INT,
 TongTien DECIMAL(10,2),
@@ -135,18 +152,18 @@ FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 
 -- 12 DonDatDichVu
 CREATE TABLE DonDatDichVu(
-MaDonDatDichVu VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
-MaDichVu VARCHAR(5) NOT NULL,
+MaDonDatDichVu CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
+MaDichVu CHAR(5) NOT NULL,
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
 FOREIGN KEY(MaDichVu) REFERENCES DichVu(MaDichVu)
 );
 
 -- 13 NgayLamViec
 CREATE TABLE NgayLamViec(
-MaNgayLamViec VARCHAR(5) PRIMARY KEY,
-MaDonDatDichVu VARCHAR(5) NOT NULL,
-MaNguoiGiupViec VARCHAR(5),
+MaNgayLamViec CHAR(5) PRIMARY KEY,
+MaDonDatDichVu CHAR(5) NOT NULL,
+MaNguoiGiupViec CHAR(5),
 GioBatDau TIME ,
 NgayLam DATE,
 ThoiGianPhanCong DATETIME,
@@ -157,8 +174,8 @@ FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 
 -- 14 DonDatDichVuNgayLamViec (THÊM CỘT)
 CREATE TABLE DonDatDichVuNgayLamViec(
-MaDonDatDichVu VARCHAR(5) NOT NULL,
-MaNgayLamViec VARCHAR(5) NOT NULL,
+MaDonDatDichVu CHAR(5) NOT NULL,
+MaNgayLamViec CHAR(5) NOT NULL,
 ThoiGianThucHien INT,
 PRIMARY KEY(MaDonDatDichVu,MaNgayLamViec),
 FOREIGN KEY(MaDonDatDichVu) REFERENCES DonDatDichVu(MaDonDatDichVu),
@@ -167,24 +184,24 @@ FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec)
 
 -- 15 ThuNhapNguoiGiupViec
 CREATE TABLE ThuNhapNguoiGiupViec(
-MaThuNhap VARCHAR(5) PRIMARY KEY,
-MaNgayLamViec VARCHAR(5) NOT NULL,
+MaThuNhap CHAR(5) PRIMARY KEY,
+MaNgayLamViec CHAR(5) NOT NULL,
 SoTien DECIMAL(10,2),
 FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec)
 );
 
 -- 16 ThanhToan
 CREATE TABLE ThanhToan(
-MaThanhToan VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
+MaThanhToan CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
 TrangThaiThanhToan NVARCHAR(50),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
 
 -- 17 LichSuTrangThaiDon
 CREATE TABLE LichSuTrangThaiDon(
-MaLichSu VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
+MaLichSu CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
 ThoiGianCapNhat DATETIME,
 TrangThai NVARCHAR(100),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
@@ -192,24 +209,35 @@ FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 
 -- 18 DanhGia
 CREATE TABLE DanhGia(
-MaDanhGia VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
+MaDanhGia CHAR(5) PRIMARY KEY,
+MaDon CHAR(5) NOT NULL,
 SoSao INT,
+NoiDung NVARCHAR(255),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
-
--- 19 KhieuNai
 CREATE TABLE KhieuNai(
-MaKhieuNai VARCHAR(5) PRIMARY KEY,
-MaDon VARCHAR(5) NOT NULL,
-MaKhachHang VARCHAR(5) NOT NULL,
-MaNhanVien VARCHAR(5) NOT NULL,
-FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
-FOREIGN KEY(MaKhachHang) REFERENCES NguoiDung(MaNguoiDung),
-FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
-);
-GO
+    MaKhieuNai CHAR(5) PRIMARY KEY,
+    MaDon CHAR(5) NOT NULL,
+    MaKhachHang CHAR(5) NOT NULL,
+    MaNhanVien CHAR(5) NULL,
 
+    NoiDung NVARCHAR(255),              
+    ThoiGian DATETIME DEFAULT GETDATE(), 
+    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chờ xử lý', N'Đang xử lý', N'Đã xử lý')),
+    PhanHoi NVARCHAR(255),              
+
+    FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
+    FOREIGN KEY(MaKhachHang) REFERENCES NguoiDung(MaNguoiDung),
+    FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
+);
+GO 
+INSERT INTO VaiTro (MaVaiTro, TenVaiTro, MoTa)
+VALUES 
+    ('VT001', N'Admin', N'Quản trị viên hệ thống'),
+    ('VT002', N'Staff', N'Nhân viên'),
+    ('VT003', N'Customer', N'Khách hàng'),
+    ('VT004', N'Maid', N'Người giúp việc');
+	GO
 INSERT INTO KyNang (MaKyNang, TenKyNang, MoTa, IconName) VALUES 
 ('KN001', N'Dọn dẹp nhà', N'Vệ sinh, sắp xếp đồ đạc gọn gàng', 'cleaning'),
 ('KN002', N'Nấu ăn', N'Thực đơn đa dạng, đảm bảo dinh dưỡng', 'cooking'),
@@ -240,14 +268,17 @@ INSERT INTO ThanhPhan (MaThanhPhan, TenThanhPhan) VALUES
 ('TP016', N'Hút bụi bằng máy'),
 ('TP017', N'Tẩy ố bằng hơi nước'),
 ('TP018', N'Khử mùi diệt khuẩn');
-INSERT INTO DichVu (MaDichVu, TenDichVu, MoTa, GiaTheoGio, HinhAnh, PhoBien, TrangThai) VALUES 
-('DV001', N'Dọn dẹp nhà cửa', N'Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.', 60000, 'https://images.unsplash.com/photo-1581578731548-c64695cc6952', 1, N'Đang hoạt động'),
-('DV002', N'Tổng vệ sinh', N'Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.', 150000, 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac', 0, N'Đang hoạt động'),
-('DV003', N'Nấu ăn gia đình', N'Đi chợ và chuẩn bị những bữa ăn ngon miệng, đảm bảo dinh dưỡng cho gia đình.', 80000, 'https://images.unsplash.com/photo-1556910103-1c02745aae4d', 0, N'Đang hoạt động'),
-('DV004', N'Chăm sóc trẻ em', N'Trông nom, chơi đùa và chăm sóc bữa ăn, giấc ngủ cho các bé khi bạn bận rộn.', 70000, 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368', 1, N'Đang hoạt động'),
-('DV005', N'Chăm sóc người cao tuổi', N'Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.', 80000, 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289', 0, N'Đang hoạt động'),
-('DV006', N'Giặt sofa & nệm', N'Sử dụng máy móc chuyên dụng để hút bụi mịn, khử khuẩn và làm sạch sâu.', 250000, 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92', 0, N'Đang hoạt động');
+INSERT INTO DichVu (MaDichVu, MaKyNang, TenDichVu, MoTa, GiaTheoGio, HinhAnh, PhoBien, TrangThai) VALUES 
+('DV001','KN001', N'Dọn dẹp nhà cửa', N'Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.', 60000, 'https://images.unsplash.com/photo-1581578731548-c64695cc6952', 1, N'Đang hoạt động'),
+('DV002','KN002', N'Tổng vệ sinh', N'Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.', 150000, 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac', 0, N'Đang hoạt động'),
+('DV003','KN003', N'Nấu ăn gia đình', N'Đi chợ và chuẩn bị những bữa ăn ngon miệng, đảm bảo dinh dưỡng cho gia đình.', 80000, 'https://images.unsplash.com/photo-1556910103-1c02745aae4d', 0, N'Đang hoạt động'),
+('DV004','KN004', N'Chăm sóc trẻ em', N'Trông nom, chơi đùa và chăm sóc bữa ăn, giấc ngủ cho các bé khi bạn bận rộn.', 70000, 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368', 1, N'Đang hoạt động'),
+('DV005','KN005', N'Chăm sóc người cao tuổi', N'Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.', 80000, 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289', 0, N'Đang hoạt động'),
+('DV006','KN006', N'Giặt sofa & nệm', N'Sử dụng máy móc chuyên dụng để hút bụi mịn, khử khuẩn và làm sạch sâu.', 250000, 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92', 0, N'Đang hoạt động');
 -- Dọn dẹp nhà cửa (DV001) gồm TP001, TP002, TP003
+update KyNang
+set TenKyNang =N'Dọn dẹp nhà cửa'
+where MaKyNang = 'KN001'
 INSERT INTO DichVuThanhPhan (MaDichVu, MaThanhPhan, GhiChu) VALUES 
 ('DV001', 'TP001', N'Sử dụng nước lau sàn chuyên dụng'),
 ('DV001', 'TP002', NULL),
@@ -284,96 +315,84 @@ INSERT INTO DichVuThanhPhan (MaDichVu, MaThanhPhan, GhiChu) VALUES
 ('DV006', 'TP018', NULL);
 GO
 
--- ================================================
--- SEED DATA - Dữ liệu mẫu cho hệ thống
--- ================================================
+select * from NguoiDung
+select * from NguoiDungVaiTro
+select * from VaiTro
+select * from HoSoNguoiGiupViec
+select * from KyNang
+select * from KyNangNguoiGiupViec
 
--- 1. VaiTro (phải khớp với Program.cs để tránh duplicate)
-INSERT INTO VaiTro (MaVaiTro, TenVaiTro, MoTa) VALUES
-('VT001', N'Admin',    N'Quản trị viên hệ thống'),
-('VT002', N'Staff',    N'Nhân viên điều phối'),
-('VT003', N'Customer', N'Khách hàng'),
-('VT004', N'Maid',     N'Người giúp việc');
+
+select * from DonDat
+select * from DonDatDichVu
+select * from DonDatDichVuNgayLamViec
+select * from NgayLamViec
+select * from LichSuTrangThaiDon
+select * from LichRanh
+select * from CaLamViec
+select * from LichRanhCaLamViec
+select * from DichVu
+select * from DanhGia
 GO
 
--- 2. NguoiDung mẫu (Admin user được seed tự động bởi Program.cs khi khởi động)
-INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai, NgayTao) VALUES
-('KH001', N'Nguyễn Thị Lan',   'lan@gmail.com',  '0901111111', 'demo', N'123 Nguyễn Văn Linh, Đà Nẵng', 1, DATEADD(DAY,-120, GETDATE())),
-('KH002', N'Trần Văn Minh',    'minh@gmail.com', '0902222222', 'demo', N'45 Trần Phú, Hải Châu, Đà Nẵng', 1, DATEADD(DAY,-90, GETDATE())),
-('KH003', N'Lê Thị Hoa',       'hoa@gmail.com',  '0903333333', 'demo', N'78 Lê Duẩn, Đà Nẵng',           1, DATEADD(DAY,-60, GETDATE())),
-('KH004', N'Bùi Thành Đạt',    'dat@gmail.com',  '0904444400', 'demo', N'99 Hàm Nghi, Đà Nẵng',          1, DATEADD(DAY,-45, GETDATE())),
-('GV001', N'Phạm Thị Mai',     'mai@gmail.com',  '0904444441', 'demo', N'12 Hoàng Diệu, Đà Nẵng',        1, DATEADD(DAY,-100, GETDATE())),
-('GV002', N'Võ Thị Thu',       'thu@gmail.com',  '0905555555', 'demo', N'34 Điện Biên Phủ, Đà Nẵng',     1, DATEADD(DAY,-80, GETDATE())),
-('NV001', N'Đặng Thị Hạnh',    'hanh@gmail.com', '0906666666', 'demo', N'56 Hùng Vương, Đà Nẵng',        1, DATEADD(DAY,-110, GETDATE()));
-GO
+INSERT INTO NguoiDung (
+    MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi
+)
+VALUES (
+    'ND001', 
+    N'Nguyễn Thị Lan', 
+    'lanmaid@gmail.com', 
+    '0912345678', 
+    '123456', 
+    N'Nha Trang'
+);
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro)
+VALUES ('ND001', 'VT004');
+INSERT INTO HoSoNguoiGiupViec (
+    MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh,
+    TenNguoiThan, SDTNguoiThan,
+    TrangThaiXacMinh
+)
+VALUES (
+    'HS001', 
+    'ND001', 
+    '079123456789', 
+    '1995-05-10', 
+    N'Nữ',
+    N'Nguyễn Văn A',
+    '0987654321',
+    N'Đã duyệt'
+);
+INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES
+('KN001', 'HS001', N'2 năm kinh nghiệm dọn dẹp'),
+('KN002', 'HS001', N'Biết nấu ăn gia đình'),
+('KN005', 'HS001', N'Giặt ủi chuyên nghiệp');
+INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) VALUES
+('CA001', '08:00', '10:00'),
+('CA002', '10:00', '12:00'),
+('CA003', '13:00', '15:00'),
+('CA004', '15:00', '17:00');
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
+('LR001', 'ND001', '2026-05-06'),
+('LR002', 'ND001', '2026-05-07'),
+('LR003', 'ND001', '2026-05-08');
 
--- 3. Phân quyền NguoiDung
-INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro) VALUES
-('KH001', 'VT003'),
-('KH002', 'VT003'),
-('KH003', 'VT003'),
-('KH004', 'VT003'),
-('GV001', 'VT004'),
-('GV002', 'VT004'),
-('NV001', 'VT002');
-GO
+-- Ngày 06
+INSERT INTO LichRanhCaLamViec VALUES
+('LR001', 'CA001', N'Rảnh buổi sáng'),
+('LR001', 'CA002', N'Rảnh tiếp');
 
--- 4. HoSoNguoiGiupViec
-INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, KinhNghiem, TrangThaiXacMinh) VALUES
-('HS001', 'GV001', '201234567891', N'3 năm kinh nghiệm dọn dẹp, nấu ăn', N'Đã duyệt'),
-('HS002', 'GV002', '201234567892', N'2 năm kinh nghiệm chăm sóc trẻ',    N'Chờ duyệt');
-GO
+-- Ngày 07
+INSERT INTO LichRanhCaLamViec VALUES
+('LR002', 'CA003', N'Rảnh buổi chiều'),
+('LR002', 'CA004', N'Rảnh chiều muộn');
 
--- 5. DonDat mẫu — trải đều các tháng để biểu đồ doanh thu có số liệu
-DECLARE @Y INT = YEAR(GETDATE());
-INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
-('DD001', 'KH001', 'NV001', N'123 Nguyễn Văn Linh, Đà Nẵng', 2,  480000, DATEFROMPARTS(@Y,1,15), N'Dọn dẹp sau Tết'),
-('DD002', 'KH002', 'NV001', N'45 Trần Phú, Đà Nẵng',         1,  160000, DATEFROMPARTS(@Y,1,28), NULL),
-('DD003', 'KH001', 'NV001', N'123 Nguyễn Văn Linh, Đà Nẵng', 1,   80000, DATEFROMPARTS(@Y,2,10), NULL),
-('DD004', 'KH003', 'NV001', N'78 Lê Duẩn, Đà Nẵng',          3,  630000, DATEFROMPARTS(@Y,2,22), N'Tổng vệ sinh'),
-('DD005', 'KH002', 'NV001', N'45 Trần Phú, Đà Nẵng',         2,  320000, DATEFROMPARTS(@Y,3,5),  NULL),
-('DD006', 'KH004', 'NV001', N'99 Hàm Nghi, Đà Nẵng',         1,  250000, DATEFROMPARTS(@Y,3,18), NULL),
-('DD007', 'KH001', 'NV001', N'123 Nguyễn Văn Linh, Đà Nẵng', 2,  500000, DATEFROMPARTS(@Y,4,2),  NULL),
-('DD008', 'KH003', 'NV001', N'78 Lê Duẩn, Đà Nẵng',          1,  140000, DATEFROMPARTS(@Y,4,15), NULL),
-('DD009', 'KH002', 'NV001', N'45 Trần Phú, Đà Nẵng',         1,  210000, DATEFROMPARTS(@Y,4,20), N'Chăm sóc người cao tuổi');
-GO
-
--- 6. DonDatDichVu
-INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
-('DDV01', 'DD001', 'DV001'), ('DDV02', 'DD001', 'DV003'),
-('DDV03', 'DD002', 'DV001'),
-('DDV04', 'DD003', 'DV003'),
-('DDV05', 'DD004', 'DV002'),
-('DDV06', 'DD005', 'DV001'), ('DDV07', 'DD005', 'DV004'),
-('DDV08', 'DD006', 'DV002'),
-('DDV09', 'DD007', 'DV001'), ('DDV10', 'DD007', 'DV003'),
-('DDV11', 'DD008', 'DV001'),
-('DDV12', 'DD009', 'DV005');
-GO
-
--- 7. LichSuTrangThaiDon
-DECLARE @Y2 INT = YEAR(GETDATE());
-INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
-('LS001', 'DD001', DATEFROMPARTS(@Y2,1,16), N'Hoàn thành'),
-('LS002', 'DD002', DATEFROMPARTS(@Y2,1,29), N'Hoàn thành'),
-('LS003', 'DD003', DATEFROMPARTS(@Y2,2,11), N'Hoàn thành'),
-('LS004', 'DD004', DATEFROMPARTS(@Y2,2,25), N'Hoàn thành'),
-('LS005', 'DD005', DATEFROMPARTS(@Y2,3,7),  N'Hoàn thành'),
-('LS006', 'DD006', DATEFROMPARTS(@Y2,3,19), N'Hoàn thành'),
-('LS007', 'DD007', DATEFROMPARTS(@Y2,4,3),  N'Đang thực hiện'),
-('LS008', 'DD008', DATEFROMPARTS(@Y2,4,15), N'Chờ xác nhận'),
-('LS009', 'DD009', DATEFROMPARTS(@Y2,4,20), N'Chờ xác nhận');
-GO
-
--- 8. ThanhToan
-INSERT INTO ThanhToan (MaThanhToan, MaDon, TrangThaiThanhToan) VALUES
-('TT001', 'DD001', N'Đã thanh toán'),
-('TT002', 'DD002', N'Đã thanh toán'),
-('TT003', 'DD003', N'Đã thanh toán'),
-('TT004', 'DD004', N'Đã thanh toán'),
-('TT005', 'DD005', N'Đã thanh toán'),
-('TT006', 'DD006', N'Đã thanh toán'),
-('TT007', 'DD007', N'Chờ thanh toán'),
-('TT008', 'DD008', N'Chờ thanh toán'),
-('TT009', 'DD009', N'Chờ thanh toán');
-GO
+-- Ngày 08
+INSERT INTO LichRanhCaLamViec VALUES
+('LR003', 'CA001', NULL),
+('LR003', 'CA004', NULL);
+-- INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai)
+--VALUES ('LS131', 'DD130', GETDATE(), N'Hoàn thành');
+update HoSoNguoiGiupViec
+set TrangThaiXacMinh = N'Đã duyệt'
+where MaNguoiGiupViec = 'GV234'

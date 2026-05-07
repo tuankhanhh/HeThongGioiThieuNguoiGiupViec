@@ -28,8 +28,9 @@ export const ROUTES = {
   STAFF: {
     LOGIN: "/staff/login",
     DASHBOARD: "/staff/dashboard",
-    BOOKINGS: "/staff/bookings",
-    CUSTOMERS: "/staff/customers",
+    HO_SO_CHO_DUYET: "/staff/ho-so-cho-duyet",
+    YEU_CAU_DAT_DICH_VU: "/staff/yeu-cau-dat-dich-vu",
+    TAI_KHOAN: "/staff/tai-khoan",
   },
 
   // Maid - Người giúp việc

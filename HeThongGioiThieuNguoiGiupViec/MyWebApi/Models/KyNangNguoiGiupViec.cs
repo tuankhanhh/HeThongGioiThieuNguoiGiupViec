@@ -20,8 +20,8 @@ public partial class KyNangNguoiGiupViec
     [Unicode(false)]
     public string MaHoSo { get; set; } = null!;
 
-    [Column(TypeName = "datetime")]
-    public DateTime? NgayThem { get; set; }
+    [StringLength(200)]
+    public string? KinhNghiem { get; set; }
 
     [ForeignKey("MaHoSo")]
     [InverseProperty("KyNangNguoiGiupViecs")]

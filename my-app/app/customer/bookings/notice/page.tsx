@@ -72,9 +72,11 @@ export default function Notice() {
 
             {/* Nút điều hướng */}
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-              <button className="bg-[#0d7660] hover:bg-[#0a6350] text-white font-bold py-4 px-10 rounded-2xl transition-all shadow-xl shadow-[#0d7660]/20 active:scale-95 cursor-pointer">
-                Xem chi tiết đơn hàng
-              </button>
+              <Link href={ROUTES.CUSTOMER.HISTORY}>
+                <button className="w-full bg-[#0d7660] hover:bg-[#0b5e4f] text-white font-bold py-4 px-10 rounded-2xl transition-all active:scale-95 cursor-pointer">
+                  Xem chi tiết đơn hàng
+                </button>
+              </Link>
               <Link href={ROUTES.PUBLIC.HOME}>
                 <button className="w-full bg-[#E8F1F1] hover:bg-[#D1E5E5] text-[#0d7660] font-bold py-4 px-10 rounded-2xl transition-all active:scale-95 cursor-pointer">
                   Quay về trang chủ

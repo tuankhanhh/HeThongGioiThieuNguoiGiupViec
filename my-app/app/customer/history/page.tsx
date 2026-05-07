@@ -1,585 +1,419 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Typography,
-  Chip,
-  Divider,
-  Box,
-} from "@mui/material";
+  ChevronRight,
+  RestartAlt,
+  CalendarMonth,
+  AttachMoney,
+  EventNote,
+} from "@mui/icons-material";
+import CircularProgress from "@mui/material/CircularProgress";
+import api from "@/services/api";
+import Swal, { SweetAlertIcon } from "sweetalert2";
 
-// Icons
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import EventNoteIcon from "@mui/icons-material/EventNote";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PlayCircleFilledIcon from "@mui/icons-material/PlayCircleFilled";
-import TaskAltIcon from "@mui/icons-material/TaskAlt";
-import CancelIcon from "@mui/icons-material/Cancel";
-import PersonIcon from "@mui/icons-material/Person";
-import PhoneIcon from "@mui/icons-material/Phone";
+// Khai báo interface dựa theo dữ liệu API trả về
+interface Order {
+  maDon: string;
+  tenDichVu: string;
+  ngayDat: string;
+  trangThai: string;
+  soTien: number;
+  thanhTien: number | null;
+}
 
-// 1. MOCK DATA (Bổ sung thông tin người giúp việc)
-const mockBookings = [
-  {
-    maDon: "DD20231001-001",
-    ngayDat: "2023-10-01T14:30:00",
-    diaChi: "123 Đường Nguyễn Văn Linh, Đà Nẵng",
-    ghiChu: "Nhà có chó dữ, nhớ gọi trước khi đến",
-    tongTien: 1500000,
-    trangThaiDon: "Đang thực hiện",
-    trangThaiThanhToan: "Momo - Đã thanh toán",
-    lichSuTrangThai: [
-      {
-        maLichSu: "LS-1",
-        trangThai: "Chờ xác nhận",
-        thoiGian: "2023-10-01T14:30:00",
-      },
-      {
-        maLichSu: "LS-2",
-        trangThai: "Đã xác nhận",
-        thoiGian: "2023-10-01T16:00:00",
-      },
-      {
-        maLichSu: "LS-3",
-        trangThai: "Đang thực hiện",
-        thoiGian: "2023-10-05T08:00:00",
-      },
-    ],
-    chiTietNgayLamViec: [
-      {
-        maNgayLamViec: "NL-001",
-        ngayThucHien: "2023-10-05",
-        gioBatDau: "08:00",
-        trangThai: "Đang làm việc",
-        nguoiGiupViec: { ten: "Nguyễn Thị Lan", sdt: "0901234567" }, // CÓ NHÂN VIÊN
-        dichVus: [
-          {
-            maDichVu: "DV_DON_DEP",
-            tenDichVu: "Dọn dẹp nhà cửa",
-            thoiLuong: 2,
-          },
-        ],
-      },
-    ],
+const statusConfig = {
+  "Hoàn thành": {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    badge: "bg-emerald-100",
   },
-  {
-    maDon: "DD20231002-099",
-    ngayDat: "2023-10-02T09:15:00",
-    diaChi: "456 Trần Phú, Hải Châu, Đà Nẵng",
-    ghiChu: "",
-    tongTien: 800000,
-    trangThaiDon: "Chờ phân công",
-    trangThaiThanhToan: "Tiền mặt - Chưa thanh toán",
-    lichSuTrangThai: [
-      {
-        maLichSu: "LS-4",
-        trangThai: "Chờ xác nhận",
-        thoiGian: "2023-10-02T09:15:00",
-      },
-      {
-        maLichSu: "LS-5",
-        trangThai: "Đã xác nhận",
-        thoiGian: "2023-10-02T10:30:00",
-      },
-    ],
-    chiTietNgayLamViec: [
-      {
-        maNgayLamViec: "NL-003",
-        ngayThucHien: "2023-10-03",
-        gioBatDau: "09:00",
-        trangThai: "Chờ phân công",
-        nguoiGiupViec: null, // CHƯA CÓ NHÂN VIÊN
-        dichVus: [
-          {
-            maDichVu: "DV_TONG_VE_SINH",
-            tenDichVu: "Tổng vệ sinh",
-            thoiLuong: 4,
-          },
-        ],
-      },
-    ],
+  "Chờ xác nhận": {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    badge: "bg-blue-100",
   },
-  {
-    maDon: "DD20230928-055",
-    ngayDat: "2023-09-28T08:00:00",
-    diaChi: "101 Điện Biên Phủ, Đà Nẵng",
-    ghiChu: "",
-    tongTien: 1200000,
-    trangThaiDon: "Hoàn thành",
-    trangThaiThanhToan: "Tiền mặt - Đã thanh toán",
-    lichSuTrangThai: [
-      {
-        maLichSu: "LS-6",
-        trangThai: "Chờ xác nhận",
-        thoiGian: "2023-09-28T08:00:00",
-      },
-      {
-        maLichSu: "LS-7",
-        trangThai: "Đã xác nhận",
-        thoiGian: "2023-09-28T09:00:00",
-      },
-      {
-        maLichSu: "LS-8",
-        trangThai: "Đang thực hiện",
-        thoiGian: "2023-09-29T08:00:00",
-      },
-      {
-        maLichSu: "LS-9",
-        trangThai: "Hoàn thành",
-        thoiGian: "2023-09-29T12:00:00",
-      },
-    ],
-    chiTietNgayLamViec: [
-      {
-        maNgayLamViec: "NL-005",
-        ngayThucHien: "2023-09-29",
-        gioBatDau: "08:00",
-        trangThai: "Đã hoàn thành",
-        nguoiGiupViec: { ten: "Trần Thị Bé", sdt: "0987654321" }, // CÓ NHÂN VIÊN
-        dichVus: [
-          {
-            maDichVu: "DV_DON_DEP",
-            tenDichVu: "Dọn dẹp nhà cửa",
-            thoiLuong: 4,
-          },
-        ],
-      },
-    ],
+  "Đã xác nhận": {
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
+    badge: "bg-indigo-100",
   },
-];
-
-const formatVND = (amount: number) => {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(amount);
+  "Đang thực hiện": {
+    bg: "bg-yellow-50",
+    text: "text-yellow-700",
+    badge: "bg-yellow-100",
+  },
+  "Đã hủy": {
+    bg: "bg-red-50",
+    text: "text-red-700",
+    badge: "bg-red-100",
+  },
+  "Mặc định": {
+    bg: "bg-gray-50",
+    text: "text-gray-700",
+    badge: "bg-gray-100",
+  },
 };
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return (
-    date.toLocaleDateString("vi-VN") +
-    " - " +
-    date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
-  );
-};
+export default function OrderHistoryPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const handleCancelOrder = async (maDon: string) => {
+    const result = await Swal.fire({
+      title: "Xác nhận hủy đơn?",
+      text: "Bạn sẽ không thể hoàn tác hành động này!",
+      icon: "warning" as SweetAlertIcon, // Ép kiểu để TS không bắt bẻ string
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444", // Màu đỏ của Tailwind (red-500)
+      cancelButtonColor: "#3b82f6", // Màu xanh của Tailwind (blue-500)
+      confirmButtonText: "Đồng ý hủy",
+      cancelButtonText: "Quay lại",
+      background: "#ffffff",
+      // Sử dụng customClass để chỉnh bo góc bằng Tailwind
+      customClass: {
+        popup: "rounded-2xl",
+        title: "text-xl font-semibold text-gray-800",
+        confirmButton: "rounded-lg px-4 py-2",
+        cancelButton: "rounded-lg px-4 py-2",
+      },
+    });
 
-// 2. DANH SÁCH BỘ LỌC
-const statusFilters = [
-  "Tất cả",
-  "Chờ xác nhận",
-  "Chờ phân công",
-  "Đã xác nhận",
-  "Đang thực hiện",
-  "Hoàn thành",
-  "Hủy đơn",
-];
+    if (!result.isConfirmed) return;
 
-// 3. HÀM HELPER CHO TIMELINE
-const getTimelineConfig = (status: string) => {
-  switch (status) {
-    case "Chờ xác nhận":
-      return {
-        icon: <AccessTimeFilledIcon fontSize="small" />,
-        color: "text-slate-500",
-        bg: "bg-slate-100",
-      };
-    case "Đã xác nhận":
-      return {
-        icon: <CheckCircleIcon fontSize="small" />,
-        color: "text-teal-600",
-        bg: "bg-slate-100",
-      };
-    case "Đang thực hiện":
-      return {
-        icon: <PlayCircleFilledIcon fontSize="small" />,
-        color: "text-sky-600",
-        bg: "bg-slate-100",
-      };
-    case "Hoàn thành":
-      return {
-        icon: <TaskAltIcon fontSize="small" />,
-        color: "text-teal-600",
-        bg: "bg-slate-100",
-      };
-    case "Hủy đơn":
-      return {
-        icon: <CancelIcon fontSize="small" />,
-        color: "text-slate-700",
-        bg: "bg-slate-100",
-      };
-    default:
-      return {
-        icon: <AccessTimeFilledIcon fontSize="small" />,
-        color: "text-slate-500",
-        bg: "bg-slate-100",
-      };
-  }
-};
+    try {
+      setCancellingId(maDon);
+      // Lưu ý: Đảm bảo api.post trả về đúng cấu trúc bạn mong muốn
+      const res: any = await api.post(`/Booking/Cancel/${maDon}`);
 
-export default function BookingHistoryPage() {
-  const [expanded, setExpanded] = useState<string | false>(false);
-  const [filterStatus, setFilterStatus] = useState<string>("Tất cả");
+      // Kiểm tra thành công linh hoạt hơn
+      const isSuccess =
+        res?.status === 200 || res?.data?.success || res?.success;
 
-  const handleChange =
-    (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-      setExpanded(isExpanded ? panel : false);
+      if (isSuccess) {
+        setOrders((prev) =>
+          prev.map((order) =>
+            order.maDon === maDon ? { ...order, trangThai: "Đã hủy" } : order,
+          ),
+        );
+
+        Swal.fire({
+          title: "Thành công!",
+          text: "Đơn hàng đã được hủy.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+          customClass: {
+            popup: "rounded-2xl",
+          },
+        });
+      } else {
+        throw new Error("Phản hồi từ server không thành công");
+      }
+    } catch (err) {
+      console.error("Lỗi:", err);
+      Swal.fire({
+        title: "Thất bại",
+        text: "Không thể hủy đơn hàng. Vui lòng thử lại sau.",
+        icon: "error",
+        customClass: {
+          popup: "rounded-2xl",
+        },
+      });
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 1. Gọi API lấy thông tin user hiện tại (Sửa lại route cho khớp với controller của bạn VD: "/Auth/me")
+        const userResponse: any = await api.get("/User/me");
+
+        // Tùy thuộc vào cách axios wrapper trả dữ liệu, có thể nằm trong userResponse.data hoặc trực tiếp
+        const maNguoiDung =
+          userResponse?.maNguoiDung || userResponse?.data?.maNguoiDung;
+
+        if (!maNguoiDung) {
+          setError("Không thể xác thực thông tin người dùng.");
+          return;
+        }
+
+        // 2. Gọi API lấy danh sách đơn (Sửa lại route cho khớp với controller của bạn VD: "/Booking")
+        // Lấy pageSize lớn một chút hoặc cấu hình phân trang sau để đếm số lượng các tab cho chuẩn
+        const ordersResponse: any = await api.get(
+          `/Booking/GetByCustomer/${maNguoiDung}?pageSize=100`,
+        );
+
+        if (ordersResponse?.success || ordersResponse?.data?.success) {
+          const ordersData = ordersResponse?.data?.data || ordersResponse?.data;
+          setOrders(ordersData);
+        } else {
+          setError("Lỗi khi tải dữ liệu đơn đặt.");
+        }
+      } catch (err) {
+        console.error("Lỗi fetch đơn hàng:", err);
+        setError("Đã xảy ra lỗi hệ thống khi tải dữ liệu.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-  const filteredBookings = mockBookings.filter((booking) => {
-    if (filterStatus === "Tất cả") return true;
-    return booking.trangThaiDon === filterStatus;
-  });
+    fetchOrders();
+  }, []);
+
+  const filteredOrders = selectedStatus
+    ? orders.filter((order) => order.trangThai === selectedStatus)
+    : orders;
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // UI State: Đang tải
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+        <CircularProgress className="text-blue-600" />
+      </div>
+    );
+  }
+
+  // UI State: Lỗi
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center p-6">
+        <p className="text-red-500 font-medium mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <Box className="min-h-screen bg-slate-50 py-8 px-4 md:px-6">
-      <Box className="max-w-6xl mx-auto">
-        <Typography
-          variant="h4"
-          className="text-slate-900 font-bold mb-8 text-center"
-        >
-          Lịch Sử Đặt Dịch Vụ
-        </Typography>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6 md:p-8">
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">
+            Lịch sử đơn đặt
+          </h1>
+          <p className="text-lg text-slate-600">
+            Quản lý và theo dõi các dịch vụ đã đặt
+          </p>
+        </div>
 
-        {/* BỘ LỌC TRẠNG THÁI */}
-        <Box className="flex items-center justify-center gap-2 overflow-x-auto pb-4 mb-8 scrollbar-hide">
-          {statusFilters.map((status) => (
-            <Chip
-              key={status}
-              label={status}
-              clickable
-              onClick={() => setFilterStatus(status)}
-              sx={{
-                padding: "20px 8px",
-                borderRadius: "12px",
-                fontWeight: 500,
-                fontSize: "0.875rem",
-                transition: "all 0.2s ease",
-                ...(filterStatus === status
-                  ? {
-                      backgroundColor: "#009999",
-                      color: "white",
-                      border: "none",
-                      "&:hover": {
-                        backgroundColor: "#007a7a",
-                      },
-                    }
-                  : {
-                      backgroundColor: "white",
-                      color: "#475569",
-                      border: "1.5px solid #cbd5e1",
-                      "&:hover": {
-                        backgroundColor: "#f1f5f9",
-                        borderColor: "#94a3b8",
-                      },
-                    }),
-              }}
-            />
-          ))}
-        </Box>
-
-        {filteredBookings.length === 0 && (
-          <Box className="text-center py-12 bg-white rounded-3xl border border-slate-200 shadow-sm">
-            <Typography variant="body1" className="text-slate-600">
-              Không có đơn đặt dịch vụ nào ở trạng thái {filterStatus}
-            </Typography>
-          </Box>
-        )}
-
-        {/* DANH SÁCH ĐƠN ĐẶT */}
-        {filteredBookings.map((booking) => (
-          <Accordion
-            key={booking.maDon}
-            expanded={expanded === booking.maDon}
-            onChange={handleChange(booking.maDon)}
-            className="mb-5 rounded-3xl border-2 border-slate-200 overflow-hidden shadow-sm transition-shadow hover:shadow-md"
-            sx={{ "&:before": { display: "none" } }}
+        {/* Filter Tabs */}
+        <div className="flex flex-wrap gap-3 mb-8 pb-6 border-b border-slate-200">
+          <button
+            onClick={() => setSelectedStatus(null)}
+            className={`px-5 py-2 rounded-full font-medium transition-all duration-200 ${
+              selectedStatus === null
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+            }`}
           >
-            {/* TÓM TẮT ĐƠN */}
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              className="hover:bg-slate-25 transition-colors"
-              sx={{
-                padding: "20px 24px",
-                borderRadius: "32px",
-                "&:hover": {
-                  backgroundColor: "#f8fafc",
-                },
-              }}
-            >
-              <Box className="w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <Box>
-                  <Typography
-                    variant="subtitle1"
-                    className="font-bold text-teal-600"
-                  >
-                    Mã đơn: {booking.maDon}
-                  </Typography>
-                  <Typography variant="body2" className="text-slate-600 mt-1">
-                    Ngày đặt: {formatDate(booking.ngayDat)}
-                  </Typography>
-                </Box>
-                <Box className="flex items-center gap-4">
-                  <Typography
-                    variant="subtitle1"
-                    className="font-bold text-slate-900"
-                  >
-                    {formatVND(booking.tongTien)}
-                  </Typography>
-                  <Chip
-                    label={booking.trangThaiDon}
-                    color={
-                      booking.trangThaiDon === "Hủy đơn"
-                        ? "error"
-                        : booking.trangThaiDon === "Hoàn thành"
-                          ? "success"
-                          : booking.trangThaiDon.includes("Chờ")
-                            ? "warning"
-                            : "primary"
-                    }
-                    size="small"
-                    className="font-medium"
-                  />
-                </Box>
-              </Box>
-            </AccordionSummary>
+            Tất cả ({orders.length})
+          </button>
+          {[
+            "Hoàn thành",
+            "Chờ xác nhận",
+            "Đã xác nhận",
+            "Đang thực hiện",
+            "Đã hủy",
+          ].map((status) => {
+            const count = orders.filter((o) => o.trangThai === status).length;
+            return (
+              <button
+                key={status}
+                onClick={() => setSelectedStatus(status)}
+                className={`px-5 py-2 rounded-full font-medium transition-all duration-200 cursor-pointer ${
+                  selectedStatus === status
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {status} ({count})
+              </button>
+            );
+          })}
+        </div>
 
-            {/* CHI TIẾT ĐƠN */}
-            <AccordionDetails className="bg-white border-t border-slate-200 p-6 rounded-b-3xl">
-              {/* THÔNG TIN CHUNG */}
-              <Box className="flex flex-col md:flex-row gap-6 mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200">
-                <Box className="flex-1 flex flex-col gap-5">
-                  <Box className="flex items-start gap-3">
-                    <LocationOnIcon
-                      sx={{ color: "#0ea5e9", fontSize: 20, marginTop: "2px" }}
-                    />
-                    <Box className="flex-1">
-                      <Typography
-                        variant="body2"
-                        className="text-slate-600 font-semibold"
-                      >
-                        Địa chỉ thực hiện
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        className="font-medium text-slate-900 mt-1"
-                      >
-                        {booking.diaChi}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box className="flex items-start gap-3">
-                    <EventNoteIcon
-                      sx={{ color: "#0ea5e9", fontSize: 20, marginTop: "2px" }}
-                    />
-                    <Box className="flex-1">
-                      <Typography
-                        variant="body2"
-                        className="text-slate-600 font-semibold"
-                      >
-                        Ghi chú
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        className="text-slate-700 mt-1"
-                      >
-                        {booking.ghiChu || "Không có ghi chú"}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-                <Box className="flex-1 flex flex-col gap-5">
-                  <Box className="flex items-start gap-3">
-                    <AttachMoneyIcon
-                      sx={{ color: "#0ea5e9", fontSize: 20, marginTop: "2px" }}
-                    />
-                    <Box className="flex-1">
-                      <Typography
-                        variant="body2"
-                        className="text-slate-600 font-semibold"
-                      >
-                        Thanh toán
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        className="font-medium text-slate-900 mt-1"
-                      >
-                        {booking.trangThaiThanhToan}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              </Box>
+        {/* Orders List */}
+        <div className="space-y-4">
+          {filteredOrders.length > 0 ? (
+            filteredOrders.map((order) => {
+              // Xử lý fallback nếu trạng thái từ DB không khớp với config
+              const config =
+                statusConfig[order.trangThai as keyof typeof statusConfig] ||
+                statusConfig["Mặc định"];
 
-              <Box className="flex flex-col lg:flex-row gap-10 mt-8">
-                {/* 1. LỊCH TRÌNH DỊCH VỤ VÀ NGƯỜI GIÚP VIỆC */}
-                <Box className="flex-[2]">
-                  <Typography
-                    variant="h6"
-                    className="text-slate-900 font-bold mb-5 text-sm uppercase tracking-wide"
-                  >
-                    Chi tiết lịch trình
-                  </Typography>
-                  <Box className="flex flex-col gap-5">
-                    {booking.chiTietNgayLamViec.map((day, index) => (
-                      <Box
-                        key={day.maNgayLamViec}
-                        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
-                      >
-                        {/* Thanh line nhỏ trang trí */}
-                        <Box className="absolute top-0 left-0 w-1 h-full bg-teal-600"></Box>
+              return (
+                <div
+                  key={order.maDon}
+                  className="group relative bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 overflow-hidden"
+                >
+                  {/* Status Badge - Top Right */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <span
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${config.badge} ${config.text}`}
+                    >
+                      {order.trangThai}
+                    </span>
+                  </div>
 
-                        <Box className="flex justify-between items-center mb-4 ml-2">
-                          <Typography
-                            variant="subtitle2"
-                            className="font-bold text-slate-900"
-                          >
-                            Ngày {index + 1}:{" "}
-                            {new Date(day.ngayThucHien).toLocaleDateString(
-                              "vi-VN",
-                            )}{" "}
-                            - {day.gioBatDau}
-                          </Typography>
-                          <Chip
-                            label={day.trangThai}
-                            size="small"
-                            sx={{
-                              backgroundColor: day.trangThai.includes("Chờ")
-                                ? "#f1f5f9"
-                                : "#f0fdf4",
-                              color: day.trangThai.includes("Chờ")
-                                ? "#475569"
-                                : "#065f46",
-                              border: "1px solid",
-                              borderColor: day.trangThai.includes("Chờ")
-                                ? "#cbd5e1"
-                                : "#d1fae5",
-                              fontWeight: 500,
-                            }}
+                  {/* Main Content */}
+                  <div className="p-6 pr-5">
+                    {/* Service Name */}
+                    <h3 className="text-xl font-bold text-slate-900 mb-4 pr-4">
+                      {order.tenDichVu}
+                    </h3>
+
+                    {/* Divider */}
+                    <div className="h-px bg-gradient-to-r from-slate-200 to-transparent mb-4"></div>
+
+                    {/* Info Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      {/* Order Date */}
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-50 p-2 rounded-lg">
+                          <CalendarMonth
+                            className="text-blue-600"
+                            sx={{ fontSize: 20 }}
                           />
-                        </Box>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Ngày đặt
+                          </p>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {formatDate(order.ngayDat)}
+                          </p>
+                        </div>
+                      </div>
 
-                        {/* ========================================== */}
-                        {/* THÔNG TIN NGƯỜI GIÚP VIỆC (MỚI THÊM VÀO) */}
-                        {/* ========================================== */}
-                        <Box className="ml-2 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
-                          {day.nguoiGiupViec ? (
-                            <Box className="flex items-center gap-4 flex-1">
-                              <Box className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 flex-shrink-0">
-                                <PersonIcon fontSize="small" />
-                              </Box>
-                              <Box className="flex-1">
-                                <Typography
-                                  variant="body2"
-                                  className="font-bold text-slate-900"
-                                >
-                                  {day.nguoiGiupViec.ten}
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  className="text-slate-600 flex items-center gap-1 mt-1"
-                                >
-                                  <PhoneIcon sx={{ fontSize: 12 }} />{" "}
-                                  {day.nguoiGiupViec.sdt}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          ) : (
-                            <Box className="flex items-center gap-3 opacity-70">
-                              <Box className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 flex-shrink-0">
-                                <PersonIcon fontSize="small" />
-                              </Box>
-                              <Typography
-                                variant="body2"
-                                className="text-slate-600"
-                              >
-                                Đang chờ hệ thống phân công nhân viên...
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
+                      {/* Price */}
+                      <div className="flex items-center gap-3">
+                        <div className="bg-amber-50 p-2 rounded-lg">
+                          <AttachMoney
+                            className="text-amber-600"
+                            sx={{ fontSize: 20 }}
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Giá dịch vụ
+                          </p>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {formatCurrency(order.soTien)}
+                          </p>
+                        </div>
+                      </div>
 
-                        {/* Danh sách dịch vụ trong ngày */}
-                        <Box className="pl-4 border-l-2 border-slate-300 ml-2">
-                          {day.dichVus.map((svc, idx) => (
-                            <Box
-                              key={idx}
-                              className="flex justify-between items-center py-2"
-                            >
-                              <Typography
-                                variant="body2"
-                                className="text-slate-700 font-medium"
-                              >
-                                • {svc.tenDichVu}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                className="text-slate-600 bg-slate-100 border border-slate-300 px-3 py-1 rounded-full text-xs font-medium"
-                              >
-                                {svc.thoiLuong} giờ
-                              </Typography>
-                            </Box>
-                          ))}
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
+                      {/* Final Price */}
+                      {order.thanhTien !== null && (
+                        <div className="col-span-2 md:col-span-2 flex items-center gap-3">
+                          <div className="bg-emerald-50 p-2 rounded-lg">
+                            <AttachMoney
+                              className="text-emerald-600"
+                              sx={{ fontSize: 20 }}
+                            />
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 font-medium">
+                              Thành tiền
+                            </p>
+                            <p className="text-sm font-bold text-emerald-600">
+                              {formatCurrency(order.thanhTien)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                {/* 2. TIMELINE LỊCH SỬ TRẠNG THÁI */}
-                <Box className="flex-1">
-                  <Typography
-                    variant="h6"
-                    className="text-slate-900 font-bold mb-5 text-sm uppercase tracking-wide"
-                  >
-                    Lịch sử trạng thái
-                  </Typography>
-                  <Box className="relative border-l-2 border-slate-300 ml-4 mt-2">
-                    {booking.lichSuTrangThai.map((ls, idx) => {
-                      const config = getTimelineConfig(ls.trangThai);
-                      const isLast = idx === booking.lichSuTrangThai.length - 1;
+                    {/* Divider */}
+                    <div className="h-px bg-gradient-to-r from-slate-200 to-transparent mb-4"></div>
 
-                      return (
-                        <Box
-                          key={ls.maLichSu}
-                          className={`relative pl-10 ${isLast ? "" : "pb-7"}`}
-                        >
-                          <Box
-                            className={`absolute -left-[17px] top-0.5 w-8 h-8 rounded-full flex items-center justify-center bg-white border-2 border-slate-300 ${config.color}`}
+                    {/* Bottom Section with Buttons */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-slate-600">
+                        Mã đơn:{" "}
+                        <span className="font-mono font-semibold text-slate-900">
+                          {order.maDon}
+                        </span>
+                      </p>
+
+                      <div className="flex gap-3">
+                        {order.trangThai === "Hoàn thành" && (
+                          <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition-colors duration-200 text-sm cursor-pointer">
+                            <RestartAlt sx={{ fontSize: 16 }} />
+                            Đặt lại
+                          </button>
+                        )}
+
+                        {order.trangThai === "Chờ xác nhận" && (
+                          <button
+                            onClick={() => handleCancelOrder(order.maDon)}
+                            disabled={cancellingId === order.maDon}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-colors duration-200 text-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                           >
-                            {config.icon}
-                          </Box>
+                            {cancellingId === order.maDon
+                              ? "Đang hủy..."
+                              : "Hủy đơn"}
+                          </button>
+                        )}
 
-                          <Box>
-                            <Typography
-                              variant="subtitle2"
-                              className={`font-semibold ${isLast ? "text-slate-900" : "text-slate-700"}`}
-                            >
-                              {ls.trangThai}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              className="text-slate-600 block mt-1"
-                            >
-                              {formatDate(ls.thoiGian)}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                </Box>
-              </Box>
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </Box>
-    </Box>
+                        <Link href={`/customer/history/${order.maDon}`}>
+                          <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 text-sm group cursor-pointer">
+                            Chi tiết
+                            <ChevronRight
+                              sx={{ fontSize: 16 }}
+                              className="group-hover:translate-x-1 transition-transform"
+                            />
+                          </button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <EventNote sx={{ fontSize: 32 }} className="text-slate-400" />
+              </div>
+              <p className="text-lg text-slate-600">Không có đơn đặt nào</p>
+              <p className="text-sm text-slate-500 mt-2">
+                Hãy đặt dịch vụ để bắt đầu
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

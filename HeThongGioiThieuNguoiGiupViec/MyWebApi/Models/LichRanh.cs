@@ -18,11 +18,10 @@ public partial class LichRanh
     [Unicode(false)]
     public string MaNguoiGiupViec { get; set; } = null!;
 
-    public DateOnly? Ngay { get; set; }
+    public DateOnly Ngay { get; set; }
 
-    public TimeOnly? GioBatDau { get; set; }
-
-    public TimeOnly? GioKetThuc { get; set; }
+    [InverseProperty("MaLichRanhNavigation")]
+    public virtual ICollection<LichRanhCaLamViec> LichRanhCaLamViecs { get; set; } = new List<LichRanhCaLamViec>();
 
     [ForeignKey("MaNguoiGiupViec")]
     [InverseProperty("LichRanhs")]

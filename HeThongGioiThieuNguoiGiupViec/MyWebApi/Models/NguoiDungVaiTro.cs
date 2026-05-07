@@ -1,7 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
-using MyWebApi.Models;
+
+namespace MyWebApi.Models;
 
 [PrimaryKey("MaNguoiDung", "MaVaiTro")]
 [Table("NguoiDungVaiTro")]
@@ -17,12 +20,14 @@ public partial class NguoiDungVaiTro
     [Unicode(false)]
     public string MaVaiTro { get; set; } = null!;
 
+    [Column(TypeName = "datetime")]
     public DateTime? NgayGan { get; set; }
 
-    // 🔥 CHỈ GIỮ 2 NAVIGATION NÀY
-    [ForeignKey(nameof(MaNguoiDung))]
+    [ForeignKey("MaNguoiDung")]
+    [InverseProperty("NguoiDungVaiTros")]
     public virtual NguoiDung MaNguoiDungNavigation { get; set; } = null!;
 
-    [ForeignKey(nameof(MaVaiTro))]
+    [ForeignKey("MaVaiTro")]
+    [InverseProperty("NguoiDungVaiTros")]
     public virtual VaiTro MaVaiTroNavigation { get; set; } = null!;
 }

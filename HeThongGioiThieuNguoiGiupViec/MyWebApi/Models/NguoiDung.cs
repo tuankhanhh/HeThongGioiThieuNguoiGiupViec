@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MyWebApi.Models;
 
 [Table("NguoiDung")]
-[Index("Email", Name = "UQ__NguoiDun__A9D10534CA71DC75", IsUnique = true)]
+[Index("Email", Name = "UQ__NguoiDun__A9D10534F2E16356", IsUnique = true)]
 public partial class NguoiDung
 {
     [Key]
@@ -22,36 +22,31 @@ public partial class NguoiDung
     [Unicode(false)]
     public string? Email { get; set; }
 
-    [StringLength(11)]
+    [StringLength(10)]
     [Unicode(false)]
-    public string SoDienThoai { get; set; }
+    public string? SoDienThoai { get; set; }
 
     [StringLength(100)]
     [Unicode(false)]
-    public string MatKhau { get; set; }
+    public string? MatKhau { get; set; }
 
     [StringLength(200)]
     public string? DiaChi { get; set; }
 
-    public bool TrangThai { get; set; } = true;
+    public bool TrangThai { get; set; }
 
-    // 🔐 Refresh Token
     [StringLength(200)]
     [Unicode(false)]
     public string? RefreshToken { get; set; }
 
-    // 🔥 Thời điểm tạo refresh token
-    [Column(TypeName = "datetime")]
-    public DateTime? NgayTaoRefreshToken { get; set; }
-
-    // 🔥 Thời điểm hết hạn refresh token
-    [Column(TypeName = "datetime")]
-    public DateTime? NgayHetHanRefreshToken { get; set; }
-
     [Column(TypeName = "datetime")]
     public DateTime? NgayTao { get; set; }
 
-    // ================= RELATION =================
+    [Column(TypeName = "datetime")]
+    public DateTime? NgayTaoRefreshToken { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime? NgayHetHanRefreshToken { get; set; }
 
     [InverseProperty("MaKhachhangNavigation")]
     public virtual ICollection<DonDat> DonDatMaKhachhangNavigations { get; set; } = new List<DonDat>();

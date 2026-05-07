@@ -11,11 +11,15 @@ public partial class DichVu
 {
     [Key]
     [StringLength(5)]
-    [Unicode(false)] // Tương ứng với VARCHAR
+    [Unicode(false)]
     public string MaDichVu { get; set; } = null!;
 
+    [StringLength(5)]
+    [Unicode(false)]
+    public string? MaKyNang { get; set; }
+
     [StringLength(100)]
-    public string TenDichVu { get; set; } = null!; // NOT NULL trong SQL
+    public string TenDichVu { get; set; } = null!;
 
     [StringLength(500)]
     public string? MoTa { get; set; }
@@ -24,19 +28,21 @@ public partial class DichVu
     public decimal? GiaTheoGio { get; set; }
 
     [StringLength(255)]
-    [Unicode(false)] // Tương ứng với VARCHAR
+    [Unicode(false)]
     public string? HinhAnh { get; set; }
 
-
-    public bool? PhoBien { get; set; } // BIT trong SQL ánh xạ sang bool trong C#
+    public bool? PhoBien { get; set; }
 
     [StringLength(30)]
     public string? TrangThai { get; set; }
 
-    // Navigation properties (Các mối quan hệ)
     [InverseProperty("MaDichVuNavigation")]
     public virtual ICollection<DichVuThanhPhan> DichVuThanhPhans { get; set; } = new List<DichVuThanhPhan>();
 
     [InverseProperty("MaDichVuNavigation")]
     public virtual ICollection<DonDatDichVu> DonDatDichVus { get; set; } = new List<DonDatDichVu>();
+
+    [ForeignKey("MaKyNang")]
+    [InverseProperty("DichVus")]
+    public virtual KyNang? MaKyNangNavigation { get; set; }
 }

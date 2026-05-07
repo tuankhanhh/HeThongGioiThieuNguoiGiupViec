@@ -41,9 +41,22 @@ namespace MyWebApi.Service
                 throw new UnauthorizedAccessException("Sai tài khoản hoặc mật khẩu");
             }
 
+
+            //CŨ
+            //var roles = user.NguoiDungVaiTros
+            //    .Select(ur => ur.MaVaiTroNavigation.TenVaiTro)
+            //    .ToList();
+            // TRƯỜNG phân role
             var roles = user.NguoiDungVaiTros
-                .Select(ur => ur.MaVaiTroNavigation.TenVaiTro)
-                .ToList();
+            .Select(ur => ur.MaVaiTroNavigation.TenVaiTro switch
+            {
+                "Nhân viên" => "Staff",
+                "Người giúp việc" => "Maid",
+                "Khách hàng" => "Customer",
+                "Quản trị viên" => "Admin",
+                _ => ur.MaVaiTroNavigation.TenVaiTro
+            })
+            .ToList();
 
             var accessToken = _tokenService.GenerateAccessToken(user, roles);
             var refreshToken = _tokenService.GenerateRefreshToken();
@@ -77,7 +90,7 @@ namespace MyWebApi.Service
 
             var newUser = new NguoiDung
             {
-                MaNguoiDung = GenerateId("ND"),
+                MaNguoiDung = GenerateId("KH"),
                 MatKhau = hashedPassword,
                 HoTen = request.HoTen,
                 Email = request.Email,
@@ -112,7 +125,7 @@ namespace MyWebApi.Service
 
             var newUser = new NguoiDung
             {
-                MaNguoiDung = Guid.NewGuid().ToString().Substring(0, 5),
+                MaNguoiDung = GenerateId("GV"),
                 MatKhau = hashedPassword,
                 HoTen = request.HoTen,
                 Email = request.Email,
