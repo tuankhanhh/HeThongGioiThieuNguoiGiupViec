@@ -28129,8 +28129,8 @@
 									},
 									"font": "Arial;13;1",
 									"parentStyle": true,
-									"left": 424,
-									"top": 1189,
+									"left": 416,
+									"top": 1181,
 									"width": 248.12451171875,
 									"height": 13,
 									"text": "KyNang_NguoiGiupViec"
@@ -28156,8 +28156,8 @@
 											},
 											"font": "Arial;13;0",
 											"parentStyle": true,
-											"left": 429,
-											"top": 1212,
+											"left": 421,
+											"top": 1204,
 											"width": 238.12451171875,
 											"height": 13
 										},
@@ -28172,8 +28172,8 @@
 											},
 											"font": "Arial;13;0",
 											"parentStyle": true,
-											"left": 429,
-											"top": 1227,
+											"left": 421,
+											"top": 1219,
 											"width": 238.12451171875,
 											"height": 13
 										},
@@ -28188,24 +28188,24 @@
 											},
 											"font": "Arial;13;0",
 											"parentStyle": true,
-											"left": 429,
-											"top": 1242,
+											"left": 421,
+											"top": 1234,
 											"width": 238.12451171875,
 											"height": 13
 										}
 									],
 									"font": "Arial;13;0",
 									"parentStyle": true,
-									"left": 424,
-									"top": 1207,
+									"left": 416,
+									"top": 1199,
 									"width": 248.12451171875,
 									"height": 53
 								}
 							],
 							"font": "Arial;13;0",
 							"parentStyle": false,
-							"left": 424,
-							"top": 1184,
+							"left": 416,
+							"top": 1176,
 							"width": 248.12451171875,
 							"height": 76,
 							"nameLabel": {
@@ -28234,7 +28234,7 @@
 									"visible": false,
 									"font": "Arial;13;0",
 									"parentStyle": false,
-									"left": 392,
+									"left": 388,
 									"top": 1195,
 									"height": 13,
 									"alpha": 1.5707963267948966,
@@ -28270,7 +28270,7 @@
 									},
 									"font": "Arial;13;0",
 									"parentStyle": false,
-									"left": 398,
+									"left": 390,
 									"top": 1195,
 									"height": 13,
 									"alpha": -0.5235987755982988,
@@ -28289,7 +28289,7 @@
 								"$ref": "AAAAAAGdOFZphAis8rQ="
 							},
 							"lineStyle": 2,
-							"points": "360:1216;424:1216",
+							"points": "360:1216;416:1216",
 							"nameLabel": {
 								"$ref": "AAAAAAGdUYOJqfU2i2c="
 							},
@@ -28320,7 +28320,7 @@
 									"font": "Arial;13;0",
 									"parentStyle": false,
 									"left": 574,
-									"top": 1137,
+									"top": 1133,
 									"height": 13,
 									"alpha": 1.5707963267948966,
 									"distance": 15,
@@ -28356,7 +28356,7 @@
 									"font": "Arial;13;0",
 									"parentStyle": false,
 									"left": 575,
-									"top": 1152,
+									"top": 1144,
 									"height": 13,
 									"alpha": -0.5235987755982988,
 									"distance": 30,
@@ -28374,7 +28374,7 @@
 								"$ref": "AAAAAAGdM+t6simQc6k="
 							},
 							"lineStyle": 2,
-							"points": "560:1105;560:1184",
+							"points": "560:1105;560:1176",
 							"nameLabel": {
 								"$ref": "AAAAAAGdUYOVefVKiks="
 							},

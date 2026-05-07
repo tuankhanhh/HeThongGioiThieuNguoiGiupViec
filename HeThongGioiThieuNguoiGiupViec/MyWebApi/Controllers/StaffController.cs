@@ -326,7 +326,9 @@ namespace MyWebApi.Controllers
                 if (nguoiGiupViec == null)
                     return NotFound(new { success = false, message = "Không tìm thấy người giúp việc." });
 
+                don.MaNhanVien = request.MaNguoiGiupViec;
                 // Cập nhật MaNguoiGiupViec cho tất cả NgayLamViec của đơn
+
                 foreach (var dv in don.DonDatDichVus)
                 {
                     foreach (var nlv in dv.NgayLamViecs)
