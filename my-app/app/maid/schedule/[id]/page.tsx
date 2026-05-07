@@ -9,10 +9,10 @@ import {
   Phone,
   AccessTime,
   LocationOn,
-  Verified,
 } from "@mui/icons-material";
+// src/data/mockJobs.ts
 
-interface Job {
+export interface Job {
   maNgayLamViec: string;
   maDon: string;
   ngayLam: string;
@@ -33,7 +33,7 @@ interface Job {
     | "Hủy lịch";
 }
 
-const mockJobs: Job[] = [
+export const mockJobs: Job[] = [
   {
     maNgayLamViec: "NLV01",
     maDon: "DD001",

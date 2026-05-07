@@ -223,7 +223,7 @@ CREATE TABLE KhieuNai(
 
     NoiDung NVARCHAR(255),              
     ThoiGian DATETIME DEFAULT GETDATE(), 
-    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chưa xử lý', N'Đang xử lý', N'Đã giải quyết')),
+    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chờ xử lý', N'Đang xử lý', N'Đã xử lý')),
     PhanHoi NVARCHAR(255),              
 
     FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
@@ -322,7 +322,6 @@ select * from HoSoNguoiGiupViec
 select * from KyNang
 select * from KyNangNguoiGiupViec
 
-
 select * from DonDat
 select * from DonDatDichVu
 select * from DonDatDichVuNgayLamViec
@@ -332,8 +331,12 @@ select * from LichRanh
 select * from CaLamViec
 select * from LichRanhCaLamViec
 select * from DichVu
-select * from DanhGia
 GO
+UPDATE HoSoNguoiGiupViec
+SET TrangThaiXacMinh = N'Đã duyệt'
+WHERE MaNguoiGiupViec = 'GV661';
+
+
 
 INSERT INTO NguoiDung (
     MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi
@@ -377,27 +380,7 @@ INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
 ('LR002', 'ND001', '2026-05-07'),
 ('LR003', 'ND001', '2026-05-08');
 
--- Ngày 06
-INSERT INTO LichRanhCaLamViec VALUES
-('LR001', 'CA001', N'Rảnh buổi sáng'),
-('LR001', 'CA002', N'Rảnh tiếp');
 
--- Ngày 07
-INSERT INTO LichRanhCaLamViec VALUES
-('LR002', 'CA003', N'Rảnh buổi chiều'),
-('LR002', 'CA004', N'Rảnh chiều muộn');
-
--- Ngày 08
-INSERT INTO LichRanhCaLamViec VALUES
-('LR003', 'CA001', NULL),
-('LR003', 'CA004', NULL);
-<<<<<<< HEAD
--- INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai)
---VALUES ('LS131', 'DD130', GETDATE(), N'Hoàn thành');
-update HoSoNguoiGiupViec
-set TrangThaiXacMinh = N'Đã duyệt'
-where MaNguoiGiupViec = 'GV234'
-=======
 
 --TRƯỜNG TEST--
 -- 1) NGƯỜI DÙNG
@@ -534,12 +517,6 @@ VALUES
 GO
 
 -- 11) KHIẾU NẠI
-INSERT INTO KhieuNai
-(MaKhieuNai, MaDon, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai, PhanHoi)
-VALUES
-('KN010', 'DD010', 'ND010', NULL, N'Dọn chưa sạch một số khu vực.', '2026-05-06 15:00:00', N'Chưa xử lý', NULL),
-('KN011', 'DD011', 'ND010', NULL, N'Người giúp việc đến trễ.', '2026-05-06 16:00:00', N'Đang xử lý', NULL);
-GO
 
 -- 12) LỊCH RẢNH
 INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
@@ -595,4 +572,3 @@ INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec, GhiChu) VALUES
 ('LR201', 'CA003', N'13-15'),
 ('LR201', 'CA004', N'15-17');
 GO
->>>>>>> truong

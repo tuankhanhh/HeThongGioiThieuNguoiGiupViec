@@ -12,8 +12,9 @@ import {
   ChevronRight,
   Flag,
 } from "@mui/icons-material";
+// src/data/mockJobs.ts
 
-interface Job {
+export interface Job {
   maNgayLamViec: string;
   maDon: string;
   ngayLam: string;
@@ -30,11 +31,11 @@ interface Job {
     | "Đã phân công"
     | "Đang làm việc"
     | "Hoàn thành"
-    | "Không đến làm"
+    // | "Không đến làm"
     | "Hủy lịch";
 }
 
-const mockJobs: Job[] = [
+export const mockJobs: Job[] = [
   {
     maNgayLamViec: "NLV01",
     maDon: "DD001",
@@ -79,23 +80,21 @@ const mockJobs: Job[] = [
   },
 ];
 
-// Worker-only statuses (những trạng thái mà người giúp việc có thể cập nhật)
 const WORKER_STATUSES = [
   "Đã phân công",
   "Đang làm việc",
   "Hoàn thành",
-  "Không đến làm",
+  // "Không đến làm",
 ];
 
 export default function JobDetailPage({
   params,
 }: {
-  params: Promise<{ id: string; jobId: string }>;
+  params: Promise<{ id: string; slug: string }>;
 }) {
   const router = useRouter();
   const resolvedParams = use(params);
 
-  // State quản lý công việc được chọn
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<string>("Đã phân công");
@@ -104,32 +103,27 @@ export default function JobDetailPage({
   const dragRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
 
-  // Tải công việc từ mock data khi jobId thay đổi
   React.useEffect(() => {
     const loadJobDetail = async () => {
       setIsLoading(true);
-      // Giả lập delay loading (có thể thay bằng API call)
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       const found = mockJobs.find(
-        (j) => j.maNgayLamViec === resolvedParams.jobId,
+        (j) => j.maNgayLamViec === resolvedParams.slug,
       );
 
       if (found) {
         setSelectedJob(found);
         setStatus(found.trangThai);
-        console.log("✅ Đã tải công việc:", found.maNgayLamViec);
       } else {
         setSelectedJob(null);
-        console.warn("❌ Không tìm thấy công việc:", resolvedParams.jobId);
       }
       setIsLoading(false);
     };
 
     loadJobDetail();
-  }, [resolvedParams.jobId]);
+  }, [resolvedParams.slug]);
 
-  // Hiển thị loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
@@ -143,7 +137,6 @@ export default function JobDetailPage({
     );
   }
 
-  // Hiển thị error nếu không tìm thấy công việc
   if (!selectedJob) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center flex-col gap-6 px-4">
@@ -154,18 +147,8 @@ export default function JobDetailPage({
           <p className="text-slate-500 text-sm mb-4">
             Mã công việc:{" "}
             <code className="bg-slate-200 px-2 py-1 rounded text-xs">
-              {resolvedParams.jobId}
+              {resolvedParams.slug}
             </code>
-          </p>
-          <p className="text-slate-500 text-sm mb-4">
-            Ngày:{" "}
-            <code className="bg-slate-200 px-2 py-1 rounded text-xs">
-              {resolvedParams.id}
-            </code>
-          </p>
-          <p className="text-slate-400 text-xs">
-            Các công việc có sẵn:{" "}
-            {mockJobs.map((j) => j.maNgayLamViec).join(", ")}
           </p>
         </div>
         <button
@@ -178,7 +161,6 @@ export default function JobDetailPage({
     );
   }
 
-  // Lấy công việc hiện tại
   const job = selectedJob;
 
   const formatCurrency = (amount: number) => {
@@ -213,11 +195,11 @@ export default function JobDetailPage({
         bgColor: "bg-emerald-50 border-emerald-200",
         icon: "✓✓",
       },
-      "Không đến làm": {
-        color: "text-red-600",
-        bgColor: "bg-red-50 border-red-200",
-        icon: "✗",
-      },
+      // "Không đến làm": {
+      //   color: "text-red-600",
+      //   bgColor: "bg-red-50 border-red-200",
+      //   icon: "✗",
+      // },
       "Hủy lịch": {
         color: "text-slate-600",
         bgColor: "bg-slate-50 border-slate-200",
