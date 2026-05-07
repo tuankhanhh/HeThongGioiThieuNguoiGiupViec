@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/services/api";
 import AdminLayout from "@/components/admin/AdminLayout";
+import api from "@/services/api";
 
 interface Service {
   maDichVu: string;
@@ -32,6 +32,7 @@ export default function ServicesManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [viewingService, setViewingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
 
   useEffect(() => {
@@ -42,8 +43,10 @@ export default function ServicesManagement() {
 
   const fetchServices = async () => {
     try {
-      const response = await api.get("/admin/services");
-      if (response.data.success) setServices(response.data.data);
+      const response = await api.get<{ success: boolean; data: Service[] }>("/admin/services");
+      if (response.success) {
+        setServices(response.data);
+      }
     } catch (error) {
       console.error("Lỗi khi tải danh sách dịch vụ:", error);
     } finally {
@@ -64,287 +67,215 @@ export default function ServicesManagement() {
       setFormData(emptyForm);
       fetchServices();
     } catch (error) {
-      console.error("Lỗi:", error);
+      alert("Lỗi khi xử lý dịch vụ: " + (error as any).message);
     }
   };
 
-  const handleEdit = (service: Service) => {
-    setEditingService(service);
-    setFormData({ tenDichVu: service.tenDichVu, moTa: service.moTa, giaTheoGio: service.giaTheoGio, hinhAnh: service.hinhAnh, phoBien: service.phoBien });
+  const handleEdit = (s: Service) => {
+    setEditingService(s);
+    setFormData({ tenDichVu: s.tenDichVu, moTa: s.moTa, giaTheoGio: s.giaTheoGio, hinhAnh: s.hinhAnh, phoBien: s.phoBien });
     setShowModal(true);
   };
 
+  const handleViewDetail = (s: Service) => {
+    setViewingService(s);
+  };
+
   const handleDelete = async (maDichVu: string) => {
-    if (!confirm("Bạn có chắc muốn xóa dịch vụ này?")) return;
+    if (!confirm("Bạn có chắc muốn ngừng hoạt động dịch vụ này?")) return;
     try {
       await api.delete(`/admin/services/${maDichVu}`);
       fetchServices();
     } catch (error) {
-      console.error("Lỗi:", error);
+      alert("Lỗi khi xóa dịch vụ: " + (error as any).message);
     }
   };
 
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ width: "56px", height: "56px", borderRadius: "50%", border: "4px solid rgba(99,102,241,0.15)", borderTopColor: "#6366f1", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-            <p style={{ marginTop: "16px", color: "#6366f1", fontWeight: 500 }}>Đang tải...</p>
-          </div>
+  if (loading) return (
+    <AdminLayout>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "50%", border: "3px solid #f3f4f6", borderTopColor: "#312e81", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
+          <p style={{ color: "#64748b", fontSize: "14px", fontWeight: 500 }}>Đang tải dịch vụ...</p>
         </div>
-      </AdminLayout>
-    );
-  }
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </AdminLayout>
+  );
 
   return (
     <AdminLayout>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes fadeInUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } } @keyframes modalIn { from { opacity:0; transform:scale(0.95) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }`}</style>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .svc-card { 
+          will-change: transform, opacity; 
+          transform: translateZ(0); 
+          backface-visibility: hidden;
+        }
+        .svc-card:hover { 
+          transform: translateY(-4px) translateZ(0) !important; 
+          box-shadow: 0 12px 24px -8px rgba(0,0,0,0.12) !important; 
+          border-color: #3b82f6 !important; 
+        }
+        .btn-action:hover { background: #f1f5f9 !important; color: #0f172a !important; }
+      `}</style>
 
-      {/* Header */}
-      <div style={{ marginBottom: "28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
-        <div>
-          <h2 style={{ fontSize: "28px", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Quản lý dịch vụ</h2>
-          <p style={{ color: "#6b7280", marginTop: "6px", fontSize: "14px" }}>
-            <strong style={{ color: "#6366f1" }}>{services.length}</strong> dịch vụ trong hệ thống
-          </p>
-        </div>
-        <button
-          onClick={() => { setEditingService(null); setFormData(emptyForm); setShowModal(true); }}
-          style={{
-            padding: "11px 22px", borderRadius: "12px", border: "none", cursor: "pointer",
-            background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-            color: "white", fontWeight: 600, fontSize: "14px",
-            boxShadow: "0 6px 18px rgba(99,102,241,0.4)",
-            display: "flex", alignItems: "center", gap: "8px",
-            transition: "all 0.2s",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 10px 24px rgba(99,102,241,0.5)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "none"; (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 18px rgba(99,102,241,0.4)"; }}
-        >
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          Thêm dịch vụ mới
-        </button>
-      </div>
+      <div className="gpu-accelerated">
+        {/* ── Header ── */}
+        <div style={{ marginBottom: "32px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", animation: "fadeIn 0.3s ease-out both" }}>
+          <div>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>
+              Quản trị
+            </p>
+            <h2 style={{ fontSize: "32px", fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>Dịch vụ hệ thống</h2>
+            <p style={{ color: "#64748b", marginTop: "6px", fontSize: "15px" }}>
+              Quản lý danh mục các dịch vụ cung cấp tới khách hàng.
+            </p>
+          </div>
 
-      {/* Services Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-        {services.map((service, index) => (
-          <div key={service.maDichVu} style={{
-            background: "#fff", borderRadius: "20px", overflow: "hidden",
-            boxShadow: "0 2px 16px rgba(99,102,241,0.07)",
-            border: "1px solid rgba(99,102,241,0.06)",
-            animation: `fadeInUp 0.4s ease ${index * 0.06}s both`,
-            transition: "transform 0.2s ease, box-shadow 0.2s ease",
-          }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-6px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 40px rgba(99,102,241,0.15)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "none"; (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 16px rgba(99,102,241,0.07)"; }}
+          <button
+            onClick={() => { setEditingService(null); setFormData(emptyForm); setShowModal(true); }}
+            style={{ 
+              padding: "12px 24px", borderRadius: "14px", border: "none", 
+              background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)", 
+              color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer", 
+              display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 12px rgba(30, 27, 75, 0.25)"
+            }}
           >
-            {/* Image */}
-            <div style={{ position: "relative", height: "180px", overflow: "hidden", background: "linear-gradient(135deg,#e0e7ff,#ede9fe)" }}>
-              {service.hinhAnh ? (
-                <img src={service.hinhAnh} alt={service.tenDichVu}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                  <svg fill="none" viewBox="0 0 24 24" stroke="#a5b4fc" width="48" height="48">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              )}
-              {service.phoBien && (
-                <div style={{ position: "absolute", top: "12px", right: "12px", background: "linear-gradient(135deg,#f59e0b,#f97316)", color: "white", padding: "3px 10px", borderRadius: "99px", fontSize: "11px", fontWeight: 700 }}>
-                  ⭐ Phổ biến
-                </div>
-              )}
-            </div>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Thêm dịch vụ mới
+          </button>
+        </div>
 
-            {/* Content */}
-            <div style={{ padding: "20px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#1e1b4b", margin: "0 0 6px" }}>
-                {service.tenDichVu}
-              </h3>
-              <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 12px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {service.moTa}
-              </p>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-                <span style={{ fontSize: "20px", fontWeight: 700, color: "#6366f1" }}>
-                  {service.giaTheoGio.toLocaleString("vi-VN")}đ
-                  <span style={{ fontSize: "12px", fontWeight: 400, color: "#9ca3af" }}>/giờ</span>
-                </span>
-                <span style={{
-                  padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600,
-                  background: service.trangThai === "Đang hoạt động" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-                  color: service.trangThai === "Đang hoạt động" ? "#059669" : "#dc2626",
+        {/* ── Cards Grid ── */}
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", 
+          gap: "24px",
+          animation: "fadeIn 0.4s ease-out both" 
+        }}>
+          {services.map((service) => (
+            <div key={service.maDichVu} className="svc-card" style={{
+              background: "#fff", borderRadius: "24px", border: "1px solid #e2e8f0", 
+              overflow: "hidden", transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)", display: "flex", flexDirection: "column"
+            }}>
+              <div style={{ position: "relative", height: "180px", background: "#f1f5f9", overflow: "hidden" }}>
+                <img 
+                  src={service.hinhAnh || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"} 
+                  alt={service.tenDichVu} 
+                  loading="lazy"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.3s" }} 
+                />
+              <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "8px" }}>
+                <span style={{ 
+                  padding: "4px 12px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, 
+                  background: service.trangThai === "Đang hoạt động" ? "#ecfdf5" : "#fef2f2",
+                  color: service.trangThai === "Đang hoạt động" ? "#10b981" : "#ef4444",
+                  backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.5)"
                 }}>
                   {service.trangThai}
                 </span>
+                {service.phoBien && (
+                  <span style={{ padding: "4px 12px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, background: "#fff7ed", color: "#ea580c", border: "1px solid rgba(255,255,255,0.5)" }}>
+                    Phổ biến ★
+                  </span>
+                )}
               </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => handleEdit(service)} style={{
-                  flex: 1, padding: "9px", borderRadius: "10px", border: "1.5px solid rgba(99,102,241,0.25)",
-                  background: "rgba(99,102,241,0.05)", color: "#6366f1", fontWeight: 600, fontSize: "13px",
-                  cursor: "pointer", transition: "all 0.2s",
-                }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#6366f1"; (e.currentTarget as HTMLElement).style.color = "white"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,0.05)"; (e.currentTarget as HTMLElement).style.color = "#6366f1"; }}
-                >
-                  ✏️ Chỉnh sửa
-                </button>
-                <button onClick={() => handleDelete(service.maDichVu)} style={{
-                  flex: 1, padding: "9px", borderRadius: "10px", border: "1.5px solid rgba(239,68,68,0.25)",
-                  background: "rgba(239,68,68,0.05)", color: "#dc2626", fontWeight: 600, fontSize: "13px",
-                  cursor: "pointer", transition: "all 0.2s",
-                }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#dc2626"; (e.currentTarget as HTMLElement).style.color = "white"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.05)"; (e.currentTarget as HTMLElement).style.color = "#dc2626"; }}
-                >
-                  🗑️ Xóa
-                </button>
+            </div>
+
+            <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "10px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>{service.maDichVu}</span>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: "6px 0 8px" }}>{service.tenDichVu}</h3>
+              <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 16px", lineHeight: 1.6, flex: 1 }}>{service.moTa}</p>
+              
+              <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "20px" }}>
+                <span style={{ fontSize: "24px", fontWeight: 800, color: "#312e81" }}>{service.giaTheoGio.toLocaleString()}đ</span>
+                <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 600 }}>/ giờ</span>
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                <button onClick={() => handleViewDetail(service)} style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", fontSize: "13px", fontWeight: 700, cursor: "pointer", marginBottom: "4px" }} className="btn-action">Xem chi tiết</button>
+                <button onClick={() => handleEdit(service)} style={{ flex: 1, padding: "10px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#fff", color: "#475569", fontSize: "13px", fontWeight: 700, cursor: "pointer" }} className="btn-action">Sửa</button>
+                <button onClick={() => handleDelete(service.maDichVu)} style={{ flex: 1, padding: "10px", borderRadius: "12px", border: "1px solid #fee2e2", background: "#fef2f2", color: "#ef4444", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>Xóa</button>
               </div>
             </div>
           </div>
         ))}
-
-        {services.length === 0 && (
-          <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "80px 20px" }}>
-            <svg fill="none" viewBox="0 0 24 24" stroke="#d1d5db" width="56" height="56" style={{ margin: "0 auto 16px" }}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <p style={{ color: "#9ca3af", fontWeight: 500, fontSize: "16px" }}>Chưa có dịch vụ nào</p>
-            <p style={{ color: "#d1d5db", fontSize: "13px", marginTop: "4px" }}>Nhấn "Thêm dịch vụ mới" để bắt đầu</p>
-          </div>
-        )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(15,10,40,0.6)",
-          backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
-          padding: "20px",
-        }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-        >
-          <div style={{
-            background: "#fff", borderRadius: "24px", width: "100%", maxWidth: "500px",
-            boxShadow: "0 32px 64px rgba(0,0,0,0.25)",
-            animation: "modalIn 0.3s ease",
-            maxHeight: "90vh", overflowY: "auto",
-          }}>
-            {/* Modal Header */}
-            <div style={{ padding: "28px 28px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h3 style={{ fontSize: "22px", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>
-                  {editingService ? "Chỉnh sửa dịch vụ" : "Thêm dịch vụ mới"}
-                </h3>
-                <p style={{ color: "#9ca3af", fontSize: "13px", margin: "4px 0 0" }}>
-                  {editingService ? "Cập nhật thông tin dịch vụ" : "Điền đầy đủ thông tin dịch vụ"}
-                </p>
+      {/* ── Detail Modal ── */}
+      {viewingService && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "24px" }}>
+          <div style={{ background: "#fff", borderRadius: "32px", width: "100%", maxWidth: "700px", padding: "40px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", animation: "fadeIn 0.3s ease-out", position: "relative" }}>
+            <button onClick={() => setViewingService(null)} style={{ position: "absolute", top: "24px", right: "24px", background: "#f1f5f9", border: "none", borderRadius: "50%", width: "40px", height: "40px", cursor: "pointer", color: "#64748b" }}>✕</button>
+            
+            <div style={{ display: "flex", gap: "32px", alignItems: "flex-start" }}>
+              <div style={{ width: "240px", height: "240px", borderRadius: "24px", overflow: "hidden", flexShrink: 0, border: "1px solid #e2e8f0" }}>
+                <img src={viewingService.hinhAnh} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
-              <button onClick={() => setShowModal(false)} style={{
-                width: "36px", height: "36px", borderRadius: "10px", border: "none",
-                background: "rgba(0,0,0,0.05)", cursor: "pointer", display: "flex",
-                alignItems: "center", justifyContent: "center", color: "#6b7280", transition: "all 0.2s",
-              }}>
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.1em" }}>{viewingService.maDichVu}</span>
+                <h3 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "8px 0 12px" }}>{viewingService.tenDichVu}</h3>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "20px" }}>
+                  <span style={{ fontSize: "28px", fontWeight: 800, color: "#312e81" }}>{viewingService.giaTheoGio.toLocaleString()}đ</span>
+                  <span style={{ fontSize: "14px", color: "#94a3b8", fontWeight: 600 }}>/ giờ</span>
+                </div>
+                <p style={{ fontSize: "15px", color: "#475569", lineHeight: 1.7, margin: 0 }}>{viewingService.moTa}</p>
+                
+                <div style={{ marginTop: "24px", display: "flex", gap: "12px" }}>
+                  <span style={{ padding: "6px 14px", borderRadius: "10px", fontSize: "13px", fontWeight: 700, background: viewingService.trangThai === "Đang hoạt động" ? "#ecfdf5" : "#fef2f2", color: viewingService.trangThai === "Đang hoạt động" ? "#10b981" : "#ef4444" }}>{viewingService.trangThai}</span>
+                  {viewingService.phoBien && <span style={{ padding: "6px 14px", borderRadius: "10px", fontSize: "13px", fontWeight: 700, background: "#fff7ed", color: "#ea580c" }}>Dịch vụ phổ biến</span>}
+                </div>
+              </div>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} style={{ padding: "24px 28px 28px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-                {[
-                  { id: "tenDichVu", label: "Tên dịch vụ", type: "text", key: "tenDichVu" as keyof FormData },
-                  { id: "hinhAnh", label: "URL hình ảnh", type: "text", key: "hinhAnh" as keyof FormData },
-                  { id: "giaTheoGio", label: "Giá theo giờ (VNĐ)", type: "number", key: "giaTheoGio" as keyof FormData },
-                ].map((field) => (
-                  <div key={field.id}>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
-                      {field.label}
-                    </label>
-                    <input
-                      type={field.type}
-                      value={formData[field.key] as string | number}
-                      onChange={(e) => setFormData({ ...formData, [field.key]: field.type === "number" ? Number(e.target.value) : e.target.value })}
-                      required
-                      style={{
-                        width: "100%", padding: "10px 14px", borderRadius: "10px",
-                        border: "1.5px solid #e5e7eb", fontSize: "14px", color: "#1f2937",
-                        outline: "none", boxSizing: "border-box", transition: "border-color 0.2s",
-                      }}
-                      onFocus={(e) => ((e.target as HTMLInputElement).style.borderColor = "#6366f1")}
-                      onBlur={(e) => ((e.target as HTMLInputElement).style.borderColor = "#e5e7eb")}
-                    />
-                  </div>
-                ))}
+            <div style={{ marginTop: "32px", borderTop: "1px solid #f1f5f9", paddingTop: "32px", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <button onClick={() => { setViewingService(null); handleEdit(viewingService); }} style={{ padding: "12px 24px", borderRadius: "14px", border: "1px solid #e2e8f0", background: "#fff", color: "#1e293b", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Chỉnh sửa</button>
+              <button onClick={() => setViewingService(null)} style={{ padding: "12px 32px", borderRadius: "14px", border: "none", background: "#312e81", color: "#fff", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Mô tả</label>
-                  <textarea
-                    value={formData.moTa}
-                    onChange={(e) => setFormData({ ...formData, moTa: e.target.value })}
-                    rows={3}
-                    required
-                    style={{
-                      width: "100%", padding: "10px 14px", borderRadius: "10px",
-                      border: "1.5px solid #e5e7eb", fontSize: "14px", color: "#1f2937",
-                      outline: "none", resize: "vertical", boxSizing: "border-box",
-                    }}
-                    onFocus={(e) => ((e.target as HTMLTextAreaElement).style.borderColor = "#6366f1")}
-                    onBlur={(e) => ((e.target as HTMLTextAreaElement).style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-
-                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", userSelect: "none" }}>
-                  <div style={{ position: "relative" }}>
-                    <input type="checkbox" checked={formData.phoBien}
-                      onChange={(e) => setFormData({ ...formData, phoBien: e.target.checked })}
-                      style={{ opacity: 0, position: "absolute" }}
-                    />
-                    <div style={{
-                      width: "20px", height: "20px", borderRadius: "6px",
-                      border: formData.phoBien ? "none" : "1.5px solid #d1d5db",
-                      background: formData.phoBien ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      transition: "all 0.2s",
-                    }}>
-                      {formData.phoBien && <svg fill="none" viewBox="0 0 24 24" stroke="white" width="14" height="14"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: "14px", color: "#374151", fontWeight: 500 }}>Đánh dấu là dịch vụ phổ biến</span>
-                </label>
+      {/* ── Form Modal ── */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", borderRadius: "24px", width: "100%", maxWidth: "500px", padding: "32px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", animation: "fadeIn 0.3s ease-out" }}>
+            <h3 style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a", marginBottom: "24px" }}>{editingService ? "Chỉnh sửa dịch vụ" : "Thêm dịch vụ mới"}</h3>
+            
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>Tên dịch vụ</label>
+                <input type="text" value={formData.tenDichVu} required onChange={e => setFormData({ ...formData, tenDichVu: e.target.value })} style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px" }} />
               </div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>URL hình ảnh</label>
+                <input type="text" value={formData.hinhAnh} onChange={e => setFormData({ ...formData, hinhAnh: e.target.value })} style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>Giá theo giờ (VNĐ)</label>
+                <input type="number" value={formData.giaTheoGio} required onChange={e => setFormData({ ...formData, giaTheoGio: Number(e.target.value) })} style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>Mô tả dịch vụ</label>
+                <textarea value={formData.moTa} required rows={3} onChange={e => setFormData({ ...formData, moTa: e.target.value })} style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px", resize: "none" }} />
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                <input type="checkbox" checked={formData.phoBien} onChange={e => setFormData({ ...formData, phoBien: e.target.checked })} style={{ width: "18px", height: "18px" }} />
+                <span style={{ fontSize: "14px", fontWeight: 600, color: "#475569" }}>Dịch vụ phổ biến</span>
+              </label>
 
-              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-                <button type="submit" style={{
-                  flex: 1, padding: "12px", borderRadius: "12px", border: "none",
-                  background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-                  color: "white", fontWeight: 700, fontSize: "14px", cursor: "pointer",
-                  boxShadow: "0 6px 18px rgba(99,102,241,0.35)", transition: "all 0.2s",
-                }}>
-                  {editingService ? "Lưu thay đổi" : "Tạo dịch vụ"}
-                </button>
-                <button type="button" onClick={() => setShowModal(false)} style={{
-                  flex: 1, padding: "12px", borderRadius: "12px",
-                  border: "1.5px solid #e5e7eb",
-                  background: "#fff", color: "#6b7280", fontWeight: 600, fontSize: "14px", cursor: "pointer",
-                  transition: "all 0.2s",
-                }}>
-                  Hủy
-                </button>
+              <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+                <button type="submit" style={{ flex: 1, padding: "14px", borderRadius: "14px", border: "none", background: "#312e81", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}>Lưu dịch vụ</button>
+                <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: "14px", borderRadius: "14px", border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}>Hủy</button>
               </div>
             </form>
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   );
 }

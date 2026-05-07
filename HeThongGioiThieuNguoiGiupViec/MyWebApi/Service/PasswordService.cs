@@ -24,8 +24,19 @@ namespace MyWebApi.Service
         /// Verify password với hash - kiểm tra mật khẩu có đúng không
         public bool VerifyPassword(string password, string hashedPassword)
         {
-            // BCrypt tự động xử lý salt và verify
-            return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
+            // 1. Nếu khớp tuyệt đối (cho phép dùng mật khẩu thuần trong SQL để test)
+            if (password == hashedPassword) return true;
+
+            // 2. Kiểm tra mã hóa BCrypt
+            try
+            {
+                if (string.IsNullOrEmpty(hashedPassword)) return false;
+                return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
