@@ -142,7 +142,7 @@ export default function JobDetailPage({
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center flex-col gap-6 px-4">
         <div className="text-center">
           <p className="text-slate-600 font-medium text-lg mb-2">
-            ⚠️ Không tìm thấy công việc này
+            Không tìm thấy công việc này
           </p>
           <p className="text-slate-500 text-sm mb-4">
             Mã công việc:{" "}
@@ -193,7 +193,7 @@ export default function JobDetailPage({
       "Hoàn thành": {
         color: "text-emerald-600",
         bgColor: "bg-emerald-50 border-emerald-200",
-        icon: "✓✓",
+        icon: "✓",
       },
       // "Không đến làm": {
       //   color: "text-red-600",
@@ -392,7 +392,7 @@ export default function JobDetailPage({
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs font-semibold text-blue-700 uppercase mb-2">
-                Tổng tiền dịch vụ
+                Thu nhập
               </p>
               <p className="text-3xl font-bold text-blue-600">
                 {formatCurrency(job.tongTien)}
@@ -450,7 +450,7 @@ export default function JobDetailPage({
               <div className="relative flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-700 mb-1">
-                    🎯 Kéo để cập nhật trạng thái
+                    Kéo để cập nhật trạng thái
                   </p>
                   <p className="text-xs text-slate-600">
                     Kéo từ trái sang phải để chuyển đến trạng thái tiếp theo
@@ -480,7 +480,7 @@ export default function JobDetailPage({
             {currentStatusIndex < WORKER_STATUSES.length - 1 && (
               <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-700 font-medium">
-                  ℹ️ Trạng thái tiếp theo:{" "}
+                  Trạng thái tiếp theo:{" "}
                   <strong>{WORKER_STATUSES[currentStatusIndex + 1]}</strong>
                 </p>
               </div>
@@ -520,7 +520,7 @@ export default function JobDetailPage({
         </div>
 
         {/* ACTION BUTTONS */}
-        <div className="mt-6 flex gap-3 justify-end">
+        {/* <div className="mt-6 flex gap-3 justify-end">
           <button
             onClick={() => router.back()}
             className="px-6 py-3 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-all"
@@ -539,7 +539,7 @@ export default function JobDetailPage({
           >
             Lưu & Quay lại
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );
