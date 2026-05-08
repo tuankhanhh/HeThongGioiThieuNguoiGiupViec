@@ -302,7 +302,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
       {/* BOTTOM SECTION - Price & Actions */}
       <div className="px-5 py-4 bg-gradient-to-r from-slate-50 to-slate-100 flex items-center justify-between">
         <div>
-          <p className="text-xs text-slate-500 mb-1">Giá dịch vụ</p>
+          <p className="text-xs text-slate-500 mb-1">Thu nhập</p>
           <p className="text-xl font-bold text-blue-600">
             {formatCurrency(job.tongTien)}
           </p>

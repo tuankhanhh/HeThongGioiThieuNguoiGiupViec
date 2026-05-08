@@ -259,19 +259,6 @@ export default function HoSoChiTietPage() {
                     : "—"
                 }
               />
-
-              <InfoRow
-                label="Mô tả chi tiết"
-                value={
-                  hoSo.danhSachKyNang?.length
-                    ? hoSo.danhSachKyNang
-                        .map(
-                          (kn: KyNang) => `${kn.ten}: ${kn.kinhNghiem ?? "—"}`,
-                        )
-                        .join(" | ")
-                    : "—"
-                }
-              />
             </div>
           </div>
 
