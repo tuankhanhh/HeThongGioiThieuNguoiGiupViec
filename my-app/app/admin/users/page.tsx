@@ -27,6 +27,8 @@ export default function UsersManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -72,12 +74,20 @@ export default function UsersManagement() {
     }
   };
 
-  const filteredUsers = users.filter(
-    (user) =>
+  const filteredUsers = users.filter((user) => {
+    const matchSearch =
       user.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.soDienThoai?.includes(searchTerm)
-  );
+      user.soDienThoai?.includes(searchTerm);
+    
+    const matchRole = filterRole === "all" || user.roles.includes(filterRole);
+    const matchStatus = 
+      filterStatus === "all" || 
+      (filterStatus === "active" && user.trangThai) ||
+      (filterStatus === "locked" && !user.trangThai);
+    
+    return matchSearch && matchRole && matchStatus;
+  });
 
   if (loading) {
     return (
@@ -102,35 +112,101 @@ export default function UsersManagement() {
       `}</style>
 
       {/* ── Header ── */}
-      <div style={{ marginBottom: "32px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", animation: "fadeIn 0.4s ease-out" }}>
-        <div>
-          <p style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>
-            Hệ thống
-          </p>
-          <h2 style={{ fontSize: "32px", fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>Quản lý người dùng</h2>
-          <p style={{ color: "#64748b", marginTop: "6px", fontSize: "15px" }}>
-            Tổng cộng <span style={{ color: "#0f172a", fontWeight: 700 }}>{users.length}</span> tài khoản trong hệ thống.
-          </p>
+      <div style={{ marginBottom: "32px", animation: "fadeIn 0.4s ease-out" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "24px" }}>
+          <div>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>
+              Hệ thống
+            </p>
+            <h2 style={{ fontSize: "32px", fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>Quản lý người dùng</h2>
+            <p style={{ color: "#64748b", marginTop: "6px", fontSize: "15px" }}>
+              Tổng cộng <span style={{ color: "#0f172a", fontWeight: 700 }}>{users.length}</span> tài khoản trong hệ thống.
+            </p>
+          </div>
+
+          {/* ── Search Bar ── */}
+          <div style={{ position: "relative", width: "320px" }}>
+            <svg style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tên, email, sđt..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: "100%", padding: "12px 16px 12px 44px", borderRadius: "14px", border: "1px solid #e2e8f0",
+                fontSize: "14px", color: "#1e293b", outline: "none", transition: "all 0.2s",
+                boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)"
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#3b82f6"}
+              onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+            />
+          </div>
         </div>
 
-        {/* ── Search Bar ── */}
-        <div style={{ position: "relative", width: "320px" }}>
-          <svg style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên, email, sđt..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+        {/* ── Filters ── */}
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span style={{ fontSize: "14px", fontWeight: 600, color: "#64748b" }}>Lọc:</span>
+          </div>
+
+          <select
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
             style={{
-              width: "100%", padding: "12px 16px 12px 44px", borderRadius: "14px", border: "1px solid #e2e8f0",
-              fontSize: "14px", color: "#1e293b", outline: "none", transition: "all 0.2s",
-              boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)"
+              padding: "10px 16px", borderRadius: "12px", border: "1px solid #e2e8f0",
+              fontSize: "14px", fontWeight: 600, color: "#1e293b", outline: "none", cursor: "pointer",
+              background: "#fff", transition: "all 0.2s"
             }}
-            onFocus={(e) => e.target.style.borderColor = "#3b82f6"}
-            onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
-          />
+          >
+            <option value="all">Tất cả vai trò</option>
+            <option value="Admin">Admin</option>
+            <option value="Staff">Nhân viên</option>
+            <option value="Maid">Người giúp việc</option>
+            <option value="Customer">Khách hàng</option>
+          </select>
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={{
+              padding: "10px 16px", borderRadius: "12px", border: "1px solid #e2e8f0",
+              fontSize: "14px", fontWeight: 600, color: "#1e293b", outline: "none", cursor: "pointer",
+              background: "#fff", transition: "all 0.2s"
+            }}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="locked">Bị khóa</option>
+          </select>
+
+          {(filterRole !== "all" || filterStatus !== "all" || searchTerm) && (
+            <button
+              onClick={() => {
+                setFilterRole("all");
+                setFilterStatus("all");
+                setSearchTerm("");
+              }}
+              style={{
+                padding: "10px 16px", borderRadius: "12px", border: "1px solid #e2e8f0",
+                fontSize: "13px", fontWeight: 600, color: "#64748b", background: "#fff",
+                cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: "6px"
+              }}
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Xóa bộ lọc
+            </button>
+          )}
+
+          <div style={{ marginLeft: "auto", fontSize: "14px", color: "#64748b" }}>
+            Hiển thị <span style={{ fontWeight: 700, color: "#0f172a" }}>{filteredUsers.length}</span> / {users.length}
+          </div>
         </div>
       </div>
 
