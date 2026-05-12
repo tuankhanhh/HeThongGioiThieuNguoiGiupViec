@@ -215,7 +215,7 @@ CREATE TABLE KhieuNai(
 
     NoiDung NVARCHAR(255),              
     ThoiGian DATETIME DEFAULT GETDATE(), 
-    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chờ xử lý', N'Đang xử lý', N'Đã xử lý')),
+    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý',
     PhanHoi NVARCHAR(255),              
 
     FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
@@ -223,6 +223,53 @@ CREATE TABLE KhieuNai(
     FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 );
 GO 
+--Phần ràng buộc
+-- 1. Ràng buộc cho LichSuTrangThaiDon
+ALTER TABLE LichSuTrangThaiDon
+ADD CONSTRAINT CHK_TrangThaiDon CHECK (TrangThai IN (
+    N'Chờ xác nhận',
+    N'Đã xác nhận',
+    N'Đang thực hiện',
+    N'Hoàn thành',
+    N'Có sự cố',
+    N'Hủy đơn'
+));
+
+-- 2. Ràng buộc cho NgayLamViec
+ALTER TABLE NgayLamViec
+ADD CONSTRAINT CHK_TrangThaiNgayLamViec CHECK (TrangThai IN (
+    N'Chờ phân công',
+    N'Đã phân công',
+    N'Đang làm việc',
+    N'Hoàn thành',
+    N'Không đến làm',
+    N'Hủy lịch'
+));
+
+-- 3. Ràng buộc cho DichVu
+ALTER TABLE DichVu
+ADD CONSTRAINT CHK_TrangThaiDichVu CHECK (TrangThai IN (
+    N'Đang hoạt động',
+    N'Tạm ngưng',
+    N'Ngừng cung cấp'
+));
+
+-- 4. Ràng buộc cho KhieuNai
+ALTER TABLE KhieuNai
+ADD CONSTRAINT CHK_TrangThaiKhieuNai CHECK (TrangThai IN (
+    N'Chờ xử lý',
+    N'Đang xử lý',
+    N'Đã xử lý'
+));
+
+-- 5. Ràng buộc cho HoSoNguoiGiupViec
+ALTER TABLE HoSoNguoiGiupViec
+ADD CONSTRAINT CHK_TrangThaiHoSoXacMinh CHECK (TrangThaiXacMinh IN (
+    N'Chờ duyệt',
+    N'Đã duyệt',
+    N'Từ chối'
+));
+GO
 -- =========================================================================
 -- PHẦN 1: DỮ LIỆU TỪ ĐIỂN / DANH MỤC CƠ BẢN (Không phụ thuộc khóa ngoại)
 -- =========================================================================
