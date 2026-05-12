@@ -19,10 +19,9 @@ public partial class LichRanhCaLamViec
     [StringLength(5)]
     [Unicode(false)]
     public string MaCaLamViec { get; set; } = null!;
-    public DateTime ThoiGianTao { get; set; }
 
-    [StringLength(100)]
-    public string? GhiChu { get; set; }
+    [Column(TypeName = "datetime")]
+    public DateTime? ThoiGianTao { get; set; }
 
     [ForeignKey("MaCaLamViec")]
     [InverseProperty("LichRanhCaLamViecs")]

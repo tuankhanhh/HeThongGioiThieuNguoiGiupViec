@@ -156,23 +156,6 @@ using (var scope = app.Services.CreateScope())
     var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
 
     // =======================
-    // 1. SEED ROLES
-    // =======================
-    //if (!context.VaiTros.Any())
-    //{
-    //    var roles = new[]
-    //    {
-    //        new VaiTro { MaVaiTro = "VT001", TenVaiTro = "Admin", MoTa = "Quản trị viên hệ thống" },
-    //        new VaiTro { MaVaiTro = "VT002", TenVaiTro = "Staff", MoTa = "Nhân viên" },
-    //        new VaiTro { MaVaiTro = "VT003", TenVaiTro = "Customer", MoTa = "Khách hàng" },
-    //        new VaiTro { MaVaiTro = "VT004", TenVaiTro = "Maid", MoTa = "Người giúp việc" }
-    //    };
-
-    //    context.VaiTros.AddRange(roles);
-    //    await context.SaveChangesAsync();
-    //}
-
-    // =======================
     // 2. SEED ADMIN USER
     // =======================
     var adminUser = await context.NguoiDungs
@@ -233,7 +216,7 @@ using (var scope = app.Services.CreateScope())
 
     if (staffUser == null)
     {
-        var hashedPassword = passwordService.HashPassword("123456");
+        var hashedPassword = passwordService.HashPassword("111111");
 
         staffUser = new NguoiDung
         {
@@ -272,6 +255,59 @@ using (var scope = app.Services.CreateScope())
             {
                 MaNguoiDung = staffUser.MaNguoiDung,
                 MaVaiTro = staffRole.MaVaiTro,
+                NgayGan = DateTime.UtcNow
+            });
+
+            await context.SaveChangesAsync();
+        }
+    }
+    // =======================
+    // 4. SEED cus
+    // =======================
+    var customerUser = await context.NguoiDungs
+        .FirstOrDefaultAsync(u => u.SoDienThoai == "999999999");
+
+    if (customerUser == null)
+    {
+        var hashedPassword = passwordService.HashPassword("999999");
+
+        customerUser = new NguoiDung
+        {
+            MaNguoiDung = "ND111",
+            SoDienThoai = "999999999",
+            MatKhau = hashedPassword,
+            Email = "customer@gmail.com",
+            HoTen = "Customer Default",
+            TrangThai = true,
+            NgayTao = DateTime.UtcNow,
+
+            RefreshToken = null,
+            NgayTaoRefreshToken = null,
+            NgayHetHanRefreshToken = null
+        };
+
+        context.NguoiDungs.Add(customerUser);
+        await context.SaveChangesAsync();
+    }
+
+    // =======================
+    // 5. GÁN ROLE cus
+    // =======================
+    var customerRole = await context.VaiTros
+        .FirstOrDefaultAsync(r => r.TenVaiTro == "Customer");
+
+    if (customerRole != null)
+    {
+        var exists = await context.NguoiDungVaiTros.AnyAsync(x =>
+            x.MaNguoiDung == customerUser.MaNguoiDung &&
+            x.MaVaiTro == customerRole.MaVaiTro);
+
+        if (!exists)
+        {
+            context.NguoiDungVaiTros.Add(new NguoiDungVaiTro
+            {
+                MaNguoiDung = customerUser.MaNguoiDung,
+                MaVaiTro = customerRole.MaVaiTro,
                 NgayGan = DateTime.UtcNow
             });
 

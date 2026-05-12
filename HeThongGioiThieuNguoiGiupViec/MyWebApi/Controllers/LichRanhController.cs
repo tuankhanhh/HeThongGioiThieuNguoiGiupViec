@@ -147,16 +147,24 @@ namespace MyWebApi.Controllers
             if (durationInMinutes < 240)
                 return BadRequest(new { message = "Mỗi ca làm việc bổ sung phải kéo dài ít nhất 4 tiếng." });
 
-            // 5. Kiểm tra lồng giờ với ca đã có sẵn
-            // Vì Count đang là 1, ta lấy ca đầu tiên để so sánh
-            var existingShift = lichRanh.LichRanhCaLamViecs.First().MaCaLamViecNavigation;
-            if (newShift.GioBatDau < existingShift.GioKetThuc && existingShift.GioBatDau < newShift.GioKetThuc)
+            // 5. Kiểm tra lồng giờ và khoảng cách 2 tiếng với các ca đã có sẵn
+            TimeSpan khoangCachYeuCau = TimeSpan.FromHours(2);
+
+            foreach (var lrc in lichRanh.LichRanhCaLamViecs)
             {
-                return BadRequest(new { message = "Thời gian ca mới bị trùng lặp với ca đã đăng ký trước đó." });
+                var existingShift = lrc.MaCaLamViecNavigation;
+
+                // Sử dụng .Add() thay vì toán tử +
+                bool hopLe = (newShift.GioKetThuc.Add(khoangCachYeuCau) <= existingShift.GioBatDau) ||
+                             (newShift.GioBatDau >= existingShift.GioKetThuc.Add(khoangCachYeuCau));
+
+                if (!hopLe)
+                {
+                    return BadRequest(new { message = "Thời gian ca mới bị trùng hoặc không cách ca đã đăng ký ít nhất 2 tiếng." });
+                }
             }
 
             // 6. Xử lý lưu dữ liệu
-            // Tìm khung giờ trong hệ thống hoặc tạo mới nếu chưa có
             var caDb = await _context.CaLamViecs
                 .FirstOrDefaultAsync(c => c.GioBatDau == newShift.GioBatDau && c.GioKetThuc == newShift.GioKetThuc);
 
@@ -171,12 +179,13 @@ namespace MyWebApi.Controllers
                 _context.CaLamViecs.Add(caDb);
             }
 
-            // Thêm liên kết vào bảng trung gian
+            // THÊM THOIGIANTAO VÀO ĐÂY NHÉ 👇
             lichRanh.LichRanhCaLamViecs.Add(new LichRanhCaLamViec
             {
                 MaLichRanh = lichRanh.MaLichRanh,
                 MaCaLamViec = caDb.MaCaLamViec,
-                GhiChu = newShift.GhiChu
+                GhiChu = newShift.GhiChu,
+                ThoiGianTao = DateTime.Now // <--- CHÍNH LÀ DÒNG NÀY ĐỂ FIX LỖI
             });
 
             await _context.SaveChangesAsync();

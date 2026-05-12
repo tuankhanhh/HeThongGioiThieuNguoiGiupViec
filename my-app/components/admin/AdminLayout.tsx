@@ -44,6 +44,15 @@ const menuItems = [
             </svg>
         ),
     },
+    {
+        name: "Kiểm duyệt",
+        path: "/admin/profiles",
+        icon: (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+        ),
+    },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -60,57 +69,65 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const currentPage = menuItems.find((m) => m.path === pathname)?.name ?? "Admin";
 
     return (
-        <div style={{ display: "flex", height: "100vh", background: "#f5f5f4", overflow: "hidden" }}>
+        <div style={{ 
+            display: "flex", 
+            height: "100vh", 
+            background: "#f8fafc", 
+            overflow: "hidden",
+            fontFamily: "var(--font-inter), sans-serif"
+        }}>
 
             {/* ── Sidebar ── */}
-            <aside style={{
-                width: collapsed ? "60px" : "224px",
-                minWidth: collapsed ? "60px" : "224px",
-                background: "#fff",
-                borderRight: "0.5px solid #e7e5e4",
-                display: "flex",
-                flexDirection: "column",
-                transition: "width 0.25s ease, min-width 0.25s ease",
-                overflow: "hidden",
-                position: "relative",
-                zIndex: 10,
-            }}>
+            <aside 
+                className="gpu-accelerated"
+                style={{
+                    width: collapsed ? "70px" : "240px",
+                    minWidth: collapsed ? "70px" : "240px",
+                    background: "#ffffff",
+                    borderRight: "1px solid #e2e8f0",
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "width 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                    overflow: "hidden",
+                    position: "relative",
+                    zIndex: 50,
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
+                }}>
 
                 {/* Logo */}
                 <div style={{
-                    height: "56px",
-                    padding: "0 16px",
+                    height: "64px",
+                    padding: "0 20px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "10px",
-                    borderBottom: "0.5px solid #e7e5e4",
+                    gap: "12px",
+                    borderBottom: "1px solid #f1f5f9",
                     flexShrink: 0,
-                    overflow: "hidden",
                 }}>
                     <div style={{
-                        width: "28px", height: "28px", flexShrink: 0,
-                        background: "#1e1b4b",
-                        borderRadius: "8px",
+                        width: "32px", height: "32px", flexShrink: 0,
+                        background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+                        borderRadius: "10px",
                         display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: "0 4px 6px -1px rgb(30 27 75 / 0.3)",
                     }}>
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2.2}>
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
                     {!collapsed && (
                         <div style={{ overflow: "hidden", whiteSpace: "nowrap" }}>
-                            <div style={{ fontSize: "13px", fontWeight: 700, color: "#1c1917", letterSpacing: "-0.01em" }}>HomeCare</div>
-                            <div style={{ fontSize: "10px", color: "#a8a29e", marginTop: "1px" }}>Admin Panel</div>
+                            <div style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>HomeCare</div>
+                            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Hệ thống quản trị</div>
                         </div>
                     )}
                 </div>
 
                 {/* Nav */}
-                <nav style={{ flex: 1, padding: "10px 8px", display: "flex", flexDirection: "column", gap: "2px", overflowY: "auto" }}>
-                    {/* Section label */}
+                <nav style={{ flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", gap: "4px", overflowY: "auto" }}>
                     {!collapsed && (
-                        <p style={{ fontSize: "10px", fontWeight: 600, color: "#a8a29e", letterSpacing: "0.07em", textTransform: "uppercase", padding: "6px 8px 4px", margin: 0 }}>
-                            Menu
+                        <p style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", padding: "8px 12px", margin: 0 }}>
+                            Quản lý chính
                         </p>
                     )}
 
@@ -125,35 +142,32 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     width: "100%",
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: "10px",
-                                    padding: collapsed ? "9px" : "8px 10px",
+                                    gap: "12px",
+                                    padding: collapsed ? "12px" : "10px 14px",
                                     justifyContent: collapsed ? "center" : "flex-start",
-                                    borderRadius: "7px",
+                                    borderRadius: "10px",
                                     border: "none",
                                     cursor: "pointer",
-                                    background: isActive ? "#f0f0fe" : "transparent",
-                                    color: isActive ? "#4338ca" : "#57534e",
-                                    fontWeight: isActive ? 600 : 400,
-                                    fontSize: "13px",
-                                    textAlign: "left",
-                                    whiteSpace: "nowrap",
-                                    overflow: "hidden",
-                                    transition: "background 0.15s, color 0.15s",
+                                    background: isActive ? "#eff6ff" : "transparent",
+                                    color: isActive ? "#2563eb" : "#475569",
+                                    fontWeight: isActive ? 600 : 500,
+                                    fontSize: "14px",
+                                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {
-                                        (e.currentTarget as HTMLElement).style.background = "#f5f5f4";
-                                        (e.currentTarget as HTMLElement).style.color = "#1c1917";
+                                        (e.currentTarget as HTMLElement).style.background = "#f1f5f9";
+                                        (e.currentTarget as HTMLElement).style.color = "#0f172a";
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (!isActive) {
                                         (e.currentTarget as HTMLElement).style.background = "transparent";
-                                        (e.currentTarget as HTMLElement).style.color = "#57534e";
+                                        (e.currentTarget as HTMLElement).style.color = "#475569";
                                     }
                                 }}
                             >
-                                <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.7 }}>{item.icon}</span>
+                                <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.8 }}>{item.icon}</span>
                                 {!collapsed && <span>{item.name}</span>}
                             </button>
                         );
@@ -161,125 +175,123 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </nav>
 
                 {/* Bottom: user + logout */}
-                <div style={{ padding: "8px", borderTop: "0.5px solid #e7e5e4", flexShrink: 0 }}>
-                    {/* User row */}
+                <div style={{ padding: "12px", borderTop: "1px solid #f1f5f9", flexShrink: 0 }}>
                     {!collapsed && (
                         <div style={{
-                            display: "flex", alignItems: "center", gap: "9px",
-                            padding: "8px 10px", borderRadius: "7px",
-                            marginBottom: "4px",
+                            display: "flex", alignItems: "center", gap: "10px",
+                            padding: "10px 12px", borderRadius: "10px",
+                            background: "#f8fafc",
+                            marginBottom: "8px",
                         }}>
                             <div style={{
-                                width: "26px", height: "26px", borderRadius: "50%", flexShrink: 0,
+                                width: "32px", height: "32px", borderRadius: "8px", flexShrink: 0,
                                 background: "#1e1b4b",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                             }}>
-                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2}>
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
                             <div style={{ overflow: "hidden" }}>
-                                <div style={{ fontSize: "12px", fontWeight: 600, color: "#1c1917", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Administrator</div>
-                                <div style={{ fontSize: "10px", color: "#a8a29e" }}>Toàn quyền</div>
+                                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Administrator</div>
+                                <div style={{ fontSize: "11px", color: "#64748b" }}>Admin cấp cao</div>
                             </div>
                         </div>
                     )}
 
-                    {/* Logout */}
                     <button
                         onClick={handleLogout}
                         title={collapsed ? "Đăng xuất" : undefined}
                         style={{
                             width: "100%", display: "flex", alignItems: "center",
                             justifyContent: collapsed ? "center" : "flex-start",
-                            gap: "9px", padding: collapsed ? "9px" : "8px 10px",
-                            borderRadius: "7px", border: "none", cursor: "pointer",
-                            background: "transparent", color: "#dc2626",
-                            fontSize: "13px", fontWeight: 500,
-                            transition: "background 0.15s",
+                            gap: "10px", padding: collapsed ? "12px" : "10px 14px",
+                            borderRadius: "10px", border: "none", cursor: "pointer",
+                            background: "transparent", color: "#ef4444",
+                            fontSize: "14px", fontWeight: 600,
+                            transition: "all 0.2s",
                         }}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#fef2f2"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                     >
-                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ flexShrink: 0 }}>
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ flexShrink: 0 }}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                         {!collapsed && <span>Đăng xuất</span>}
                     </button>
                 </div>
 
-                {/* Collapse toggle — dọc, gắn sát cạnh phải sidebar */}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
                     style={{
                         position: "absolute", top: "50%", right: "-1px",
                         transform: "translateY(-50%)",
-                        width: "18px", height: "40px",
+                        width: "20px", height: "48px",
                         background: "#fff",
-                        border: "0.5px solid #e7e5e4",
+                        border: "1px solid #e2e8f0",
                         borderLeft: "none",
-                        borderRadius: "0 5px 5px 0",
+                        borderRadius: "0 8px 8px 0",
                         cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        color: "#a8a29e",
-                        zIndex: 20,
-                        padding: 0,
+                        color: "#94a3b8",
+                        zIndex: 60,
+                        boxShadow: "4px 0 6px -1px rgb(0 0 0 / 0.05)",
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f5f5f4"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#fff"; }}
                 >
-                    <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                        style={{ transform: collapsed ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s" }}>
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}
+                        style={{ transform: collapsed ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
             </aside>
 
             {/* ── Main ── */}
-            <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <div className="gpu-accelerated" style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
 
                 {/* Topbar */}
                 <header style={{
-                    height: "56px",
+                    height: "64px",
                     background: "#fff",
-                    borderBottom: "0.5px solid #e7e5e4",
-                    padding: "0 28px",
+                    borderBottom: "1px solid #e2e8f0",
+                    padding: "0 32px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
                     flexShrink: 0,
+                    boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
                 }}>
-                    {/* Breadcrumb */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span style={{ fontSize: "12px", color: "#a8a29e" }}>Admin</span>
-                        <span style={{ fontSize: "12px", color: "#d6d3d1" }}>/</span>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#1c1917" }}>{currentPage}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "14px", fontWeight: 500, color: "#64748b" }}>Admin</span>
+                        <span style={{ fontSize: "14px", color: "#cbd5e1" }}>/</span>
+                        <span style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{currentPage}</span>
                     </div>
 
-                    {/* Right */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <span style={{ fontSize: "11px", color: "#a8a29e" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                        <span style={{ fontSize: "13px", fontWeight: 500, color: "#64748b" }}>
                             {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
                         </span>
-                        <div style={{ width: "0.5px", height: "16px", background: "#e7e5e4" }} />
-                        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                        <div style={{ width: "1px", height: "20px", background: "#e2e8f0" }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div style={{
-                                width: "28px", height: "28px", borderRadius: "50%",
-                                background: "#1e1b4b",
+                                width: "32px", height: "32px", borderRadius: "50%",
+                                background: "linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)",
                                 display: "flex", alignItems: "center", justifyContent: "center",
+                                boxShadow: "0 2px 4px 0 rgb(30 27 75 / 0.2)",
                             }}>
-                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2}>
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
-                            <span style={{ fontSize: "12px", fontWeight: 600, color: "#1c1917" }}>Administrator</span>
+                            <span style={{ fontSize: "14px", fontWeight: 600, color: "#0f172a" }}>Administrator</span>
                         </div>
                     </div>
                 </header>
 
                 {/* Page content */}
-                <main style={{ flex: 1, overflow: "auto", padding: "28px 32px" }}>
-                    {children}
+                <main style={{ flex: 1, overflow: "auto", padding: "32px" }}>
+                    <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

@@ -62,7 +62,6 @@ export default function HelperAvailability() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // State loading RIÊNG cho việc click kiểm tra hủy (tránh unmount UI)
   const [checkingSlotId, setCheckingSlotId] = useState<string | null>(null);
 
   const [openConfirm, setOpenConfirm] = useState(false);
@@ -143,7 +142,6 @@ export default function HelperAvailability() {
       const data = await api.get<ServerSchedule[]>("/LichRanh/my-schedule");
       const grouped: Record<string, ServerSchedule> = {};
 
-      // Xử lý trường hợp data bị bọc thêm 1 lớp (phòng hờ)
       const listData = Array.isArray(data) ? data : (data as any).data || [];
 
       listData.forEach((item: ServerSchedule) => {
@@ -215,9 +213,6 @@ export default function HelperAvailability() {
     }
   };
 
-  // ========================================================
-  // XỬ LÝ HỦY CA LÀM VIỆC ĐÃ LƯU
-  // ========================================================
   const handleInitiateCancel = async (
     maLichRanh: string,
     maCaLamViec: string,
@@ -247,10 +242,6 @@ export default function HelperAvailability() {
         setToast({ open: true, message: message, severity: "error" });
       }
     } catch (error: any) {
-      // IN LOG RA ĐÂY ĐỂ XEM LỖI GÌ
-      console.error("Lỗi khi gọi API kiem-tra-huy:", error);
-      console.log("Cấu trúc error.response:", error.response);
-
       const errorMsg =
         error.response?.data?.message ||
         error.response?.data?.Message ||
@@ -279,8 +270,6 @@ export default function HelperAvailability() {
         maCaLamViec: "",
         isDeleting: false,
       });
-
-      // Load lại danh sách mới
       fetchMySchedule();
     } catch (error: any) {
       const errorMsg =
@@ -291,7 +280,6 @@ export default function HelperAvailability() {
       setCancelConfirm((prev) => ({ ...prev, isDeleting: false }));
     }
   };
-  // ========================================================
 
   const handleSaveSchedule = () => {
     if (Object.keys(dateSlots).length === 0) return;
@@ -308,26 +296,41 @@ export default function HelperAvailability() {
     return h * 60 + (m || 0);
   };
 
+  // CẬP NHẬT: Tự động tính toán vị trí chèn ca hợp lý (Sáng hoặc Chiều)
   const addSlot = (dateKey: string) => {
     setDateSlots((prev) => {
       const currentSlots = [...(prev[dateKey] ?? [])];
       if (currentSlots.length >= 2) return prev;
 
-      let startMin = 8 * 60;
+      let defaultStart = "08:00";
+      let defaultEnd = "12:00";
+
       if (currentSlots.length > 0) {
-        const prevEnd = currentSlots[0]?.end;
-        if (prevEnd) {
-          const prevEndMin = toMinutes(prevEnd);
-          startMin = Math.min(prevEndMin, 20 * 60);
+        const existing = currentSlots[0];
+        const exStartMin = toMinutes(existing.start);
+        const exEndMin = toMinutes(existing.end);
+
+        // Ưu tiên 1: Cố gắng chèn ca mới vào SAU ca hiện tại (Cách 2 tiếng)
+        if (exEndMin + 120 <= 20 * 60) {
+          const startMin = exEndMin + 120;
+          const hStart = Math.floor(startMin / 60);
+          defaultStart = `${hStart < 10 ? `0${hStart}` : hStart}:00`;
+
+          const endMin = startMin + 240;
+          const hEnd = Math.floor(endMin / 60);
+          defaultEnd = `${hEnd < 10 ? `0${hEnd}` : hEnd}:00`;
+        }
+        // Ưu tiên 2: Nếu buổi chiều/tối đã hết giờ, thử chèn ca mới lên TRƯỚC ca hiện tại
+        else if (exStartMin - 360 >= 0) {
+          const startMin = exStartMin - 360; // Dành 240p làm + 120p nghỉ
+          const hStart = Math.floor(startMin / 60);
+          defaultStart = `${hStart < 10 ? `0${hStart}` : hStart}:00`;
+
+          const endMin = startMin + 240;
+          const hEnd = Math.floor(endMin / 60);
+          defaultEnd = `${hEnd < 10 ? `0${hEnd}` : hEnd}:00`;
         }
       }
-
-      const hStart = Math.floor(startMin / 60);
-      const defaultStart = `${hStart < 10 ? `0${hStart}` : hStart}:00`;
-
-      const newEndMin = Math.min(startMin + 240, 24 * 60);
-      const hEnd = Math.floor(newEndMin / 60);
-      const defaultEnd = `${hEnd < 10 ? `0${hEnd}` : hEnd}:00`;
 
       currentSlots.push({ start: defaultStart, end: defaultEnd });
       return { ...prev, [dateKey]: currentSlots };
@@ -351,6 +354,7 @@ export default function HelperAvailability() {
         const startMin = toMinutes(value);
         const endMin = toMinutes(updatedSlot.end);
 
+        // Giữ nguyên logic bắt buộc khoảng cách Start -> End tối thiểu 4 tiếng (240p)
         if (endMin - startMin < 240) {
           const newEndMin = Math.min(startMin + 240, 1440);
           const h = Math.floor(newEndMin / 60);
@@ -368,19 +372,26 @@ export default function HelperAvailability() {
     setDateSlots({ ...dateSlots, [dateKey]: currentSlots });
   };
 
-  const isOverlapping = (dateKey: string) => {
+  // CẬP NHẬT: Kiểm tra cả lồng giờ VÀ khoảng cách dưới 2 tiếng
+  const isInvalidTimeGap = (dateKey: string) => {
     const slots = dateSlots[dateKey] || [];
     if (slots.length < 2) return false;
+
     const s1 = toMinutes(slots[0].start),
       e1 = toMinutes(slots[0].end);
     const s2 = toMinutes(slots[1].start),
       e2 = toMinutes(slots[1].end);
-    return s1 < e2 && s2 < e1;
+
+    // Một lịch hợp lệ khi Ca 1 xong cách Ca 2 >= 120p HOẶC Ca 2 xong cách Ca 1 >= 120p
+    const isValid = e1 + 120 <= s2 || e2 + 120 <= s1;
+
+    return !isValid; // Trả về true nếu bị LỖI
   };
 
-  const hasAnyOverlap = Object.keys(dateSlots).some((key) =>
-    isOverlapping(key),
+  const hasAnyInvalidGap = Object.keys(dateSlots).some((key) =>
+    isInvalidTimeGap(key),
   );
+
   const hasNewChanges = Object.values(dateSlots).some((slots) =>
     slots.some((slot) => !slot.isSaved),
   );
@@ -388,8 +399,9 @@ export default function HelperAvailability() {
   if (!isMounted) return null;
 
   const selectedKeys = Object.keys(dateSlots).sort();
+  // Khóa nút lưu nếu bị lồng giờ hoặc khoảng cách chưa đủ 2 tiếng
   const isSaveDisabled =
-    hasAnyOverlap || isSaving || selectedKeys.length === 0 || !hasNewChanges;
+    hasAnyInvalidGap || isSaving || selectedKeys.length === 0 || !hasNewChanges;
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f1f5f9", py: 6 }}>
@@ -469,7 +481,7 @@ export default function HelperAvailability() {
               ) : (
                 selectedKeys.map((dateKey) => {
                   const slotsForDate = dateSlots[dateKey];
-                  const hasOverlap = isOverlapping(dateKey);
+                  const isInvalid = isInvalidTimeGap(dateKey);
                   return (
                     <Paper
                       key={dateKey}
@@ -477,8 +489,9 @@ export default function HelperAvailability() {
                         p: 3,
                         borderRadius: "20px",
                         border: "1px solid",
-                        borderColor: hasOverlap ? "#fca5a5" : "#e2e8f0",
-                        bgcolor: hasOverlap ? "#fff1f2" : "white",
+                        borderColor: isInvalid ? "#fca5a5" : "#e2e8f0",
+                        bgcolor: isInvalid ? "#fff1f2" : "white",
+                        transition: "all 0.3s ease",
                       }}
                     >
                       <Box
@@ -506,28 +519,91 @@ export default function HelperAvailability() {
                                 fontSize: "0.85rem",
                               }}
                             >
-                              (Bổ sung ca làm việc)
+                              (Bổ sung ca)
                             </Typography>
                           )}
                         </Typography>
-                        {hasOverlap && (
+                        {isInvalid && (
                           <Typography
                             sx={{
                               color: "#e11d48",
                               fontSize: "0.85rem",
                               fontWeight: 700,
+                              bgcolor: "#ffe4e6",
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: "6px",
                             }}
                           >
-                            Lỗi lồng giờ!
+                            Lỗi trùng hoặc cách nhau dưới 2h!
                           </Typography>
                         )}
                       </Box>
 
                       <Stack sx={{ gap: 2 }}>
                         {slotsForDate.map((slot, index) => {
-                          const filteredEndHours = allHours.filter(
-                            (h) => toMinutes(h) >= toMinutes(slot.start) + 240,
-                          );
+                          const otherSlot =
+                            slotsForDate.length > 1
+                              ? slotsForDate[1 - index]
+                              : null;
+
+                          // Xác định xem ca này đang nằm TRƯỚC hay SAU ca kia (để lọc theo 2 hướng khác nhau)
+                          const isBefore = otherSlot
+                            ? toMinutes(slot.start) <
+                                toMinutes(otherSlot.start) ||
+                              (toMinutes(slot.start) ===
+                                toMinutes(otherSlot.start) &&
+                                index === 0)
+                            : true;
+
+                          // 1. LỌC GIỜ BẮT ĐẦU VÀ ẨN CÁC GIỜ VI PHẠM
+                          const filteredStartHours = allHours
+                            .slice(0, 21) // Tối đa 20:00 (vì tối thiểu làm 4 tiếng đến 24:00)
+                            .filter((h) => {
+                              if (!otherSlot) return true;
+
+                              const hMin = toMinutes(h);
+                              const otherStartMin = toMinutes(otherSlot.start);
+                              const otherEndMin = toMinutes(otherSlot.end);
+
+                              if (isBefore) {
+                                // Nếu ca này nằm TRƯỚC: Phải chừa đủ 4h làm + 2h nghỉ trước khi ca kia bắt đầu
+                                return hMin + 360 <= otherStartMin;
+                              } else {
+                                // Nếu ca này nằm SAU: Bắt đầu phải cách kết thúc ca kia ít nhất 2 tiếng
+                                return hMin >= otherEndMin + 120;
+                              }
+                            });
+
+                          // Giữ lại giá trị hiện tại (phòng trường hợp render dữ liệu cũ từ server)
+                          if (!filteredStartHours.includes(slot.start)) {
+                            filteredStartHours.push(slot.start);
+                            filteredStartHours.sort();
+                          }
+
+                          // 2. LỌC GIỜ KẾT THÚC VÀ ẨN CÁC GIỜ VI PHẠM
+                          const filteredEndHours = allHours.filter((h) => {
+                            const hMin = toMinutes(h);
+                            const startMin = toMinutes(slot.start);
+
+                            // Điều kiện 1: Tối thiểu làm 4 tiếng (240 phút)
+                            if (hMin < startMin + 240) return false;
+
+                            // Điều kiện 2: Nếu lọt vào ca đứng TRƯỚC, nó không được kéo dài đâm sầm vào ca SAU
+                            if (otherSlot && isBefore) {
+                              const otherStartMin = toMinutes(otherSlot.start);
+                              // Kết thúc của ca này phải cách bắt đầu ca kia >= 2 tiếng
+                              if (hMin + 120 > otherStartMin) return false;
+                            }
+
+                            return true;
+                          });
+
+                          if (!filteredEndHours.includes(slot.end)) {
+                            filteredEndHours.push(slot.end);
+                            filteredEndHours.sort();
+                          }
+
                           return (
                             <Box
                               key={index}
@@ -559,7 +635,7 @@ export default function HelperAvailability() {
                                     bgcolor: slot.isSaved ? "#f8fafc" : "#fff",
                                   }}
                                 >
-                                  {allHours.slice(0, 21).map((h) => (
+                                  {filteredStartHours.map((h) => (
                                     <MenuItem key={h} value={h}>
                                       {h}
                                     </MenuItem>
@@ -803,7 +879,6 @@ export default function HelperAvailability() {
                                     Đã lưu
                                   </Typography>
 
-                                  {/* ICON HỦY CA MỚI VỚI VÒNG XOAY LOADING */}
                                   <IconButton
                                     size="small"
                                     disabled={
@@ -834,7 +909,6 @@ export default function HelperAvailability() {
                                       <DeleteOutlineIcon fontSize="small" />
                                     )}
                                   </IconButton>
-                                  {/* -------------------------------------- */}
                                 </Box>
                               </Box>
                             ))}
@@ -848,7 +922,6 @@ export default function HelperAvailability() {
           )}
         </Box>
 
-        {/* --- Dialog XÁC NHẬN LƯU --- */}
         <Dialog
           open={openConfirm}
           onClose={() => setOpenConfirm(false)}
@@ -880,7 +953,6 @@ export default function HelperAvailability() {
           </DialogActions>
         </Dialog>
 
-        {/* --- Dialog MỚI: XÁC NHẬN HỦY CA --- */}
         <Dialog
           open={cancelConfirm.open}
           onClose={() =>

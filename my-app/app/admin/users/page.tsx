@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/admin/AdminLayout";
+import api from "@/services/api";
 
 interface User {
   maNguoiDung: string;
@@ -14,31 +15,12 @@ interface User {
   roles: string[];
 }
 
-const MOCK_USERS: User[] = [
-  { maNguoiDung: "ADMIN", hoTen: "System Administrator", email: "admin@gmail.com",  soDienThoai: "0332711675", trangThai: true, ngayTao: new Date(Date.now()-110*86400000).toISOString(), roles: ["Admin"] },
-  { maNguoiDung: "NV001",  hoTen: "Đặng Thị Hạnh",      email: "hanh@gmail.com",   soDienThoai: "0906666666", trangThai: true, ngayTao: new Date(Date.now()-110*86400000).toISOString(), roles: ["Staff"] },
-  { maNguoiDung: "KH001",  hoTen: "Nguyễn Thị Lan",     email: "lan@gmail.com",    soDienThoai: "0901111111", trangThai: true, ngayTao: new Date(Date.now()-120*86400000).toISOString(), roles: ["Customer"] },
-  { maNguoiDung: "KH002",  hoTen: "Trần Văn Minh",      email: "minh@gmail.com",   soDienThoai: "0902222222", trangThai: true, ngayTao: new Date(Date.now()-90*86400000).toISOString(),  roles: ["Customer"] },
-  { maNguoiDung: "KH003",  hoTen: "Lê Thị Hoa",         email: "hoa@gmail.com",    soDienThoai: "0903333333", trangThai: true, ngayTao: new Date(Date.now()-60*86400000).toISOString(),  roles: ["Customer"] },
-  { maNguoiDung: "KH004",  hoTen: "Bùi Thành Đạt",      email: "dat@gmail.com",    soDienThoai: "0904444400", trangThai: true, ngayTao: new Date(Date.now()-45*86400000).toISOString(),  roles: ["Customer"] },
-  { maNguoiDung: "GV001",  hoTen: "Phạm Thị Mai",       email: "mai@gmail.com",    soDienThoai: "0904444441", trangThai: true, ngayTao: new Date(Date.now()-100*86400000).toISOString(), roles: ["Maid"] },
-  { maNguoiDung: "GV002",  hoTen: "Võ Thị Thu",         email: "thu@gmail.com",    soDienThoai: "0905555555", trangThai: true, ngayTao: new Date(Date.now()-80*86400000).toISOString(),  roles: ["Maid"] },
-];
-
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
-  Admin:    { label: "Admin",           color: "#991B1B", bg: "#FEF2F2" },
-  Staff:    { label: "Nhân viên",       color: "#1E40AF", bg: "#EFF6FF" },
-  Maid:     { label: "Người giúp việc", color: "#5B21B6", bg: "#F5F3FF" },
-  Customer: { label: "Khách hàng",      color: "#065F46", bg: "#ECFDF5" },
+  Admin: { label: "Admin", color: "#ef4444", bg: "#fef2f2" },
+  Staff: { label: "Nhân viên", color: "#3b82f6", bg: "#eff6ff" },
+  Maid: { label: "Người giúp việc", color: "#8b5cf6", bg: "#f5f3ff" },
+  Customer: { label: "Khách hàng", color: "#10b981", bg: "#ecfdf5" },
 };
-
-const avatarBgs = [
-  { bg: "#EEEDFE", color: "#534AB7" },
-  { bg: "#FBEAF0", color: "#993556" },
-  { bg: "#E6F1FB", color: "#185FA5" },
-  { bg: "#EAF3DE", color: "#3B6D11" },
-  { bg: "#FAEEDA", color: "#854F0B" },
-];
 
 export default function UsersManagement() {
   const router = useRouter();
@@ -49,190 +31,231 @@ export default function UsersManagement() {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) { router.push("/admin/sign-in"); return; }
-    setTimeout(() => { setUsers(MOCK_USERS); setLoading(false); }, 400);
+    fetchUsers();
   }, []);
 
-  const filtered = users.filter(u =>
-    u.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get<User[]>("/user/all");
+      setUsers(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách người dùng:", error);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignRole = async (maNguoiDung: string, roleName: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn đổi vai trò của người dùng này sang ${roleName}?`)) return;
+    try {
+      await api.post("/user/assign-role", { maNguoiDung, roleName });
+      fetchUsers();
+    } catch (error) {
+      alert("Lỗi khi cập nhật vai trò: " + (error as any).message);
+    }
+  };
+
+  const handleToggleStatus = async (user: User) => {
+    if (user.roles.includes("Admin")) {
+      alert("Không thể khóa tài khoản của Quản trị viên khác!");
+      return;
+    }
+
+    const action = user.trangThai ? "khóa" : "mở khóa";
+    if (!confirm(`Bạn có chắc chắn muốn ${action} tài khoản này?`)) return;
+    try {
+      await api.post(`/admin/users/${user.maNguoiDung}/toggle-status`);
+      fetchUsers();
+    } catch (error) {
+      alert(`Lỗi khi ${action} tài khoản: ` + (error as any).message);
+    }
+  };
+
+  const filteredUsers = users.filter(
+    (user) =>
+      user.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.soDienThoai?.includes(searchTerm)
   );
 
-  if (loading) return (
-    <AdminLayout>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"60vh" }}>
-        <div style={{ textAlign:"center" }}>
-          <div style={{ width:"40px", height:"40px", borderRadius:"50%", border:"3px solid #EEEDFE", borderTopColor:"#534AB7", animation:"spin 0.8s linear infinite", margin:"0 auto" }} />
-          <p style={{ marginTop:"12px", color:"#534AB7", fontWeight:500, fontSize:"14px" }}>Đang tải dữ liệu...</p>
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ width: "48px", height: "48px", borderRadius: "50%", border: "3px solid #f3f4f6", borderTopColor: "#312e81", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
+            <p style={{ color: "#64748b", fontSize: "14px", fontWeight: 500 }}>Đang tải dữ liệu...</p>
+          </div>
         </div>
-      </div>
-    </AdminLayout>
-  );
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <style>{`
-        @keyframes spin { to { transform:rotate(360deg); } }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .table-row:hover { background: #f8fafc !important; }
+        .action-btn:hover { background: #eff6ff !important; color: #3b82f6 !important; }
       `}</style>
 
-      {/* Header */}
-      <div style={{ marginBottom:"24px", display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:"16px" }}>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: "32px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", animation: "fadeIn 0.4s ease-out" }}>
         <div>
-          <p style={{ fontSize:"11px", fontWeight:600, color:"#9ca3af", letterSpacing:"0.07em", textTransform:"uppercase", margin:"0 0 6px" }}>
-            Quản trị hệ thống
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>
+            Hệ thống
           </p>
-          <h2 style={{ fontSize:"22px", fontWeight:600, color:"#1e1b4b", margin:0, lineHeight:1.3 }}>
-            Quản lý người dùng
-          </h2>
-          <p style={{ color:"#9ca3af", marginTop:"4px", fontSize:"13px" }}>
-            Tổng cộng{" "}
-            <span style={{ color:"#534AB7", fontWeight:600 }}>{users.length}</span>
-            {" "}người dùng trong hệ thống
+          <h2 style={{ fontSize: "32px", fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>Quản lý người dùng</h2>
+          <p style={{ color: "#64748b", marginTop: "6px", fontSize: "15px" }}>
+            Tổng cộng <span style={{ color: "#0f172a", fontWeight: 700 }}>{users.length}</span> tài khoản trong hệ thống.
           </p>
         </div>
 
-        {/* Search */}
-        <div style={{ position:"relative", minWidth:"280px" }}>
-          <svg style={{ position:"absolute", left:"12px", top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} fill="none" viewBox="0 0 24 24" stroke="#9ca3af" width="16" height="16">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        {/* ── Search Bar ── */}
+        <div style={{ position: "relative", width: "320px" }}>
+          <svg style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             type="text"
-            placeholder="Tìm theo tên, email..."
+            placeholder="Tìm kiếm theo tên, email, sđt..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             style={{
-              width:"100%", padding:"9px 14px 9px 38px",
-              borderRadius:"10px", border:"0.5px solid #e5e7eb",
-              background:"#fff", fontSize:"13px", color:"#374151",
-              outline:"none", boxSizing:"border-box",
-              transition:"border-color 0.2s",
+              width: "100%", padding: "12px 16px 12px 44px", borderRadius: "14px", border: "1px solid #e2e8f0",
+              fontSize: "14px", color: "#1e293b", outline: "none", transition: "all 0.2s",
+              boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)"
             }}
-            onFocus={e => (e.target as HTMLInputElement).style.borderColor="#a5b4fc"}
-            onBlur={e => (e.target as HTMLInputElement).style.borderColor="#e5e7eb"}
+            onFocus={(e) => e.target.style.borderColor = "#3b82f6"}
+            onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
           />
         </div>
       </div>
 
-      {/* Table card */}
-      <div style={{
-        background:"#fff",
-        borderRadius:"14px",
-        border:"0.5px solid #e5e7eb",
-        overflow:"hidden",
-        animation:"fadeIn 0.35s ease",
+      {/* ── User Table ── */}
+      <div style={{ 
+        background: "#ffffff", borderRadius: "24px", border: "1px solid #e2e8f0", 
+        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", overflow: "hidden",
+        animation: "fadeIn 0.5s ease-out both"
       }}>
-        <div style={{ overflowX:"auto" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse", minWidth:"680px" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ borderBottom:"0.5px solid #e5e7eb", background:"#fafafa" }}>
-                {["Người dùng", "Liên hệ", "Vai trò", "Trạng thái", "Ngày tạo"].map(h => (
-                  <th key={h} style={{
-                    padding:"12px 20px", textAlign:"left",
-                    fontSize:"11px", fontWeight:600,
-                    textTransform:"uppercase", letterSpacing:"0.06em",
-                    color:"#9ca3af",
-                  }}>
-                    {h}
-                  </th>
+              <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
+                {["Người dùng", "Liên hệ", "Vai trò", "Trạng thái", "Ngày tạo", "Thao tác"].map((h) => (
+                  <th key={h} style={{ padding: "16px 24px", textAlign: "left", fontSize: "13px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.length > 0 ? filtered.map((user, i) => {
-                const av = avatarBgs[i % avatarBgs.length];
-                return (
-                  <tr
-                    key={user.maNguoiDung}
-                    style={{ borderBottom:"0.5px solid #f3f4f6", transition:"background 0.15s", cursor:"default" }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="#f9fafb"}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}
-                  >
-                    {/* Avatar + name */}
-                    <td style={{ padding:"14px 20px" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-                        <div style={{
-                          width:"38px", height:"38px", borderRadius:"50%",
-                          background:av.bg,
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          color:av.color, fontWeight:600, fontSize:"15px", flexShrink:0,
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <tr key={user.maNguoiDung} className="table-row" style={{ borderBottom: "1px solid #f8fafc", transition: "all 0.2s" }}>
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ 
+                          width: "40px", height: "40px", borderRadius: "12px", 
+                          background: user.roles.includes("Admin") ? "linear-gradient(135deg, #1e1b4b, #312e81)" : "#f1f5f9",
+                          color: user.roles.includes("Admin") ? "#fff" : "#475569",
+                          display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "16px"
                         }}>
                           {user.hoTen?.charAt(0).toUpperCase() || "?"}
                         </div>
                         <div>
-                          <div style={{ fontWeight:600, color:"#1e1b4b", fontSize:"13px" }}>{user.hoTen}</div>
-                          <div style={{ fontSize:"11px", color:"#9ca3af", marginTop:"1px" }}>ID: {user.maNguoiDung}</div>
+                          <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{user.hoTen || "Chưa cập nhật"}</div>
+                          <div style={{ fontSize: "12px", color: "#94a3b8" }}>ID: {user.maNguoiDung}</div>
                         </div>
                       </div>
                     </td>
-
-                    {/* Contact */}
-                    <td style={{ padding:"14px 20px" }}>
-                      <div style={{ fontSize:"13px", color:"#374151" }}>{user.email}</div>
-                      <div style={{ fontSize:"11px", color:"#9ca3af", marginTop:"2px" }}>{user.soDienThoai}</div>
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ fontSize: "14px", color: "#475569" }}>{user.email || "—"}</div>
+                      <div style={{ fontSize: "12px", color: "#94a3b8" }}>{user.soDienThoai || "—"}</div>
                     </td>
-
-                    {/* Role badges */}
-                    <td style={{ padding:"14px 20px" }}>
-                      <div style={{ display:"flex", flexWrap:"wrap", gap:"5px" }}>
-                        {user.roles.map((role, idx) => {
-                          const cfg = roleConfig[role] ?? { label:role, color:"#6b7280", bg:"#f3f4f6" };
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        {user.roles.map((role) => {
+                          const config = roleConfig[role] || { label: role, color: "#64748b", bg: "#f1f5f9" };
                           return (
-                            <span key={idx} style={{
-                              padding:"2px 9px", borderRadius:"99px",
-                              fontSize:"11px", fontWeight:600,
-                              color:cfg.color, background:cfg.bg,
+                            <span key={role} style={{ 
+                              padding: "4px 10px", borderRadius: "8px", fontSize: "12px", 
+                              fontWeight: 700, color: config.color, background: config.bg 
                             }}>
-                              {cfg.label}
+                              {config.label}
                             </span>
                           );
                         })}
                       </div>
                     </td>
-
-                    {/* Status */}
-                    <td style={{ padding:"14px 20px" }}>
-                      <span style={{
-                        padding:"3px 10px", borderRadius:"99px",
-                        fontSize:"11px", fontWeight:600,
-                        background:user.trangThai ? "#ECFDF5" : "#FEF2F2",
-                        color:user.trangThai ? "#065F46" : "#991B1B",
-                        display:"inline-flex", alignItems:"center", gap:"5px",
+                    <td style={{ padding: "16px 24px" }}>
+                      <span style={{ 
+                        padding: "6px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: 700,
+                        background: user.trangThai ? "#ecfdf5" : "#fef2f2",
+                        color: user.trangThai ? "#10b981" : "#ef4444",
+                        display: "inline-flex", alignItems: "center", gap: "6px"
                       }}>
-                        <span style={{
-                          width:"5px", height:"5px", borderRadius:"50%",
-                          background:user.trangThai ? "#10b981" : "#ef4444",
-                          display:"inline-block",
-                        }} />
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: user.trangThai ? "#10b981" : "#ef4444" }}></span>
                         {user.trangThai ? "Hoạt động" : "Bị khóa"}
                       </span>
                     </td>
-
-                    {/* Date */}
-                    <td style={{ padding:"14px 20px", fontSize:"12px", color:"#9ca3af" }}>
-                      {new Date(user.ngayTao).toLocaleDateString("vi-VN", { year:"numeric", month:"2-digit", day:"2-digit" })}
+                    <td style={{ padding: "16px 24px", fontSize: "13px", color: "#64748b" }}>
+                      {new Date(user.ngayTao).toLocaleDateString("vi-VN")}
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <select
+                          title="Phân quyền người dùng"
+                          aria-label="Chọn vai trò cho người dùng"
+                          onChange={(e) => handleAssignRole(user.maNguoiDung, e.target.value)}
+                          value={user.roles[0] || ""}
+                          disabled={user.roles.includes("Admin")}
+                          style={{
+                            padding: "8px 12px", borderRadius: "10px", border: "1px solid #e2e8f0",
+                            fontSize: "13px", fontWeight: 600, color: "#1e293b", outline: "none", cursor: "pointer",
+                            background: "#fff", opacity: user.roles.includes("Admin") ? 0.5 : 1
+                          }}
+                        >
+                          <option value="Admin">Admin</option>
+                          <option value="Staff">Staff</option>
+                          <option value="Maid">Maid</option>
+                          <option value="Customer">Customer</option>
+                        </select>
+                        
+                        {!user.roles.includes("Admin") && (
+                          <button
+                            onClick={() => handleToggleStatus(user)}
+                            style={{
+                              width: "36px", height: "36px", borderRadius: "10px", border: "1px solid #e2e8f0",
+                              display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                              background: "#fff", color: user.trangThai ? "#ef4444" : "#10b981", transition: "all 0.2s"
+                            }}
+                            className="action-btn"
+                            title={user.trangThai ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+                          >
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              {user.trangThai ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0v4m0 0a4 4 0 014 4v3a4 4 0 01-4 4H8a4 4 0 01-4-4v-3a4 4 0 014-4h8z" />
+                              )}
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                );
-              }) : (
+                ))
+              ) : (
                 <tr>
-                  <td colSpan={5} style={{ padding:"60px 20px", textAlign:"center", color:"#9ca3af", fontSize:"13px" }}>
-                    Không tìm thấy người dùng nào
+                  <td colSpan={6} style={{ padding: "80px 24px", textAlign: "center" }}>
+                    <p style={{ color: "#94a3b8", fontSize: "15px", fontWeight: 500 }}>Không tìm thấy người dùng nào phù hợp.</p>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        {/* Footer count */}
-        {filtered.length > 0 && (
-          <div style={{ padding:"12px 20px", borderTop:"0.5px solid #f3f4f6", background:"#fafafa" }}>
-            <p style={{ margin:0, fontSize:"12px", color:"#9ca3af" }}>
-              Hiển thị <span style={{ color:"#534AB7", fontWeight:600 }}>{filtered.length}</span> / {users.length} người dùng
-            </p>
-          </div>
-        )}
       </div>
     </AdminLayout>
   );
