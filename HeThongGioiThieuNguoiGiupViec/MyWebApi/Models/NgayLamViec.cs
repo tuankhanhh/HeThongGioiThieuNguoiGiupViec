@@ -22,18 +22,19 @@ public partial class NgayLamViec
     [Unicode(false)]
     public string? MaNguoiGiupViec { get; set; }
 
+    public DateOnly? NgayLam { get; set; }
+
     public TimeOnly? GioBatDau { get; set; }
 
-    public DateOnly? NgayLam { get; set; }
+    public TimeOnly? GioKetThuc { get; set; }
+
+    public int? ThoiLuongThucHien { get; set; }
 
     [Column(TypeName = "datetime")]
     public DateTime? ThoiGianPhanCong { get; set; }
 
     [StringLength(30)]
     public string? TrangThai { get; set; }
-
-    [InverseProperty("MaNgayLamViecNavigation")]
-    public virtual ICollection<DonDatDichVuNgayLamViec> DonDatDichVuNgayLamViecs { get; set; } = new List<DonDatDichVuNgayLamViec>();
 
     [ForeignKey("MaDonDatDichVu")]
     [InverseProperty("NgayLamViecs")]

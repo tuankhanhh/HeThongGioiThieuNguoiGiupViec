@@ -22,9 +22,6 @@ public partial class DonDatDichVu
     [Unicode(false)]
     public string MaDichVu { get; set; } = null!;
 
-    [InverseProperty("MaDonDatDichVuNavigation")]
-    public virtual ICollection<DonDatDichVuNgayLamViec> DonDatDichVuNgayLamViecs { get; set; } = new List<DonDatDichVuNgayLamViec>();
-
     [ForeignKey("MaDichVu")]
     [InverseProperty("DonDatDichVus")]
     public virtual DichVu MaDichVuNavigation { get; set; } = null!;

@@ -18,7 +18,10 @@ public partial class DanhGium
     public string MaDon { get; set; } = null!;
 
     public int? SoSao { get; set; }
-    public string NoiDung { get; set; }
+
+    [StringLength(255)]
+    public string? NoiDung { get; set; }
+
     [ForeignKey("MaDon")]
     [InverseProperty("DanhGia")]
     public virtual DonDat MaDonNavigation { get; set; } = null!;

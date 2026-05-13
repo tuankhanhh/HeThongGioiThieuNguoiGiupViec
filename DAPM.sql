@@ -69,7 +69,7 @@ CREATE TABLE CaLamViec (
     GioKetThuc TIME NOT NULL
 );
 GO
--- Tạo bảng LichRanh
+-- 6 Tạo bảng LichRanh
 CREATE TABLE LichRanh (
     MaLichRanh CHAR(5) PRIMARY KEY,
     MaNguoiGiupViec CHAR(5) NOT NULL,
@@ -77,18 +77,17 @@ CREATE TABLE LichRanh (
 FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 );
 GO
--- Tạo bảng trung gian LichRanh_CaLamViec
+-- 7 Tạo bảng trung gian LichRanh_CaLamViec
 CREATE TABLE LichRanhCaLamViec (
     MaLichRanh CHAR(5) NOT NULL,
     MaCaLamViec CHAR(5) NOT NULL,
 	ThoiGianTao DATETIME DEFAULT GETDATE(),
-	GhiChu NVARCHAR (100),
 PRIMARY KEY(MaLichRanh,MaCaLamViec),
 FOREIGN KEY(MaLichRanh) REFERENCES LichRanh(MaLichRanh),
 FOREIGN KEY(MaCaLamViec) REFERENCES CaLamViec(MaCaLamViec)
 );
 
--- 6 KyNang
+-- 8 KyNang
 CREATE TABLE KyNang(
 MaKyNang CHAR(5) PRIMARY KEY,
 TenKyNang NVARCHAR(50),
@@ -96,7 +95,7 @@ MoTa NVARCHAR(255),
 IconName VARCHAR(50)
 );
 
--- 7 KyNangNguoiGiupViec (THÊM CỘT)
+-- 9 KyNangNguoiGiupViec (THÊM CỘT)
 CREATE TABLE KyNangNguoiGiupViec(
 MaKyNang CHAR(5) NOT NULL,
 MaHoSo CHAR(5) NOT NULL,
@@ -106,13 +105,13 @@ FOREIGN KEY(MaKyNang) REFERENCES KyNang(MaKyNang),
 FOREIGN KEY(MaHoSo) REFERENCES HoSoNguoiGiupViec(MaHoSo)
 );
 
--- 8 ThanhPhan
+-- 10 ThanhPhan
 CREATE TABLE ThanhPhan(
 MaThanhPhan CHAR(5) PRIMARY KEY,
 TenThanhPhan NVARCHAR(200)
 );
 
--- 9 DichVu
+-- 11 DichVu
 CREATE TABLE DichVu (
     MaDichVu CHAR(5) PRIMARY KEY, -- VD: 'cleaning', 'combo', 'cooking'
 	MaKyNang CHAR(5),
@@ -125,7 +124,7 @@ CREATE TABLE DichVu (
 	FOREIGN KEY (MaKyNang) REFERENCES KyNang(MaKyNang)
 );
 
--- 10 DichVuThanhPhan (THÊM CỘT)
+-- 12 DichVuThanhPhan (THÊM CỘT)
 CREATE TABLE DichVuThanhPhan(
 MaDichVu CHAR(5) NOT NULL,
 MaThanhPhan CHAR(5) NOT NULL,
@@ -136,7 +135,7 @@ FOREIGN KEY(MaThanhPhan) REFERENCES ThanhPhan(MaThanhPhan)
 
 );
 
--- 11 DonDat
+-- 13 DonDat
 CREATE TABLE DonDat(
 MaDon CHAR(5) PRIMARY KEY,
 MaKhachhang CHAR(5) NOT NULL,
@@ -150,7 +149,7 @@ FOREIGN KEY(MaKhachhang) REFERENCES NguoiDung(MaNguoiDung),
 FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 );
 
--- 12 DonDatDichVu
+-- 14 DonDatDichVu
 CREATE TABLE DonDatDichVu(
 MaDonDatDichVu CHAR(5) PRIMARY KEY,
 MaDon CHAR(5) NOT NULL,
@@ -159,30 +158,22 @@ FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
 FOREIGN KEY(MaDichVu) REFERENCES DichVu(MaDichVu)
 );
 
--- 13 NgayLamViec
+-- 15 NgayLamViec
 CREATE TABLE NgayLamViec(
 MaNgayLamViec CHAR(5) PRIMARY KEY,
 MaDonDatDichVu CHAR(5) NOT NULL,
 MaNguoiGiupViec CHAR(5),
-GioBatDau TIME ,
 NgayLam DATE,
+GioBatDau TIME,
+GioKetThuc TIME,
+ThoiLuongThucHien INT,
 ThoiGianPhanCong DATETIME,
 TrangThai NVARCHAR(30),  
 FOREIGN KEY(MaDonDatDichVu) REFERENCES DonDatDichVu(MaDonDatDichVu),
 FOREIGN KEY(MaNguoiGiupViec) REFERENCES NguoiDung(MaNguoiDung)
 );
 
--- 14 DonDatDichVuNgayLamViec (THÊM CỘT)
-CREATE TABLE DonDatDichVuNgayLamViec(
-MaDonDatDichVu CHAR(5) NOT NULL,
-MaNgayLamViec CHAR(5) NOT NULL,
-ThoiGianThucHien INT,
-PRIMARY KEY(MaDonDatDichVu,MaNgayLamViec),
-FOREIGN KEY(MaDonDatDichVu) REFERENCES DonDatDichVu(MaDonDatDichVu),
-FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec)
-);
-
--- 15 ThuNhapNguoiGiupViec
+-- 16 ThuNhapNguoiGiupViec
 CREATE TABLE ThuNhapNguoiGiupViec(
 MaThuNhap CHAR(5) PRIMARY KEY,
 MaNgayLamViec CHAR(5) NOT NULL,
@@ -190,7 +181,7 @@ SoTien DECIMAL(10,2),
 FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec)
 );
 
--- 16 ThanhToan
+-- 17 ThanhToan
 CREATE TABLE ThanhToan(
 MaThanhToan CHAR(5) PRIMARY KEY,
 MaDon CHAR(5) NOT NULL,
@@ -198,7 +189,7 @@ TrangThaiThanhToan NVARCHAR(50),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
 
--- 17 LichSuTrangThaiDon
+-- 18 LichSuTrangThaiDon
 CREATE TABLE LichSuTrangThaiDon(
 MaLichSu CHAR(5) PRIMARY KEY,
 MaDon CHAR(5) NOT NULL,
@@ -207,7 +198,7 @@ TrangThai NVARCHAR(100),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
 
--- 18 DanhGia
+-- 19 DanhGia
 CREATE TABLE DanhGia(
 MaDanhGia CHAR(5) PRIMARY KEY,
 MaDon CHAR(5) NOT NULL,
@@ -215,6 +206,7 @@ SoSao INT,
 NoiDung NVARCHAR(255),
 FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon)
 );
+-- 20 KhieuNai
 CREATE TABLE KhieuNai(
     MaKhieuNai CHAR(5) PRIMARY KEY,
     MaDon CHAR(5) NOT NULL,
@@ -223,7 +215,7 @@ CREATE TABLE KhieuNai(
 
     NoiDung NVARCHAR(255),              
     ThoiGian DATETIME DEFAULT GETDATE(), 
-    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý' CHECK (TrangThai IN (N'Chờ xử lý', N'Đang xử lý', N'Đã xử lý')),
+    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý',
     PhanHoi NVARCHAR(255),              
 
     FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
@@ -231,6 +223,53 @@ CREATE TABLE KhieuNai(
     FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 );
 GO 
+--Phần ràng buộc
+-- 1. Ràng buộc cho LichSuTrangThaiDon
+ALTER TABLE LichSuTrangThaiDon
+ADD CONSTRAINT CHK_TrangThaiDon CHECK (TrangThai IN (
+    N'Chờ xác nhận',
+    N'Đã xác nhận',
+    N'Đang thực hiện',
+    N'Hoàn thành',
+    N'Có sự cố',
+    N'Hủy đơn'
+));
+
+-- 2. Ràng buộc cho NgayLamViec
+ALTER TABLE NgayLamViec
+ADD CONSTRAINT CHK_TrangThaiNgayLamViec CHECK (TrangThai IN (
+    N'Chờ phân công',
+    N'Đã phân công',
+    N'Đang làm việc',
+    N'Hoàn thành',
+    N'Không đến làm',
+    N'Hủy lịch'
+));
+
+-- 3. Ràng buộc cho DichVu
+ALTER TABLE DichVu
+ADD CONSTRAINT CHK_TrangThaiDichVu CHECK (TrangThai IN (
+    N'Đang hoạt động',
+    N'Tạm ngưng',
+    N'Ngừng cung cấp'
+));
+
+-- 4. Ràng buộc cho KhieuNai
+ALTER TABLE KhieuNai
+ADD CONSTRAINT CHK_TrangThaiKhieuNai CHECK (TrangThai IN (
+    N'Chờ xử lý',
+    N'Đang xử lý',
+    N'Đã xử lý'
+));
+
+-- 5. Ràng buộc cho HoSoNguoiGiupViec
+ALTER TABLE HoSoNguoiGiupViec
+ADD CONSTRAINT CHK_TrangThaiHoSoXacMinh CHECK (TrangThaiXacMinh IN (
+    N'Chờ duyệt',
+    N'Đã duyệt',
+    N'Từ chối'
+));
+GO
 -- =========================================================================
 -- PHẦN 1: DỮ LIỆU TỪ ĐIỂN / DANH MỤC CƠ BẢN (Không phụ thuộc khóa ngoại)
 -- =========================================================================
@@ -334,12 +373,12 @@ GO
 
 -- 1. Hồ Sơ (Đã sửa lỗi trùng lặp mã HS001 trong kịch bản gốc)
 INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, TrangThaiXacMinh, AnhChanDung) VALUES
-('HS001', 'ND001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', NULL),
-('HS010', 'ND012', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', 'https://example.com/avatar_10.jpg'),
+('HS001', 'ND001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Chờ duyệt', NULL),
+('HS010', 'ND012', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Chờ duyệt', 'https://example.com/avatar_10.jpg'),
 ('HS011', 'ND013', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Chờ duyệt', 'https://example.com/avatar_11.jpg'),
-('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'https://example.com/avatar_12.jpg'),
-('HS021', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
-('HS022', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
+('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Chờ duyệt', 'https://example.com/avatar_12.jpg'),
+('HS021', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Chờ duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
+('HS022', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Chờ duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
 ('HS023', 'GV003', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Chờ duyệt', 'https://images.unsplash.com/photo-1594744803329-05206259021e?w=400');
 GO
 
@@ -363,18 +402,6 @@ INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
 ('LR106', 'ND001', '2026-05-11'), ('LR107', 'ND013', '2026-05-11'), ('LR200', 'ND012', '2026-05-12'),
 ('LR201', 'ND001', '2026-05-12');
 
-INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec, GhiChu) VALUES
-('LR100', 'CA001', N'08-10'), ('LR100', 'CA002', N'10-12'),
-('LR101', 'CA001', N'08-10'), ('LR101', 'CA002', N'10-12'),
-('LR102', 'CA001', N'08-10'), ('LR102', 'CA002', N'10-12'),
-('LR103', 'CA001', N'08-10'), ('LR103', 'CA002', N'10-12'),
-('LR104', 'CA003', N'13-15'), ('LR104', 'CA004', N'15-17'),
-('LR105', 'CA003', N'13-15'), ('LR105', 'CA004', N'15-17'),
-('LR106', 'CA003', N'13-15'), ('LR106', 'CA004', N'15-17'),
-('LR107', 'CA003', N'13-15'), ('LR107', 'CA004', N'15-17'),
-('LR200', 'CA003', N'13-15'), ('LR200', 'CA004', N'15-17'),
-('LR201', 'CA003', N'13-15'), ('LR201', 'CA004', N'15-17');
-GO
 
 -- 2. Đơn Đặt
 INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
@@ -398,23 +425,7 @@ INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
 ('DDV21', 'DD020', 'DV003');
 GO
 
--- 4. Ngày Làm Việc & Chi tiết
-INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, GioBatDau, NgayLam, ThoiGianPhanCong, TrangThai) VALUES
-('NLV10', 'DDV10', NULL, '08:00:00', '2026-05-10', NULL, N'Chờ phân công'),
-('NLV11', 'DDV11', NULL, '09:00:00', '2026-05-10', NULL, N'Chờ phân công'),
-('NLV12', 'DDV12', NULL, '13:00:00', '2026-05-11', NULL, N'Chờ phân công'),
-('NLV13', 'DDV13', NULL, '14:00:00', '2026-05-11', NULL, N'Chờ phân công'),
-('NLV20', 'DDV20', NULL, '13:00:00', '2026-05-12', NULL, N'Chờ phân công'),
-('NLV21', 'DDV21', NULL, '13:00:00', '2026-05-12', NULL, N'Chờ phân công'),
-('NLV90', 'DDV10', 'ND012', '08:00:00', '2026-05-10', GETDATE(), N'Đã phân công'),
-('NLV91', 'DDV12', 'ND013', '14:00:00', '2026-05-11', GETDATE(), N'Đã phân công');
 
-INSERT INTO DonDatDichVuNgayLamViec (MaDonDatDichVu, MaNgayLamViec, ThoiGianThucHien) VALUES
-('DDV10', 'NLV10', 240), ('DDV11', 'NLV11', 180),
-('DDV12', 'NLV12', 180), ('DDV13', 'NLV13', 120),
-('DDV10', 'NLV90', 240), ('DDV12', 'NLV91', 180),
-('DDV20', 'NLV20', 60),  ('DDV21', 'NLV21', 120);
-GO
 
 -- =========================================================================
 -- PHẦN 5: LỊCH SỬ, THANH TOÁN, KHIẾU NẠI & ĐÁNH GIÁ
@@ -458,7 +469,6 @@ select * from KyNangNguoiGiupViec
 
 select * from DonDat
 select * from DonDatDichVu
-select * from DonDatDichVuNgayLamViec
 select * from NgayLamViec
 select * from LichSuTrangThaiDon
 select * from LichRanh
