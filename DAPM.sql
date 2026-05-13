@@ -334,12 +334,12 @@ GO
 
 -- 1. Hồ Sơ (Đã sửa lỗi trùng lặp mã HS001 trong kịch bản gốc)
 INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, TrangThaiXacMinh, AnhChanDung) VALUES
-('HS001', 'ND001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Chờ duyệt', NULL),
-('HS010', 'ND012', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Chờ duyệt', 'https://example.com/avatar_10.jpg'),
+('HS001', 'ND001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', NULL),
+('HS010', 'ND012', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', 'https://example.com/avatar_10.jpg'),
 ('HS011', 'ND013', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Chờ duyệt', 'https://example.com/avatar_11.jpg'),
-('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Chờ duyệt', 'https://example.com/avatar_12.jpg'),
-('HS021', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Chờ duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
-('HS022', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Chờ duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
+('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'https://example.com/avatar_12.jpg'),
+('HS021', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
+('HS022', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
 ('HS023', 'GV003', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Chờ duyệt', 'https://images.unsplash.com/photo-1594744803329-05206259021e?w=400');
 GO
 
@@ -407,7 +407,7 @@ INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, GioBatD
 ('NLV20', 'DDV20', NULL, '13:00:00', '2026-05-12', NULL, N'Chờ phân công'),
 ('NLV21', 'DDV21', NULL, '13:00:00', '2026-05-12', NULL, N'Chờ phân công'),
 ('NLV90', 'DDV10', 'ND012', '08:00:00', '2026-05-10', GETDATE(), N'Đã phân công'),
-('NLV91', 'DDV12', 'ND013', '13:00:00', '2026-05-11', GETDATE(), N'Đã phân công');
+('NLV91', 'DDV12', 'ND013', '14:00:00', '2026-05-11', GETDATE(), N'Đã phân công');
 
 INSERT INTO DonDatDichVuNgayLamViec (MaDonDatDichVu, MaNgayLamViec, ThoiGianThucHien) VALUES
 ('DDV10', 'NLV10', 240), ('DDV11', 'NLV11', 180),
