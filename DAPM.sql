@@ -284,12 +284,12 @@ GO
 
 -- 2. Kỹ Năng (Đã tích hợp nội dung Update 'Dọn dẹp nhà cửa' vào thẳng Insert)
 INSERT INTO KyNang (MaKyNang, TenKyNang, MoTa, IconName) VALUES 
-('KN001', N'Dọn dẹp nhà cửa', N'Vệ sinh, sắp xếp đồ đạc gọn gàng', 'cleaning'),
-('KN002', N'Nấu ăn', N'Thực đơn đa dạng, đảm bảo dinh dưỡng', 'cooking'),
-('KN003', N'Chăm sóc trẻ', N'Giữ trẻ, vui chơi, hỗ trợ học tập', 'childcare'),
-('KN004', N'Chăm sóc người già', N'Hỗ trợ sinh hoạt, nhắc uống thuốc', 'eldercare'),
-('KN005', N'Giặt ủi', N'Giặt sấy, ủi quần áo cao cấp', 'laundry'),
-('KN006', N'Khác', N'Các kỹ năng bổ trợ khác chuyên sâu', 'other');
+('KN001', N'Dọn dẹp nhà cửa', N'Vệ sinh, lau dọn, sắp xếp nhà cửa gọn gàng', 'cleaning'),
+('KN002', N'Tổng vệ sinh', N'Làm sạch chuyên sâu toàn bộ không gian sống', 'deep_cleaning'),
+('KN003', N'Nấu ăn gia đình', N'Chuẩn bị bữa ăn gia đình, đảm bảo dinh dưỡng', 'cooking'),
+('KN004', N'Chăm sóc trẻ em', N'Trông trẻ, hỗ trợ ăn uống, học tập và vui chơi', 'childcare'),
+('KN005', N'Chăm sóc người cao tuổi', N'Hỗ trợ sinh hoạt và chăm sóc người lớn tuổi', 'eldercare'),
+('KN006', N'Giặt sofa và nệm', N'Vệ sinh sofa, nệm và khử khuẩn chuyên sâu', 'sofa_cleaning');
 GO
 
 -- 3. Thành Phần Công Việc
@@ -396,12 +396,113 @@ GO
 
 -- 1. Lịch Rảnh & Chi tiết lịch rảnh
 INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
-('LR001', 'ND001', '2026-05-06'), ('LR002', 'ND001', '2026-05-07'), ('LR003', 'ND001', '2026-05-08'),
-('LR100', 'ND012', '2026-05-10'), ('LR101', 'ND013', '2026-05-10'), ('LR102', 'ND001', '2026-05-10'),
-('LR103', 'ND012', '2026-05-10'), ('LR104', 'ND012', '2026-05-11'), ('LR105', 'ND013', '2026-05-11'),
-('LR106', 'ND001', '2026-05-11'), ('LR107', 'ND013', '2026-05-11'), ('LR200', 'ND012', '2026-05-12'),
-('LR201', 'ND001', '2026-05-12');
+('LR001', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR002', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR003', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR100', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR101', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR102', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR103', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR104', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR105', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR106', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR107', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR200', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR201', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE)));
+-- Gán Ca 1 (08:00-10:00) và Ca 2 (10:00-12:00) cho các lịch rảnh hiện có
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) VALUES
+('LR001', 'CA001'), ('LR001', 'CA002'),
+('LR100', 'CA001'), ('LR100', 'CA002'),
+('LR101', 'CA001'), ('LR101', 'CA002');
+GO
+INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc)
+VALUES
+('CA100', '08:00', '14:00'),
+('CA101', '14:00', '20:00'),
+('CA102', '07:00', '13:00');
 
+
+-- =========================================================
+-- TEST CASE:
+-- MỖI NGÀY 3 VIỆC
+-- MỖI ĐƠN >= 2 DỊCH VỤ
+-- >= 2 NGÀY LÀM VIỆC
+-- =========================================================
+
+-- =========================================================
+-- ND001
+-- Có KN001 (Dọn dẹp)
+-- Có KN003 (Nấu ăn)
+-- => ĐỦ nhận DD020
+-- =========================================================
+
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay)
+VALUES
+('LR300', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR301', 'ND001', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
+('LR302', 'ND001', DATEADD(DAY, 3, CAST(GETDATE() AS DATE)));
+
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec)
+VALUES
+('LR300', 'CA100'),
+('LR301', 'CA101'),
+('LR302', 'CA102');
+
+
+-- =========================================================
+-- ND012
+-- Có KN001 + KN003
+-- =========================================================
+
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay)
+VALUES
+('LR303', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR304', 'ND012', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
+('LR305', 'ND012', DATEADD(DAY, 4, CAST(GETDATE() AS DATE)));
+
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec)
+VALUES
+('LR303', 'CA101'),
+('LR304', 'CA100'),
+('LR305', 'CA102');
+
+
+-- =========================================================
+-- ND013
+-- Có KN001 nhưng KHÔNG có KN003
+-- => Không đủ điều kiện cho DD020
+-- =========================================================
+
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay)
+VALUES
+('LR306', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR307', 'ND013', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
+('LR308', 'ND013', DATEADD(DAY, 5, CAST(GETDATE() AS DATE)));
+
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec)
+VALUES
+('LR306', 'CA100'),
+('LR307', 'CA101'),
+('LR308', 'CA102');
+
+
+-- =========================================================
+-- ND014
+-- Chỉ có KN003
+-- => Không đủ điều kiện cho DD020
+-- =========================================================
+
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay)
+VALUES
+('LR309', 'ND014', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR310', 'ND014', DATEADD(DAY, 3, CAST(GETDATE() AS DATE))),
+('LR311', 'ND014', DATEADD(DAY, 6, CAST(GETDATE() AS DATE)));
+
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec)
+VALUES
+('LR309', 'CA102'),
+('LR310', 'CA101'),
+('LR311', 'CA100');
 
 -- 2. Đơn Đặt
 INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES

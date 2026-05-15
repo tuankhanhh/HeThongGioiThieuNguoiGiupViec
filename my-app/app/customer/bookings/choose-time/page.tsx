@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   format,
   isBefore,
@@ -36,7 +36,7 @@ interface ApiService {
 
 type ServiceDict = Record<string, { name: string; pricePerHour: number }>;
 
-// --- HÀM 1: LẤY DANH SÁCH GIỜ HỢP LỆ ---
+// --- CÁC HÀM TIỆN ÍCH THỜI GIAN ---
 const getHourOptions = (dateStr: string) => {
   const targetDate = parse(dateStr, "yyyy-MM-dd", new Date());
   let startHour = 8;
@@ -46,8 +46,6 @@ const getHourOptions = (dateStr: string) => {
     const minAllowedTime = addHours(new Date(), 1);
     startHour = minAllowedTime.getHours();
 
-    // Nếu số phút của thời gian tối thiểu > 45,
-    // nghĩa là giờ hiện tại không còn slot nào hợp lệ -> Nhảy sang giờ tiếp theo.
     if (minAllowedTime.getMinutes() > 45) {
       startHour += 1;
     }
@@ -62,7 +60,6 @@ const getHourOptions = (dateStr: string) => {
   return options;
 };
 
-// --- HÀM 2: LẤY DANH SÁCH PHÚT HỢP LỆ (Phụ thuộc vào Giờ đang chọn) ---
 const getMinuteOptions = (dateStr: string, selectedHour: string) => {
   const allMinutes = ["00", "15", "30", "45"];
   const targetDate = parse(dateStr, "yyyy-MM-dd", new Date());
@@ -74,18 +71,14 @@ const getMinuteOptions = (dateStr: string, selectedHour: string) => {
 
     const hourNum = parseInt(selectedHour, 10);
 
-    // Nếu giờ đang chọn chính là giờ tối thiểu (sát nút nhất)
-    // Thì phải lọc bỏ những số phút nhỏ hơn phút tối thiểu
     if (hourNum === minHour) {
       return allMinutes.filter((m) => parseInt(m, 10) >= minMinute);
     }
   }
 
-  // Nếu là các giờ sau đó, hoặc ngày tương lai thì full lựa chọn
   return allMinutes;
 };
 
-// --- HÀM 3: LẤY GIỜ MẶC ĐỊNH ---
 const getDefaultStartTime = (dateStr: string) => {
   const targetDate = parse(dateStr, "yyyy-MM-dd", new Date());
 
@@ -100,12 +93,12 @@ const getDefaultStartTime = (dateStr: string) => {
     else if (minMin <= 30) m = "30";
     else if (minMin <= 45) m = "45";
     else {
-      h += 1; // Vượt quá 45 phút thì nhảy sang tròn giờ của giờ tiếp theo
+      h += 1;
       m = "00";
     }
 
     h = Math.max(8, h);
-    if (h > 20) return "20:00"; // Quá muộn
+    if (h > 20) return "20:00";
     return `${h.toString().padStart(2, "0")}:${m}`;
   }
 
@@ -121,6 +114,282 @@ export default function TimeSelectionContent() {
   const [servicesDict, setServicesDict] = useState<ServiceDict>({});
   const [savedServiceIds, setSavedServiceIds] = useState<string[]>([]);
   const [selectedWorkDays, setSelectedWorkDays] = useState<DayOrder[]>([]);
+
+  const validatedSignatures = useRef<Set<string>>(new Set());
+
+  const getSignature = (day: DayOrder) => {
+    const serviceIds = day.services
+      .map((s) => s.id)
+      .sort()
+      .join(",");
+    const durations = day.services.map((s) => s.duration).join(",");
+    return `${day.executionDate}-${day.startTime}-${serviceIds}-${durations}`;
+  };
+
+  // ---------------- HÀM KIỂM TRA LỊCH TỐI ƯU ----------------
+  const checkScheduleForDay = async (
+    day: DayOrder,
+  ): Promise<{ isValid: boolean; adjustedDay?: DayOrder }> => {
+    const now = new Date();
+    const targetDate = parse(day.executionDate, "yyyy-MM-dd", new Date());
+
+    if (isToday(targetDate)) {
+      const [hours, minutes] = day.startTime.split(":").map(Number);
+      const selectedDateTime = addMinutes(
+        addHours(startOfDay(targetDate), hours),
+        minutes,
+      );
+      const minAllowedTime = addHours(now, 1);
+
+      if (isBefore(selectedDateTime, minAllowedTime)) {
+        Swal.fire({
+          title: "Thời gian quá sát",
+          html: `Để chuẩn bị dịch vụ tốt nhất, vui lòng chọn giờ làm việc từ <b style="color:#0d7660;">${format(minAllowedTime, "HH:mm")}</b> trở đi bạn nhé.`,
+          icon: "info",
+          confirmButtonColor: "#0d7660",
+          confirmButtonText: "Tôi hiểu rồi",
+        });
+        return { isValid: false };
+      }
+    }
+
+    try {
+      Swal.fire({
+        title: "Đang tìm kiếm nhân sự...",
+        text: "Vui lòng đợi trong giây lát",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const [hours, minutes] = day.startTime.split(":").map(Number);
+      const fullDateTime = addMinutes(
+        addHours(startOfDay(targetDate), hours),
+        minutes,
+      );
+
+      // SỬA Payload MỚI NHẤT cho khớp API
+      const payload = {
+        ngayDat: fullDateTime.toISOString(),
+        thoiGianBatDau: `${day.startTime}:00`,
+        danhSachDichVu: day.services.map((svc) => ({
+          maDichVu: svc.id,
+          thoiLuong: svc.duration,
+        })),
+      };
+
+      const response: any = await api.post(
+        "/Booking/CheckFreeSchedule",
+        payload,
+      );
+
+      const data = response.data || response;
+      const isAvailable = data.isAvailable ?? true;
+      const message = data.message || "";
+      const suggestedTime = data.suggestedTime;
+
+      if (!isAvailable) {
+        Swal.close();
+        if (suggestedTime) {
+          const confirmSuggest = await Swal.fire({
+            title: "Gợi ý lịch trống gần nhất 💡",
+            html: `Rất tiếc, lúc <b>${day.startTime}</b> nhân viên của chúng tôi đều đang bận phục vụ khách khác.<br/><br/>Tin vui là hệ thống tìm thấy lịch trống lúc <b style="color: #0d7660; font-size: 1.2em;">${suggestedTime}</b>. Bạn có muốn đổi sang giờ này không?`,
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonColor: "#0d7660",
+            cancelButtonColor: "#f3f4f6",
+            cancelButtonText:
+              "<span style='color: #4b5563; font-weight: 500;'>Để tôi tự chọn giờ khác</span>",
+            confirmButtonText: `Vâng, đổi sang ${suggestedTime}`,
+            reverseButtons: true,
+          });
+
+          if (confirmSuggest.isConfirmed) {
+            const adjustedDay = { ...day, startTime: suggestedTime };
+            return checkScheduleForDay(adjustedDay);
+          } else {
+            return { isValid: false };
+          }
+        } else {
+          Swal.fire({
+            title: "Đã kín lịch ngày này",
+            html: `Không còn nhân viên trống lịch vào ngày <b>${format(targetDate, "dd/MM")}</b>.<br/><br/>Bạn vui lòng nhấp vào lịch bên trái để <b>chọn một ngày khác</b> nhé. Rất mong được phục vụ bạn!`,
+            icon: "warning",
+            confirmButtonColor: "#0d7660",
+            confirmButtonText: "Tôi sẽ chọn ngày khác",
+          });
+          return { isValid: false };
+        }
+      }
+
+      if (isAvailable && message.toLowerCase().includes("đội ngũ")) {
+        Swal.close();
+        const confirmTeam = await Swal.fire({
+          title: "Sắp xếp 2 chuyên viên 🤝",
+          html: `Để đảm bảo hoàn thành tất cả dịch vụ trong khoảng thời gian bạn yêu cầu, chúng tôi sẽ điều phối <b>2 chuyên viên</b> đến làm song song. Quá trình sẽ diễn ra nhanh chóng hơn!<br/><br/>Bạn đồng ý với phương án này chứ?`,
+          icon: "success",
+          showCancelButton: true,
+          confirmButtonColor: "#0d7660",
+          cancelButtonColor: "#f3f4f6",
+          cancelButtonText:
+            "<span style='color: #4b5563'>Để tôi chọn lại</span>",
+          confirmButtonText: "Tuyệt vời, tôi đồng ý!",
+          reverseButtons: true,
+        });
+
+        if (!confirmTeam.isConfirmed) {
+          return { isValid: false };
+        }
+      } else {
+        Swal.close();
+      }
+
+      validatedSignatures.current.add(getSignature(day));
+      return { isValid: true, adjustedDay: day };
+    } catch (error: any) {
+      console.error("Lỗi khi kiểm tra lịch:", error);
+      Swal.fire({
+        title: "Đường truyền gián đoạn",
+        text: "Hệ thống đang gặp chút sự cố khi kiểm tra lịch trống. Bạn thử lại giúp chúng tôi nhé!",
+        icon: "error",
+        confirmButtonColor: "#0d7660",
+        confirmButtonText: "Thử lại",
+      });
+      return { isValid: false };
+    }
+  };
+
+  // --- HÀM XÓA DỊCH VỤ ---
+  const handleRemoveService = (dateIdx: number, serviceIdx: number) => {
+    const updated = [...selectedWorkDays];
+    if (updated[dateIdx].services.length <= 1) {
+      Swal.fire({
+        title: "Cần giữ lại dịch vụ",
+        text: "Mỗi ngày làm việc cần có ít nhất 1 dịch vụ. Bạn có thể xóa hẳn ngày này bên cạnh nếu không có nhu cầu.",
+        icon: "info",
+        confirmButtonColor: "#0d7660",
+        confirmButtonText: "Đã hiểu",
+      });
+      return;
+    }
+    updated[dateIdx].services.splice(serviceIdx, 1);
+    setSelectedWorkDays(updated);
+  };
+
+  // --- HÀM THÊM DỊCH VỤ MỚI ---
+  const handleAddService = async (dateIdx: number, serviceId: string) => {
+    if (!serviceId) return;
+
+    const updated = [...selectedWorkDays];
+    const isExist = updated[dateIdx].services.some((s) => s.id === serviceId);
+    if (isExist) return;
+
+    const info = servicesDict[serviceId];
+    if (info) {
+      const testDay: DayOrder = JSON.parse(JSON.stringify(updated[dateIdx]));
+      testDay.services.push({
+        id: serviceId,
+        name: info.name,
+        duration: 2,
+        price: info.pricePerHour * 2,
+      });
+
+      const { isValid, adjustedDay } = await checkScheduleForDay(testDay);
+      if (!isValid || !adjustedDay) return;
+
+      updated[dateIdx] = adjustedDay;
+      setSelectedWorkDays(updated);
+    }
+  };
+
+  // --- HÀM CẬP NHẬT THỜI GIAN VÀ THỜI LƯỢNG ---
+  const updateStartTime = async (dateIdx: number, newTime: string) => {
+    const updated = [...selectedWorkDays];
+    const testDay = { ...updated[dateIdx], startTime: newTime };
+
+    const { isValid, adjustedDay } = await checkScheduleForDay(testDay);
+    if (!isValid || !adjustedDay) return;
+
+    updated[dateIdx] = adjustedDay;
+    setSelectedWorkDays(updated);
+  };
+
+  const updateServiceDuration = async (
+    dateIdx: number,
+    serviceIdx: number,
+    duration: number,
+  ) => {
+    const updated = [...selectedWorkDays];
+    const service = updated[dateIdx].services[serviceIdx];
+    const pricePerHour = servicesDict[service.id]?.pricePerHour || 0;
+
+    const testDay: DayOrder = JSON.parse(JSON.stringify(updated[dateIdx]));
+    testDay.services[serviceIdx] = {
+      ...service,
+      duration: duration,
+      price: pricePerHour * duration,
+    };
+
+    const { isValid, adjustedDay } = await checkScheduleForDay(testDay);
+    if (!isValid || !adjustedDay) return;
+
+    updated[dateIdx] = adjustedDay;
+    setSelectedWorkDays(updated);
+  };
+
+  // --- HÀM CHỌN NGÀY TỪ LỊCH ---
+  const handleDayClick = async (day: Date) => {
+    if (isBefore(day, startOfDay(new Date()))) return;
+
+    const dateStr = format(day, "yyyy-MM-dd");
+    const isAlreadySelected = selectedWorkDays.some(
+      (d) => d.executionDate === dateStr,
+    );
+
+    if (isAlreadySelected) {
+      if (selectedWorkDays.length <= 1) {
+        Swal.fire({
+          title: "Vui lòng chọn ngày",
+          text: "Bạn cần chọn ít nhất một ngày trên lịch để chúng tôi có thể sắp xếp người đến phục vụ.",
+          icon: "info",
+          confirmButtonColor: "#0d7660",
+          confirmButtonText: "Đã hiểu",
+        });
+        return;
+      }
+      setSelectedWorkDays((prev) =>
+        prev.filter((d) => d.executionDate !== dateStr),
+      );
+    } else {
+      const servicesForThisDay = savedServiceIds.map((id) => {
+        const info = servicesDict[id];
+        return {
+          id,
+          name: info?.name || "Dịch vụ",
+          duration: 2,
+          price: (info?.pricePerHour || 0) * 2,
+        };
+      });
+
+      const newDay: DayOrder = {
+        executionDate: dateStr,
+        startTime: getDefaultStartTime(dateStr),
+        services: servicesForThisDay,
+      };
+
+      const { isValid, adjustedDay } = await checkScheduleForDay(newDay);
+      if (!isValid || !adjustedDay) return;
+
+      setSelectedWorkDays((prev) =>
+        [...prev, adjustedDay].sort(
+          (a, b) =>
+            new Date(a.executionDate).getTime() -
+            new Date(b.executionDate).getTime(),
+        ),
+      );
+    }
+  };
 
   // 1. KHỞI TẠO VÀ GỌI API
   useEffect(() => {
@@ -141,16 +410,21 @@ export default function TimeSelectionContent() {
           return;
         }
 
-        const data = await api.get<ApiService[]>("/dichvu");
+        const response = await api.get<ApiService[]>("/dichvu");
+        const data = Array.isArray(response)
+          ? response
+          : (response as any).data || [];
 
-        const dict: ServiceDict = data.reduce((acc, item) => {
-          acc[item.id] = {
-            name: item.title,
-            pricePerHour: item.pricePerHour || 0,
-          };
-          return acc;
-        }, {} as ServiceDict);
-
+        const dict: ServiceDict = data.reduce(
+          (acc: ServiceDict, item: ApiService) => {
+            acc[item.id] = {
+              name: item.title,
+              pricePerHour: item.pricePerHour || 0,
+            };
+            return acc;
+          },
+          {} as ServiceDict,
+        );
         setServicesDict(dict);
 
         const savedWorkdaysStr = localStorage.getItem("booking_workdays");
@@ -174,17 +448,9 @@ export default function TimeSelectionContent() {
           }
         }
 
-        // ====================================================================
-        // LOGIC MỚI: TỰ ĐỘNG CHUYỂN NGÀY MAI NẾU HÔM NAY HẾT GIỜ
-        // ====================================================================
         let defaultDate = new Date();
         let defaultDateStr = format(defaultDate, "yyyy-MM-dd");
-
-        // Kiểm tra xem hôm nay còn khung giờ nào không
-        const availableHoursToday = getHourOptions(defaultDateStr);
-
-        if (availableHoursToday.length === 0) {
-          // Nếu hết giờ, tự động đẩy lịch sang ngày mai
+        if (getHourOptions(defaultDateStr).length === 0) {
           defaultDate = addDays(new Date(), 1);
           defaultDateStr = format(defaultDate, "yyyy-MM-dd");
         }
@@ -201,17 +467,15 @@ export default function TimeSelectionContent() {
 
         setSelectedWorkDays([
           {
-            executionDate: defaultDateStr, // Biến này chứa Hôm nay hoặc Ngày mai
-            startTime: getDefaultStartTime(defaultDateStr), // Tự động lấy giờ hợp lệ tương ứng
+            executionDate: defaultDateStr,
+            startTime: getDefaultStartTime(defaultDateStr),
             services: defaultServices,
           },
         ]);
-        // ====================================================================
       } catch (error) {
-        console.error("Lỗi fetch services:", error);
         Swal.fire({
           title: "Lỗi kết nối",
-          text: "Không thể lấy thông tin giá dịch vụ. Vui lòng thử lại sau.",
+          text: "Không thể lấy thông tin giá dịch vụ. Bạn vui lòng tải lại trang nhé.",
           icon: "error",
           confirmButtonColor: "#0d7660",
         });
@@ -220,11 +484,9 @@ export default function TimeSelectionContent() {
         setIsInitialized(true);
       }
     };
-
     initializeData();
   }, [router]);
 
-  // 2. ĐỒNG BỘ LOCALSTORAGE
   useEffect(() => {
     if (isInitialized && selectedWorkDays.length > 0) {
       localStorage.setItem(
@@ -234,285 +496,138 @@ export default function TimeSelectionContent() {
     }
   }, [selectedWorkDays, isInitialized]);
 
-  // ---------------- LOGIC XỬ LÝ UI ----------------
-
-  // Thêm hàm kiểm tra trước khi chuyển trang
+  // ---------------- KHI BẤM TIẾP TỤC ----------------
   const handleContinue = async () => {
-    if (selectedWorkDays.length === 0) {
-      Swal.fire({
-        title: "Thông báo",
-        text: "Vui lòng chọn ít nhất 1 dịch vụ để tiếp tục.",
-        icon: "warning",
-        confirmButtonColor: "#0d7660",
-      });
-      return;
-    }
+    if (selectedWorkDays.length === 0) return;
 
-    // --- BẮT ĐẦU: KIỂM TRA LỖI TREO MÁY ---
-    let isStaleData = false;
-    const now = new Date();
+    Swal.fire({
+      title: "Đang tạo lịch đặt...",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
 
     for (const day of selectedWorkDays) {
       const targetDate = parse(day.executionDate, "yyyy-MM-dd", new Date());
 
-      // Chỉ cần kiểm tra nếu ngày thực hiện là hôm nay
-      if (isToday(targetDate)) {
-        const [hours, minutes] = day.startTime.split(":").map(Number);
-        const selectedDateTime = addMinutes(
-          addHours(startOfDay(targetDate), hours),
-          minutes,
-        );
+      // SỬA LẠI PAYLOAD MỚI Ở ĐÂY LUÔN
+      const payload = {
+        ngayDat: addMinutes(
+          addHours(
+            startOfDay(targetDate),
+            parseInt(day.startTime.split(":")[0]),
+          ),
+          parseInt(day.startTime.split(":")[1]),
+        ).toISOString(),
+        thoiGianBatDau: `${day.startTime}:00`,
+        danhSachDichVu: day.services.map((svc) => ({
+          maDichVu: svc.id,
+          thoiLuong: svc.duration,
+        })),
+      };
 
-        const minAllowedTime = addHours(now, 1);
-
-        // Nếu giờ đã chọn hiện tại không còn thỏa mãn cách 1 tiếng nữa
-        if (isBefore(selectedDateTime, minAllowedTime)) {
-          isStaleData = true;
-          break; // Thoát vòng lặp ngay khi phát hiện lỗi
-        }
-      }
-    }
-
-    if (isStaleData) {
-      Swal.fire({
-        title: "Thời gian đã hết hạn",
-        text: "Do bạn đã treo máy một khoảng thời gian, giờ bắt đầu bạn chọn trước đó không còn hợp lệ (phải cách hiện tại ít nhất 1 tiếng). Vui lòng chọn lại giờ mới.",
-        icon: "error",
-        confirmButtonColor: "#0d7660",
-      });
-      return; // Chặn không cho chuyển trang
-    }
-    // --- KẾT THÚC KIỂM TRA LỖI TREO MÁY ---
-
-    // --- BẮT ĐẦU: KIỂM TRA NHÂN VIÊN RẢNH VÀ ĐỦ KỸ NĂNG THÔNG QUA API ---
-    try {
-      // Hiển thị trạng thái Loading
-      Swal.fire({
-        title: "Đang kiểm tra...",
-        text: "Hệ thống đang tìm kiếm nhân viên phù hợp, vui lòng đợi.",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      for (const day of selectedWorkDays) {
-        // 1. Tính tổng thời lượng của tất cả dịch vụ trong ngày đó
-        const totalDurationHours = day.services.reduce(
-          (total, svc) => total + svc.duration,
-          0,
-        );
-
-        // 2. Lấy danh sách MÃ DỊCH VỤ (Đã đổi tên biến cho chuẩn với C# mới)
-        const serviceIds = day.services.map((svc) => svc.id);
-
-        // 3. Xử lý logic thời gian
-        const targetDate = parse(day.executionDate, "yyyy-MM-dd", new Date());
-        const [hours, minutes] = day.startTime.split(":").map(Number);
-        const fullDateTime = addMinutes(
-          addHours(startOfDay(targetDate), hours),
-          minutes,
-        );
-
-        // 4. CHUẨN BỊ PAYLOAD KHỚP 100% VỚI JSON CỦA C# (Đã đổi key thành danhSachMaDichVu)
-        const payload = {
-          ngayDat: fullDateTime.toISOString(),
-          thoiGianBatDau: `${day.startTime}:00`,
-          thoiGianThucHien: totalDurationHours,
-          danhSachMaDichVu: serviceIds, // <--- CẬP NHẬT Ở ĐÂY
-        };
-
-        // GỌI API
+      try {
         const response: any = await api.post(
-          "/Booking/kiemtralichranh",
+          "/Booking/CheckFreeSchedule",
           payload,
         );
+        const data = response.data || response;
 
-        // Lấy kết quả từ backend
-        const isAvailable =
-          response.isAvailable ?? response.data?.isAvailable ?? true;
-        const message = response.message ?? response.data?.message;
+        const isAvailable = data.isAvailable ?? true;
+        const message = data.message || "";
+        const suggestedTime = data.suggestedTime;
 
         if (!isAvailable) {
-          Swal.fire({
-            title: "Không thể đặt lịch",
-            text:
-              message ||
-              `Rất tiếc, hiện tại không có nhân viên nào phù hợp vào lúc ${day.startTime} ngày ${format(targetDate, "dd/MM/yyyy")}. Vui lòng chọn thời gian khác.`,
-            icon: "warning",
-            confirmButtonColor: "#0d7660",
-          });
-          return; // Chặn không cho chuyển trang nếu 1 ngày không thoả mãn
+          if (suggestedTime) {
+            Swal.fire({
+              title: "Lịch có chút thay đổi",
+              html: `Rất tiếc, khung giờ <b>${day.startTime}</b> ngày <b>${format(targetDate, "dd/MM/yyyy")}</b> vừa có người đặt mất rồi.<br/><br/>Hệ thống tìm thấy slot trống gần nhất vào lúc <b style="color:#0d7660;">${suggestedTime}</b>. Bạn vui lòng nhấp chỉnh lại giờ để chúng tôi được phục vụ bạn nhé!`,
+              icon: "info",
+              confirmButtonColor: "#0d7660",
+              confirmButtonText: "Đã hiểu",
+            });
+          } else {
+            Swal.fire({
+              title: "Kín lịch ngày này",
+              html: `Khung giờ <b>${day.startTime}</b> ngày <b>${format(targetDate, "dd/MM/yyyy")}</b> hiện không còn nhân viên rảnh.<br/><br/>Bạn vui lòng đổi sang ngày khác để tiếp tục. Xin lỗi vì sự bất tiện này!`,
+              icon: "warning",
+              confirmButtonColor: "#0d7660",
+              confirmButtonText: "Tôi sẽ chọn lại",
+            });
+          }
+          return;
         }
-      }
 
-      Swal.close(); // Tắt popup loading nếu tất cả đều pass
-    } catch (error: any) {
-      console.error("Lỗi khi kiểm tra lịch:", error);
+        if (isAvailable && message.toLowerCase().includes("đội ngũ")) {
+          const sig = getSignature(day);
+          if (!validatedSignatures.current.has(sig)) {
+            Swal.close();
+            const confirmTeam = await Swal.fire({
+              title: "Xác nhận đội ngũ 🤝",
+              html: `Ngày <b>${format(targetDate, "dd/MM/yyyy")}</b> cần <b>2 nhân sự</b> thực hiện song song để đảm bảo tốc độ. Hệ thống tiến hành lưu lịch nhé?`,
+              icon: "success",
+              showCancelButton: true,
+              confirmButtonColor: "#0d7660",
+              cancelButtonColor: "#f3f4f6",
+              cancelButtonText:
+                "<span style='color: #4b5563'>Kiểm tra lại</span>",
+              confirmButtonText: "Xác nhận",
+              reverseButtons: true,
+            });
+            if (!confirmTeam.isConfirmed) return;
+            validatedSignatures.current.add(sig);
 
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data ||
-        "Không thể kiểm tra lịch trống lúc này. Vui lòng thử lại sau.";
-
-      Swal.fire({
-        title: "Lỗi kết nối",
-        text:
-          typeof errorMessage === "string"
-            ? errorMessage
-            : "Đã xảy ra lỗi không xác định từ máy chủ.",
-        icon: "error",
-        confirmButtonColor: "#0d7660",
-      });
-      return;
-    }
-    // --- KẾT THÚC KIỂM TRA API ---
-
-    // Mọi thứ OK -> Chuyển sang trang nhập địa chỉ
-    router.push(ROUTES.CUSTOMER.ADDRESS);
-  };
-  const handleDayClick = (day: Date) => {
-    if (isBefore(day, startOfDay(new Date()))) return;
-
-    const dateStr = format(day, "yyyy-MM-dd");
-    const isAlreadySelected = selectedWorkDays.some(
-      (d) => d.executionDate === dateStr,
-    );
-
-    if (isAlreadySelected) {
-      if (selectedWorkDays.length <= 1) {
+            Swal.fire({
+              title: "Đang xử lý...",
+              allowOutsideClick: false,
+              didOpen: () => Swal.showLoading(),
+            });
+          }
+        }
+      } catch (error) {
         Swal.fire({
-          title: "Thông báo",
-          text: "Bạn cần chọn ít nhất một ngày để thực hiện dịch vụ.",
-          icon: "info",
+          title: "Sự cố mạng",
+          text: "Có lỗi khi kết nối tới máy chủ. Vui lòng kiểm tra internet và thử lại.",
+          icon: "error",
           confirmButtonColor: "#0d7660",
+          confirmButtonText: "Đóng",
         });
         return;
       }
-      setSelectedWorkDays((prev) =>
-        prev.filter((d) => d.executionDate !== dateStr),
-      );
-    } else {
-      const servicesForThisDay = savedServiceIds.map((id) => {
-        const info = servicesDict[id];
-        return {
-          id,
-          name: info?.name || "Dịch vụ",
-          duration: 2,
-          price: (info?.pricePerHour || 0) * 2,
-        };
-      });
-
-      const newDay: DayOrder = {
-        executionDate: dateStr,
-        startTime: getDefaultStartTime(dateStr), // Lấy giờ mặc định động
-        services: servicesForThisDay,
-      };
-
-      setSelectedWorkDays((prev) =>
-        [...prev, newDay].sort(
-          (a, b) =>
-            new Date(a.executionDate).getTime() -
-            new Date(b.executionDate).getTime(),
-        ),
-      );
-    }
-  };
-
-  const updateStartTime = (dateIdx: number, newTime: string) => {
-    const updated = [...selectedWorkDays];
-    const targetDate = parse(
-      updated[dateIdx].executionDate,
-      "yyyy-MM-dd",
-      new Date(),
-    );
-    const [hours, minutes] = newTime.split(":").map(Number);
-
-    // Cộng chính xác số Giờ và số Phút vào ngày mục tiêu
-    const selectedDateTime = addMinutes(
-      addHours(startOfDay(targetDate), hours),
-      minutes,
-    );
-
-    if (isToday(targetDate)) {
-      const minTimeAllowed = addHours(new Date(), 1);
-
-      if (isBefore(selectedDateTime, minTimeAllowed)) {
-        Swal.fire({
-          title: "Thời gian không hợp lệ",
-          text: `Vui lòng chọn thời gian bắt đầu sau ${format(minTimeAllowed, "HH:mm")}.`,
-          icon: "error",
-          confirmButtonColor: "#0d7660",
-        });
-        return; // Dừng lại, không cập nhật state để UI tự động reset về giờ hợp lệ trước đó
-      }
     }
 
-    updated[dateIdx].startTime = newTime;
-    setSelectedWorkDays(updated);
+    Swal.close();
+    router.push(ROUTES.CUSTOMER.ADDRESS);
   };
 
-  const updateServiceDuration = (
-    dateIdx: number,
-    serviceIdx: number,
-    duration: number,
-  ) => {
-    const updated = [...selectedWorkDays];
-    const service = updated[dateIdx].services[serviceIdx];
-    const pricePerHour = servicesDict[service.id]?.pricePerHour || 0;
-
-    updated[dateIdx].services[serviceIdx] = {
-      ...service,
-      duration: duration,
-      price: pricePerHour * duration,
-    };
-    setSelectedWorkDays(updated);
-  };
+  // --- MEMO CHO GIAO DIỆN ---
   const isTodayDisabled = React.useMemo(() => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
-    const hours = getHourOptions(todayStr); // Hàm này đã có logic (Giờ hiện tại + 1)
-
-    // Nếu mảng giờ trống, hoặc giờ duy nhất còn lại là giờ cuối nhưng không còn phút nào hợp lệ
+    const hours = getHourOptions(todayStr);
     if (hours.length === 0) return true;
-
-    // Kiểm tra sâu hơn về phút cho giờ cuối cùng
     const lastHour = hours[hours.length - 1];
     const mins = getMinuteOptions(todayStr, lastHour);
     if (mins.length === 0) return true;
-
     return false;
   }, []);
-  // 1. Dùng useMemo để cố định mảng ngày đã chọn (Tránh lỗi tạo mới liên tục)
-  const selectedDates = React.useMemo(() => {
-    return selectedWorkDays.map((d) =>
-      parse(d.executionDate, "yyyy-MM-dd", new Date()),
-    );
-  }, [selectedWorkDays]);
 
-  // 2. Dùng useMemo để cố định các điều kiện vô hiệu hóa ngày (chặn click)
+  const selectedDates = React.useMemo(
+    () =>
+      selectedWorkDays.map((d) =>
+        parse(d.executionDate, "yyyy-MM-dd", new Date()),
+      ),
+    [selectedWorkDays],
+  );
+
   const disabledDays = React.useMemo(() => {
     const today = startOfDay(new Date());
     const disabledArray: any[] = [
-      { before: today }, // Chặn ngày quá khứ
-      { after: addDays(today, 29) }, // Chặn sau 29 ngày
+      { before: today },
+      { after: addDays(today, 29) },
     ];
-
-    // NẾU HÔM NAY HẾT GIỜ -> CHẶN LUÔN NGÀY HÔM NAY
-    if (isTodayDisabled) {
-      disabledArray.push(today);
-    }
-
-    // Chặn không cho bỏ chọn nếu chỉ còn 1 ngày
-    if (selectedWorkDays.length <= 1) {
-      disabledArray.push(...selectedDates);
-    }
-
+    if (isTodayDisabled) disabledArray.push(today);
+    if (selectedWorkDays.length <= 1) disabledArray.push(...selectedDates);
     return disabledArray;
   }, [selectedDates, selectedWorkDays.length, isTodayDisabled]);
-  // Thêm logic kiểm tra xem "Hôm nay" có còn giờ không
-
-  // Các mốc phút cho phép
-  const minuteOptions = ["00", "15", "30", "45"];
 
   if (!isInitialized || isLoading) {
     return (
@@ -535,7 +650,7 @@ export default function TimeSelectionContent() {
           </h1>
           <p className="text-gray-500">
             Hệ thống đã tự động chọn ngày hôm nay. Bạn có thể chọn thêm hoặc
-            thay đổi ngày khác.
+            thay đổi ngày khác trên lịch.
           </p>
         </div>
 
@@ -546,16 +661,12 @@ export default function TimeSelectionContent() {
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-fit">
                 <DayPicker
                   mode="multiple"
-                  selected={selectedDates} // Dùng biến đã cố định
-                  onSelect={(days, selectedDay) => {
-                    // THAY ĐỔI QUAN TRỌNG: Dùng onSelect thay cho onDayClick
-                    // selectedDay chính là ngày khách hàng vừa click vào lịch
-                    if (selectedDay) {
-                      handleDayClick(selectedDay);
-                    }
-                  }}
+                  selected={selectedDates}
+                  onSelect={(days, selectedDay) =>
+                    selectedDay && handleDayClick(selectedDay)
+                  }
                   locale={vi}
-                  disabled={disabledDays} // Dùng biến đã cố định
+                  disabled={disabledDays}
                   modifiersStyles={{
                     selected: { fontSize: "inherit" },
                     today: { color: "#0ea5e9" },
@@ -569,11 +680,9 @@ export default function TimeSelectionContent() {
                 style={{ scrollbarGutter: "stable" }}
               >
                 {selectedWorkDays.map((day, dIdx) => {
-                  // Tách Giờ và Phút từ chuỗi startTime đang lưu
                   const currentHour = day.startTime.split(":")[0];
                   const currentMinute = day.startTime.split(":")[1] || "00";
 
-                  // Lấy danh sách giờ và phút ĐỘNG
                   const availableHours = getHourOptions(day.executionDate);
                   const availableMinutes = getMinuteOptions(
                     day.executionDate,
@@ -603,7 +712,11 @@ export default function TimeSelectionContent() {
                               ),
                             )
                           }
-                          className={`${selectedWorkDays.length <= 1 ? "opacity-20 cursor-not-allowed" : "text-red-400 hover:text-red-600"} transition-colors`}
+                          className={`${
+                            selectedWorkDays.length <= 1
+                              ? "opacity-20 cursor-not-allowed"
+                              : "text-red-400 hover:text-red-600"
+                          } transition-colors`}
                           disabled={selectedWorkDays.length <= 1}
                         >
                           <DeleteOutlineIcon
@@ -613,36 +726,25 @@ export default function TimeSelectionContent() {
                       </div>
 
                       <div className="space-y-4">
-                        {/* PHẦN CHỌN GIỜ & PHÚT ĐÃ ĐƯỢC CHIA LÀM HAI COMBOBOX */}
                         <div>
                           <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">
                             Giờ bắt đầu làm việc
                           </label>
                           <div className="flex items-center gap-2">
-                            {/* COMBOBOX GIỜ */}
                             <div className="relative w-1/2">
                               <select
                                 value={currentHour}
                                 onChange={(e) => {
                                   const newHour = e.target.value;
-                                  // Khi đổi Giờ, kiểm tra xem Phút hiện tại còn hợp lệ không
-                                  const validMinutesForNewHour =
-                                    getMinuteOptions(
-                                      day.executionDate,
-                                      newHour,
-                                    );
-                                  let newMinute = currentMinute;
-
-                                  // Nếu phút hiện tại không có trong danh sách hợp lệ của giờ mới -> Tự động chuyển về phút hợp lệ đầu tiên
-                                  if (
-                                    !validMinutesForNewHour.includes(
-                                      currentMinute,
-                                    )
-                                  ) {
-                                    newMinute =
-                                      validMinutesForNewHour[0] || "00";
-                                  }
-
+                                  const validMins = getMinuteOptions(
+                                    day.executionDate,
+                                    newHour,
+                                  );
+                                  const newMinute = validMins.includes(
+                                    currentMinute,
+                                  )
+                                    ? currentMinute
+                                    : validMins[0] || "00";
                                   updateStartTime(
                                     dIdx,
                                     `${newHour}:${newMinute}`,
@@ -656,12 +758,10 @@ export default function TimeSelectionContent() {
                                   </option>
                                 ))}
                               </select>
-                              {/* SVG mũi tên... */}
                             </div>
 
                             <span className="font-bold text-gray-400">:</span>
 
-                            {/* COMBOBOX PHÚT */}
                             <div className="relative w-1/2">
                               <select
                                 value={currentMinute}
@@ -679,43 +779,80 @@ export default function TimeSelectionContent() {
                                   </option>
                                 ))}
                               </select>
-                              {/* SVG mũi tên... */}
                             </div>
                           </div>
                         </div>
 
-                        {/* CHỌN THỜI LƯỢNG (GIỮ NGUYÊN) */}
                         <div className="space-y-3">
                           <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                            Thời lượng thực hiện
+                            Thời lượng & Dịch vụ thực hiện
                           </label>
                           {day.services.map((svc, sIdx) => (
                             <div
                               key={svc.id}
                               className="flex items-center justify-between gap-4 bg-[#f3f7f6] p-3 rounded-xl border border-white"
                             >
-                              <span className="text-sm font-medium text-gray-700 ">
+                              <span className="text-sm font-medium text-gray-700 flex-1">
                                 {svc.name}
                               </span>
-                              <select
-                                value={svc.duration}
-                                onChange={(e) =>
-                                  updateServiceDuration(
-                                    dIdx,
-                                    sIdx,
-                                    Number(e.target.value),
-                                  )
-                                }
-                                className="bg-white border border-gray-200 rounded-lg text-sm p-1 px-2 outline-none focus:border-[#0d7660] cursor-pointer"
-                              >
-                                {[1, 2, 3, 4].map((h) => (
-                                  <option key={h} value={h}>
-                                    {h} giờ
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="flex items-center gap-3">
+                                <select
+                                  value={svc.duration}
+                                  onChange={(e) =>
+                                    updateServiceDuration(
+                                      dIdx,
+                                      sIdx,
+                                      Number(e.target.value),
+                                    )
+                                  }
+                                  className="bg-white border border-gray-200 rounded-lg text-sm p-1 px-2 outline-none focus:border-[#0d7660] cursor-pointer"
+                                >
+                                  {[1, 2, 3, 4].map((h) => (
+                                    <option key={h} value={h}>
+                                      {h} giờ
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRemoveService(dIdx, sIdx)
+                                  }
+                                  className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50"
+                                >
+                                  <DeleteOutlineIcon
+                                    sx={{ fontSize: "20px" }}
+                                  />
+                                </button>
+                              </div>
                             </div>
                           ))}
+
+                          <div className="pt-2">
+                            <select
+                              value=""
+                              onChange={(e) =>
+                                handleAddService(dIdx, e.target.value)
+                              }
+                              className="w-full bg-transparent border border-dashed border-[#0d7660] text-[#0d7660] rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#0d7660] outline-none cursor-pointer appearance-none text-center font-medium hover:bg-[#f3f7f6] transition-colors"
+                            >
+                              <option value="" disabled hidden>
+                                + Thêm dịch vụ khác vào ngày này
+                              </option>
+                              {Object.entries(servicesDict)
+                                .filter(
+                                  ([id]) =>
+                                    !day.services.some((s) => s.id === id),
+                                )
+                                .map(([id, info]) => (
+                                  <option key={id} value={id}>
+                                    {info.name} -{" "}
+                                    {info.pricePerHour.toLocaleString("vi-VN")}{" "}
+                                    đ/giờ
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>

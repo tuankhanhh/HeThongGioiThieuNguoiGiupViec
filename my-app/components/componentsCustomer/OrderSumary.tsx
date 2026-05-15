@@ -48,12 +48,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }).format(amount);
   };
 
-  // 1. Lấy danh sách tên dịch vụ duy nhất (để hiển thị tiêu đề)
-  const allServiceNames = Array.from(
-    new Set(orders.flatMap((day) => day.services.map((s) => s.name))),
-  );
-  const titleServiceStr = allServiceNames.join(" và ");
-
   // 2. Gom nhóm tổng hợp chi phí (Cộng dồn số giờ và tiền của cùng 1 loại dịch vụ qua các ngày)
   const aggregatedCosts = orders.reduce(
     (acc, day) => {
@@ -79,17 +73,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   return (
     <div className="w-full">
       <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)] sticky top-6">
-        <h2 className="font-bold text-xl text-gray-800 mb-6 border-b border-gray-100 pb-4">
-          Tóm tắt đơn đặt dịch
-        </h2>
-
         {/* Tiêu đề dịch vụ chính */}
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 shrink-0 rounded-xl bg-[#0d7660] flex justify-center items-center text-white">
             <CleaningServicesIcon />
           </div>
           <h4 className="font-bold text-gray-800 text-[16px]">
-            Dịch vụ {titleServiceStr || "Chưa chọn"}
+            Tóm tắt đơn đặt dịch vụ
           </h4>
         </div>
 
@@ -156,13 +146,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             ))}
 
             {/* Voucher */}
-            <div className="flex justify-between text-sm text-orange-600 italic">
+            {/* <div className="flex justify-between text-sm text-orange-600 italic">
               <span className="flex items-center gap-1">
                 <LocalOfferIcon sx={{ fontSize: 14 }} />
                 Voucher
               </span>
               <span>-{formatVND(voucherDiscount)}</span>
-            </div>
+            </div> */}
           </div>
         </div>
 

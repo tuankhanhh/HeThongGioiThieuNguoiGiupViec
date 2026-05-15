@@ -86,7 +86,7 @@ export default function PaymentPage() {
         })),
       };
 
-      // --- GỌI API TẠO ĐƠN HÀNG (Sạch sẽ, gọn gàng) ---
+      // --- GỌI API TẠO ĐƠN HÀNG ---
       await api.post("/Booking/Create", payload);
 
       Swal.fire({
@@ -95,7 +95,7 @@ export default function PaymentPage() {
         icon: "success",
         confirmButtonColor: "#0d7660",
       }).then(() => {
-        router.push(ROUTES.CUSTOMER.NOTICE); // Chuyển về trang danh sách đơn hàng
+        router.push(ROUTES.CUSTOMER.NOTICE); // Chuyển về trang thông báo/danh sách đơn
       });
     } catch (error: any) {
       console.error("Lỗi Payment:", error);

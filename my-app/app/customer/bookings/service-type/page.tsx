@@ -35,7 +35,7 @@ export default function ServiceSelection() {
 
   // State Selection
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [isInitialized, setIsInitialized] = useState<boolean>(false); // Cờ kiểm tra đã lấy dữ liệu LS chưa
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   // 1. ĐỒNG BỘ LOCALSTORAGE (ĐỌC)
   useEffect(() => {
@@ -47,14 +47,11 @@ export default function ServiceSelection() {
         setSelectedServices([]);
       }
     }
-    // Đánh dấu là đã lấy dữ liệu xong
     setIsInitialized(true);
   }, []);
 
   // 2. ĐỒNG BỘ LOCALSTORAGE (GHI)
   useEffect(() => {
-    // CHỈ lưu vào LS khi tiến trình đọc (bước 1) đã hoàn tất
-    // Ngăn chặn việc mảng rỗng [] mặc định ghi đè mất dữ liệu cũ
     if (isInitialized) {
       localStorage.setItem(
         "booking_services",
@@ -91,29 +88,18 @@ export default function ServiceSelection() {
     fetchServices();
   }, []);
 
-  // 4. XỬ LÝ CHỌN DỊCH VỤ
+  // 4. XỬ LÝ CHỌN DỊCH VỤ (Đã gỡ giới hạn số lượng)
   const handleSelect = (id: string) => {
     setSelectedServices((prev) => {
+      // Bất cứ khi nào thay đổi dịch vụ, reset lại bước chọn ngày/giờ
+      localStorage.removeItem("booking_workdays");
+
       // Nếu đã chọn rồi -> Bỏ chọn
       if (prev.includes(id)) {
-        localStorage.removeItem("booking_workdays"); // Reset bước sau
         return prev.filter((item) => item !== id);
       }
 
-      // Giới hạn tối đa 2 dịch vụ
-      if (prev.length >= 2) {
-        Swal.fire({
-          title: "Giới hạn dịch vụ",
-          text: "Bạn chỉ có thể chọn tối đa 2 dịch vụ cùng lúc để đảm bảo chất lượng phục vụ tốt nhất.",
-          icon: "info",
-          confirmButtonColor: "#0d7660",
-          confirmButtonText: "Đã hiểu",
-        });
-        return prev;
-      }
-
-      // Chọn mới
-      localStorage.removeItem("booking_workdays"); // Reset bước sau
+      // Chọn thêm không giới hạn
       return [...prev, id];
     });
   };
@@ -144,8 +130,8 @@ export default function ServiceSelection() {
             Chào mừng bạn trở lại,
           </h1>
           <p className="text-gray-600 text-[15px]">
-            Hãy chọn loại hình dịch vụ bạn cần (tối đa 2 dịch vụ). Chúng tôi sẽ
-            sắp xếp nhân sự phù hợp nhất cho yêu cầu của bạn.
+            Hãy chọn các loại hình dịch vụ bạn cần. Chúng tôi sẽ sắp xếp nhân sự
+            phù hợp nhất cho yêu cầu của bạn.
           </p>
         </div>
 
@@ -159,24 +145,16 @@ export default function ServiceSelection() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {servicesData.map((service) => {
               const isSelected = selectedServices.includes(service.id);
-              const isLimitReached =
-                !isSelected && selectedServices.length >= 2;
 
               return (
                 <div
                   key={service.id}
-                  onClick={() => {
-                    if (!isLimitReached || isSelected) {
-                      handleSelect(service.id);
-                    }
-                  }}
+                  onClick={() => handleSelect(service.id)}
                   className={`relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border
                   ${
                     isSelected
                       ? "bg-[#9ff1d7] border-[#0d7660] shadow-md transform scale-[1.02]"
-                      : isLimitReached
-                        ? "bg-gray-50 border-transparent opacity-60 grayscale-[0.5] cursor-not-allowed"
-                        : "bg-[#f3f7f6] border-transparent hover:bg-white hover:border-[#9ff1d7] shadow-sm hover:shadow-lg"
+                      : "bg-[#f3f7f6] border-transparent hover:bg-white hover:border-[#9ff1d7] shadow-sm hover:shadow-lg"
                   }`}
                 >
                   {/* Icon tích chọn */}
@@ -220,7 +198,7 @@ export default function ServiceSelection() {
 
                   <p
                     className={`text-[14px] leading-relaxed transition-colors line-clamp-3
-                    ${isSelected ? "text-gray-800" : "text-gray-500"}`}
+                  ${isSelected ? "text-gray-800" : "text-gray-500"}`}
                   >
                     {service.description}
                   </p>
@@ -242,7 +220,7 @@ export default function ServiceSelection() {
 
             <div>
               <h4 className="font-bold text-gray-800 text-base">
-                Đã chọn {selectedServices.length}/2 dịch vụ
+                Đã chọn {selectedServices.length} dịch vụ
               </h4>
               <p className="text-xs text-gray-500">
                 Lựa chọn đa dạng, phục vụ tận tâm từ đội ngũ chuyên nghiệp.

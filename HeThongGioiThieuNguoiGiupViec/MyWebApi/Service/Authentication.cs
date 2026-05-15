@@ -56,24 +56,18 @@ namespace MyWebApi.Service
             }
 
 
-            // TRƯỜNG phân role
+            // Sửa trong LoginAsync
             var roles = user.NguoiDungVaiTros
-            .Select(ur => ur.MaVaiTroNavigation.TenVaiTro switch
-            {
-                "Nhân viên" => "Staff",
-                "Người giúp việc" => "Maid",
-                "Khách hàng" => "Customer",
-                "Quản trị viên" => "Admin",
-                _ => ur.MaVaiTroNavigation.TenVaiTro
-            })
-            .ToList();
+                .Where(ur => ur.MaVaiTroNavigation != null && !string.IsNullOrEmpty(ur.MaVaiTroNavigation.TenVaiTro))
+                .Select(ur => ur.MaVaiTroNavigation.TenVaiTro) // Lấy thẳng tên vai trò từ DB
+                .ToList();
 
             var accessToken = _tokenService.GenerateAccessToken(user, roles);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
             user.RefreshToken = refreshToken;
-            user.NgayTaoRefreshToken = DateTime.Now; 
-            user.NgayHetHanRefreshToken = DateTime.Now.AddDays(7); 
+            user.NgayTaoRefreshToken = DateTime.Now;
+            user.NgayHetHanRefreshToken = DateTime.Now.AddDays(7);
 
             await _context.SaveChangesAsync();
 
@@ -81,7 +75,7 @@ namespace MyWebApi.Service
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                VaiTro = roles.FirstOrDefault()
+                VaiTro = roles.FirstOrDefault() // Trả về role từ DB
             };
         }
 
@@ -162,38 +156,43 @@ namespace MyWebApi.Service
                 .ThenInclude(ur => ur.MaVaiTroNavigation)
                 .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
 
-            if (user == null
-                || user.NgayHetHanRefreshToken == null
-                || user.NgayHetHanRefreshToken < DateTime.UtcNow)
+            // Kiểm tra refresh token
+            if (user == null || user.NgayHetHanRefreshToken == null || user.NgayHetHanRefreshToken < DateTime.UtcNow)
             {
                 throw new UnauthorizedAccessException("Refresh token không hợp lệ hoặc đã hết hạn");
             }
 
+            // Kiểm tra trạng thái user
             if (!user.TrangThai)
             {
                 throw new UnauthorizedAccessException("User đã bị khóa");
             }
 
+            // LẤY TRỰC TIẾP TỪ DB THÔNG QUA BẢNG NGUOIDUNGVAITRO -> VAITRO
             var roles = user.NguoiDungVaiTros
+                .Where(ur => ur.MaVaiTroNavigation != null && !string.IsNullOrEmpty(ur.MaVaiTroNavigation.TenVaiTro))
                 .Select(ur => ur.MaVaiTroNavigation.TenVaiTro)
                 .ToList();
 
+            // Tạo token mới
             var newAccessToken = _tokenService.GenerateAccessToken(user, roles);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
+            // Cập nhật refresh token mới
             user.RefreshToken = newRefreshToken;
             user.NgayTaoRefreshToken = DateTime.UtcNow;
             user.NgayHetHanRefreshToken = DateTime.UtcNow.AddDays(7);
 
             await _context.SaveChangesAsync();
 
+            // Trả kết quả (NHỚ BỔ SUNG Thuộc tính VaiTro ở đây)
             return new LoginResponse
             {
                 AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken
+                RefreshToken = newRefreshToken,
+                VaiTro = roles.FirstOrDefault() // Lấy vai trò đầu tiên từ DB trả về cho client
             };
         }
-
         public async Task<bool> AssignRoleToUserAsync(string maNguoiDung, string roleName)
         {
             var user = await _context.NguoiDungs.FindAsync(maNguoiDung);

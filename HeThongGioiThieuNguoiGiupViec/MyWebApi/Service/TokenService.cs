@@ -52,9 +52,9 @@ namespace MyWebApi.Service
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(5),
-                Issuer = _configuration["AppSettings:Issuer"],
-                Audience = _configuration["AppSettings:Audience"],
+                Expires = DateTime.UtcNow.AddMinutes(15),
+                Issuer = _configuration["AppSettings:Issuer"] ?? "MyWebApi",
+                Audience = _configuration["AppSettings:Audience"] ?? "MyWebApi",
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(key),
                     SecurityAlgorithms.HmacSha256Signature

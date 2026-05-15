@@ -87,7 +87,7 @@ export default function OrderHistoryPage() {
     try {
       setCancellingId(maDon);
       // Lưu ý: Đảm bảo api.post trả về đúng cấu trúc bạn mong muốn
-      const res: any = await api.post(`/Booking/Cancel/${maDon}`);
+      const res: any = await api.post(`/Booking/CancelBooking/${maDon}`);
 
       // Kiểm tra thành công linh hoạt hơn
       const isSuccess =
@@ -149,7 +149,7 @@ export default function OrderHistoryPage() {
         // 2. Gọi API lấy danh sách đơn (Sửa lại route cho khớp với controller của bạn VD: "/Booking")
         // Lấy pageSize lớn một chút hoặc cấu hình phân trang sau để đếm số lượng các tab cho chuẩn
         const ordersResponse: any = await api.get(
-          `/Booking/GetByCustomer/${maNguoiDung}?pageSize=100`,
+          `/Booking/GetBookingsByCustomer/${maNguoiDung}?pageSize=100`,
         );
 
         if (ordersResponse?.success || ordersResponse?.data?.success) {

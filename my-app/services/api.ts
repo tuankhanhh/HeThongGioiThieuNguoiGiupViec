@@ -166,27 +166,30 @@ const refreshAccessToken = async (): Promise<boolean> => {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        // Đảm bảo URL này khớp với Controller C# của bạn (ví dụ: /api/User/refresh-token)
         const res = await fetch(buildUrl("/User/refresh-token"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            refreshToken: currentRefreshToken, // Gửi đúng tên field Backend cần
+            refreshToken: currentRefreshToken, // THỬ ĐỔI THÀNH RefreshToken nếu C# bắt buộc viết hoa
           }),
         });
 
-        if (!res.ok) return false;
+        // NẾU BACKEND TRẢ VỀ LỖI (Ví dụ CORS, 400, 500)
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error("❌ LỖI API REFRESH TỪ BACKEND C#:", errText);
+          return false; // Hàm này trả về false sẽ kích hoạt lệnh clearTokens() ở trên
+        }
 
         const data = await res.json();
-
-        // Backend C# của bạn trả về AccessToken và RefreshToken (viết hoa chữ đầu)
-        // hoặc accessToken (camelCase). Hãy kiểm tra LoginResponse ở Backend.
         const newAccessToken = data.accessToken || data.AccessToken;
         const newRefreshToken = data.refreshToken || data.RefreshToken;
 
-        if (!newAccessToken) return false;
+        if (!newAccessToken) {
+          console.error("❌ BACKEND TRẢ VỀ THIẾU TOKEN MỚI:", data);
+          return false;
+        }
 
-        // Lưu lại cặp token mới vào localStorage/Store
         tokenStore.setTokens({
           accessToken: newAccessToken,
           refreshToken: newRefreshToken,
@@ -194,7 +197,7 @@ const refreshAccessToken = async (): Promise<boolean> => {
 
         return true;
       } catch (error) {
-        console.error("Refresh Token Error:", error);
+        console.error("❌ LỖI NETWORK HOẶC CORS KHI REFRESH:", error);
         return false;
       }
     })().finally(() => {
@@ -229,9 +232,11 @@ const request = async <T>(
     if (refreshed) {
       return request<T>(path, options, false);
     } else {
+      // THÊM DÒNG NÀY ĐỂ BÁO ĐỘNG
+      console.error(`🚨 BỊ XÓA TOKEN VÌ REFRESH THẤT BẠI KHI GỌI API: ${path}`);
+
       tokenStore.clearTokens();
       if (typeof window !== "undefined") {
-        // Chỉ redirect khi token hết hạn thật sự ở các trang khác
         window.location.href = ROUTES.CUSTOMER.LOGIN;
       }
       throw await parseError(res);

@@ -75,26 +75,31 @@ builder.Services.AddScoped<IPasswordService, PasswordService>(); // Service hash
 builder.Services.AddAutoMapper(typeof(Program));
 
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(jwtOptions =>
+// Thay thế khối khai báo cũ bằng khối này
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(jwtOptions =>
+{
+    jwtOptions.TokenValidationParameters = new TokenValidationParameters
     {
-        jwtOptions.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["AppSettings:Issuer"] ?? "MyWebApi", // Issuer của JWT token
+        ValidateIssuer = true,
+        ValidIssuer = builder.Configuration["AppSettings:Issuer"] ?? "MyWebApi",
 
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["AppSettings:Audience"] ?? "MyWebApi", // Audience của JWT token
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["AppSettings:Audience"] ?? "MyWebApi",
 
-            ValidateLifetime = true, // Kiểm tra token có hết hạn không
+        ValidateLifetime = true,
 
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:SecretKey"])),
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:SecretKey"])),
 
-            ValidateIssuerSigningKey = true, // Xác thực chữ ký của token
-
-            ClockSkew = TimeSpan.Zero // Bỏ qua độ lệch thời gian
-        };
-    });
+        ClockSkew = TimeSpan.Zero 
+    };
+});
 
 // ===== CẤU HÌNH AUTHORIZATION POLICIES ưng thì dùng =====
 builder.Services.AddAuthorization(options =>
