@@ -40,6 +40,7 @@
 //                        MaCaLamViec = lrc.MaCaLamViec,
 //                        GioBatDau = lrc.MaCaLamViecNavigation.GioBatDau.ToString("HH:mm:ss"),
 //                        GioKetThuc = lrc.MaCaLamViecNavigation.GioKetThuc.ToString("HH:mm:ss"),
+
 //                    }).ToList()
 //                })
 //                .ToListAsync();
@@ -106,6 +107,7 @@
 //                {
 //                    MaLichRanh = maLichRanh,
 //                    MaCaLamViec = caDb.MaCaLamViec,
+
 //                    ThoiGianTao = DateTime.Now // CẬP NHẬT TRƯỜNG MỚI TẠI ĐÂY
 //                });
 //            }
@@ -182,6 +184,7 @@
 //            {
 //                MaLichRanh = lichRanh.MaLichRanh,
 //                MaCaLamViec = caDb.MaCaLamViec,
+
 //                ThoiGianTao = DateTime.Now // <--- CHÍNH LÀ DÒNG NÀY ĐỂ FIX LỖI
 //            });
 

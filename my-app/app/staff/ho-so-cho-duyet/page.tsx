@@ -46,19 +46,17 @@ export default function HoSoChoDuyetPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-7 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            Kiểm duyệt hồ sơ
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-[28px] font-bold text-slate-800 leading-tight">Kiểm duyệt hồ sơ</h1>
+          <p className="text-[13.5px] text-slate-500 mt-1">
             Danh sách hồ sơ người giúp việc đang chờ xét duyệt
           </p>
         </div>
         {!loading && !error && (
-          <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+          <span className="shrink-0 mt-1 text-[12px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full">
             {danhSach.length} hồ sơ
           </span>
         )}
@@ -75,21 +73,20 @@ export default function HoSoChoDuyetPage() {
         )}
         {!loading && !error && danhSach.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100">
-              <thead className="bg-slate-50">
-                <tr>
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-200">
                   {[
                     "Họ tên",
                     "Email",
                     "Số điện thoại",
                     "Giới tính",
-                    "Kinh nghiệm",
                     "Trạng thái",
                     "",
                   ].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide"
+                      className="px-5 py-4 text-left text-[12px] font-bold text-slate-600 uppercase tracking-widest"
                     >
                       {h}
                     </th>
@@ -100,46 +97,34 @@ export default function HoSoChoDuyetPage() {
                 {danhSach.map((hs) => (
                   <tr
                     key={hs.maHoSo}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                     onClick={() =>
                       router.push(`/staff/ho-so-cho-duyet/${hs.maHoSo}`)
                     }
                   >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[13px] shrink-0">
                           {hs.hoTen?.charAt(0) ?? "?"}
                         </div>
-                        <span className="text-sm font-medium text-slate-800">
+                        <span className="text-[14px] font-semibold text-slate-800">
                           {hs.hoTen}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {hs.email}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {hs.soDienThoai}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {hs.gioiTinh}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-sm text-slate-600 max-w-[180px] truncate"
-                      title={hs.kinhNghiem}
-                    >
-                      {hs.kinhNghiem ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4 text-[14px] font-medium text-slate-700">{hs.email}</td>
+                    <td className="px-5 py-4 text-[14px] font-medium text-slate-700">{hs.soDienThoai}</td>
+                    <td className="px-5 py-4 text-[14px] font-medium text-slate-700">{hs.gioiTinh}</td>
+                    <td className="px-5 py-4">
                       <StatusBadge status={hs.trangThai} type="hoSo" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/staff/ho-so-cho-duyet/${hs.maHoSo}`);
                         }}
-                        className="text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors whitespace-nowrap"
+                        className="text-[12.5px] font-semibold px-3.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all duration-150 whitespace-nowrap cursor-pointer group-hover:shadow-sm"
                       >
                         Xem chi tiết
                       </button>
