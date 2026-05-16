@@ -46,7 +46,7 @@ export default function HoSoChoDuyetPage() {
   }, []);
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-7 flex items-start justify-between gap-4">
         <div>
@@ -75,19 +75,18 @@ export default function HoSoChoDuyetPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-slate-100 border-b border-slate-200">
                   {[
                     "Họ tên",
                     "Email",
                     "Số điện thoại",
                     "Giới tính",
-                    "Kinh nghiệm",
                     "Trạng thái",
                     "",
                   ].map((h) => (
                     <th
                       key={h}
-                      className="px-5 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest"
+                      className="px-5 py-4 text-left text-[12px] font-bold text-slate-600 uppercase tracking-widest"
                     >
                       {h}
                     </th>
@@ -113,15 +112,9 @@ export default function HoSoChoDuyetPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-[13.5px] text-slate-500">{hs.email}</td>
-                    <td className="px-5 py-4 text-[13.5px] text-slate-500">{hs.soDienThoai}</td>
-                    <td className="px-5 py-4 text-[13.5px] text-slate-500">{hs.gioiTinh}</td>
-                    <td
-                      className="px-5 py-4 text-[13.5px] text-slate-500 max-w-[180px] truncate"
-                      title={hs.kinhNghiem}
-                    >
-                      {hs.kinhNghiem ?? "—"}
-                    </td>
+                    <td className="px-5 py-4 text-[14px] font-medium text-slate-700">{hs.email}</td>
+                    <td className="px-5 py-4 text-[14px] font-medium text-slate-700">{hs.soDienThoai}</td>
+                    <td className="px-5 py-4 text-[14px] font-medium text-slate-700">{hs.gioiTinh}</td>
                     <td className="px-5 py-4">
                       <StatusBadge status={hs.trangThai} type="hoSo" />
                     </td>

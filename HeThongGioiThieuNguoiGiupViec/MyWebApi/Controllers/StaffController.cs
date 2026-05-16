@@ -227,6 +227,7 @@ namespace MyWebApi.Controllers
                         .ThenInclude(dv => dv.MaDichVuNavigation)
                     .Include(d => d.DonDatDichVus)
                         .ThenInclude(dv => dv.NgayLamViecs)
+                            .ThenInclude(nlv => nlv.MaNguoiGiupViecNavigation)
                     .Include(d => d.ThanhToans)
                     .FirstOrDefaultAsync(d => d.MaDon == id);
 
@@ -271,7 +272,9 @@ namespace MyWebApi.Controllers
                             ngayLam = nlv.NgayLam,
                             gioBatDau = nlv.GioBatDau,
                             trangThai = nlv.TrangThai,
-                            maNguoiGiupViec = nlv.MaNguoiGiupViec
+                            maNguoiGiupViec = nlv.MaNguoiGiupViec,
+                            tenNguoiGiupViec = nlv.MaNguoiGiupViecNavigation != null
+                                ? nlv.MaNguoiGiupViecNavigation.HoTen : null
                         }).ToList()
                     }).ToList(),
                     thanhToan = don.ThanhToans.Select(tt => new
@@ -322,29 +325,104 @@ namespace MyWebApi.Controllers
                     });
                 }
 
-                // Kiểm tra người giúp việc tồn tại
-                var nguoiGiupViec = await _context.NguoiDungs.FindAsync(request.MaNguoiGiupViec);
-                if (nguoiGiupViec == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy người giúp việc." });
-
-                //CÂP NHẬT MÃ NHÂN VIÊN CHO ĐƠN ĐẶT
+                // Lấy mã nhân viên đang đăng nhập
                 var maNhanVien = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
                 if (string.IsNullOrEmpty(maNhanVien))
                     return Unauthorized(new { success = false, message = "Không xác định được nhân viên." });
 
-                // ✅ GÁN NHÂN VIÊN DUYỆT ĐƠN
-                don.MaNhanVien = maNhanVien;
+                // Xác định chế độ: 1 người, theo dịch vụ, hay theo ngày
+                bool dungTheoNgay = request.PhanCongTheoNgayLamViec != null && request.PhanCongTheoNgayLamViec.Count > 0;
+                bool dung2Nguoi = request.PhanCongTheoDichVu != null && request.PhanCongTheoDichVu.Count > 0;
 
-                foreach (var dv in don.DonDatDichVus)
+                if (dungTheoNgay)
                 {
-                    foreach (var nlv in dv.NgayLamViecs)
+                    // Chế độ 3: ưu tiên cao nhất - mỗi NgayLamViec có người riêng
+                    var mapPhanCong = request.PhanCongTheoNgayLamViec!
+                        .ToDictionary(x => x.MaNgayLamViec, x => x.MaNguoiGiupViec);
+
+                    var allMaidIds = mapPhanCong.Values.Distinct().ToList();
+                    foreach (var maidId in allMaidIds)
                     {
-                        nlv.MaNguoiGiupViec = request.MaNguoiGiupViec;
-                        nlv.TrangThai = "Đã phân công";
-                        nlv.ThoiGianPhanCong = DateTime.Now;
+                        var nguoi = await _context.NguoiDungs.FindAsync(maidId);
+                        if (nguoi == null)
+                            return NotFound(new { success = false, message = $"Không tìm thấy người giúp việc: {maidId}." });
+                    }
+
+                    var maNLVtrongDon = don.DonDatDichVus.SelectMany(dv => dv.NgayLamViecs).Select(nlv => nlv.MaNgayLamViec).ToHashSet();
+                    foreach (var key in mapPhanCong.Keys)
+                    {
+                        if (!maNLVtrongDon.Contains(key))
+                            return BadRequest(new { success = false, message = $"MaNgayLamViec '{key}' không thuộc đơn này." });
+                    }
+
+                    foreach (var dv in don.DonDatDichVus)
+                    {
+                        foreach (var nlv in dv.NgayLamViecs)
+                        {
+                            if (!mapPhanCong.TryGetValue(nlv.MaNgayLamViec, out var maidIdForNlv)) continue;
+
+                            nlv.MaNguoiGiupViec = maidIdForNlv;
+                            nlv.TrangThai = "Đã phân công";
+                            nlv.ThoiGianPhanCong = DateTime.Now;
+                        }
                     }
                 }
+                else if (dung2Nguoi)
+                {
+                    // Chế độ 2: mỗi DonDatDichVu có người riêng
+                    var mapPhanCong = request.PhanCongTheoDichVu!
+                        .ToDictionary(x => x.MaDonDatDichVu, x => x.MaNguoiGiupViec);
+
+                    var allMaidIds = mapPhanCong.Values.Distinct().ToList();
+                    foreach (var maidId in allMaidIds)
+                    {
+                        var nguoi = await _context.NguoiDungs.FindAsync(maidId);
+                        if (nguoi == null)
+                            return NotFound(new { success = false, message = $"Không tìm thấy người giúp việc: {maidId}." });
+                    }
+
+                    var maDDDVtrongDon = don.DonDatDichVus.Select(dv => dv.MaDonDatDichVu).ToHashSet();
+                    foreach (var key in mapPhanCong.Keys)
+                    {
+                        if (!maDDDVtrongDon.Contains(key))
+                            return BadRequest(new { success = false, message = $"MaDonDatDichVu '{key}' không thuộc đơn này." });
+                    }
+
+                    foreach (var dv in don.DonDatDichVus)
+                    {
+                        if (!mapPhanCong.TryGetValue(dv.MaDonDatDichVu, out var maidIdForDv)) continue;
+
+                        foreach (var nlv in dv.NgayLamViecs)
+                        {
+                            nlv.MaNguoiGiupViec = maidIdForDv;
+                            nlv.TrangThai = "Đã phân công";
+                            nlv.ThoiGianPhanCong = DateTime.Now;
+                        }
+                    }
+                }
+                else
+                {
+                    // Chế độ 1: gán cùng 1 người cho toàn bộ NgayLamViec
+                    if (string.IsNullOrWhiteSpace(request.MaNguoiGiupViec))
+                        return BadRequest(new { success = false, message = "Cần cung cấp MaNguoiGiupViec, PhanCongTheoDichVu hoặc PhanCongTheoNgayLamViec." });
+
+                    var nguoiGiupViec = await _context.NguoiDungs.FindAsync(request.MaNguoiGiupViec);
+                    if (nguoiGiupViec == null)
+                        return NotFound(new { success = false, message = "Không tìm thấy người giúp việc." });
+
+                    foreach (var dv in don.DonDatDichVus)
+                    {
+                        foreach (var nlv in dv.NgayLamViecs)
+                        {
+                            nlv.MaNguoiGiupViec = request.MaNguoiGiupViec;
+                            nlv.TrangThai = "Đã phân công";
+                            nlv.ThoiGianPhanCong = DateTime.Now;
+                        }
+                    }
+                }
+
+                // Gán nhân viên duyệt đơn
+                don.MaNhanVien = maNhanVien;
 
                 // Ghi lịch sử trạng thái mới
                 string maLichSu = await GenerateMaLichSuAsync();
@@ -431,72 +509,136 @@ namespace MyWebApi.Controllers
         {
             try
             {
-                var requiredSkills = new HashSet<string>();
-                var lichDon = new List<(DateOnly NgayLam, TimeSpan GioBatDau, TimeSpan GioKetThuc)>();
+                // ================================================================
+                // Bước 1: Đọc thông tin đơn và dựng các slot làm việc tuần tự
+                // ================================================================
+                var donInfo = new List<(string MaDonDatDichVu, string? MaKyNang, List<(DateOnly Ngay, TimeSpan GioBatDau, TimeSpan GioKetThuc)> Slots)>();
+                var allSlotsDon = new List<(DateOnly Ngay, TimeSpan GioBatDau, TimeSpan GioKetThuc)>();
+                var singleSlotsDict = new Dictionary<string, (DateOnly Ngay, TimeSpan GioBatDau, TimeSpan GioKetThuc)>();
 
-                // ================================
-                // 1. Lấy thông tin đơn
-                // ================================
+                DonDat? donDat = null;
+
                 if (!string.IsNullOrWhiteSpace(maDon))
                 {
-                    var donDat = await _context.DonDats
+                    donDat = await _context.DonDats
                         .Include(d => d.DonDatDichVus)
                             .ThenInclude(dv => dv.MaDichVuNavigation)
                         .Include(d => d.DonDatDichVus)
                             .ThenInclude(dv => dv.NgayLamViecs)
-                                .ThenInclude(nlv => nlv.DonDatDichVuNgayLamViecs)
                         .AsNoTracking()
                         .FirstOrDefaultAsync(d => d.MaDon == maDon);
 
                     if (donDat != null)
                     {
-                        // Kỹ năng
-                        var requiredSkillsList = donDat.DonDatDichVus
-                            .Where(dv => dv.MaDichVuNavigation != null)
-                            .Select(dv => dv.MaDichVuNavigation.MaKyNang!)
-                            .Distinct();
-
-                        foreach (var ks in requiredSkillsList)
-                            requiredSkills.Add(ks);
-
-                        // Lịch đơn
-                        foreach (var dv in donDat.DonDatDichVus)
+                        TimeSpan? GetDuration(NgayLamViec nlv)
                         {
+                            if (nlv.ThoiLuongThucHien.HasValue && nlv.ThoiLuongThucHien.Value > 0)
+                                return TimeSpan.FromMinutes(nlv.ThoiLuongThucHien.Value);
+
+                            if (nlv.GioBatDau.HasValue && nlv.GioKetThuc.HasValue && nlv.GioKetThuc.Value > nlv.GioBatDau.Value)
+                                return nlv.GioKetThuc.Value.ToTimeSpan() - nlv.GioBatDau.Value.ToTimeSpan();
+
+                            return null;
+                        }
+
+                        // Lấy tất cả NgayLamViec của toàn bộ đơn
+                        var allNlvFlat = donDat.DonDatDichVus
+                            .SelectMany(dv => dv.NgayLamViecs.Select(nlv => new { dv, nlv }))
+                            .Where(x => x.nlv.NgayLam.HasValue && x.nlv.GioBatDau.HasValue)
+                            .ToList();
+
+                        // Nhóm theo ngày để xếp lịch tuần tự
+                        var groupedDays = allNlvFlat
+                            .GroupBy(x => x.nlv.NgayLam!.Value)
+                            .OrderBy(g => g.Key);
+
+                        foreach (var dayGroup in groupedDays)
+                        {
+                            // Sắp xếp theo giờ bắt đầu ban đầu, sau đó theo mã dịch vụ, mã ngày làm việc
+                            var orderedInDay = dayGroup
+                                .OrderBy(x => x.nlv.GioBatDau!.Value)
+                                .ThenBy(x => x.dv.MaDonDatDichVu)
+                                .ThenBy(x => x.nlv.MaNgayLamViec)
+                                .ToList();
+
+                            if (orderedInDay.Count == 0) continue;
+
+                            TimeSpan currentTime = orderedInDay[0].nlv.GioBatDau!.Value.ToTimeSpan();
+
+                            foreach (var item in orderedInDay)
+                            {
+                                var duration = GetDuration(item.nlv);
+                                if (duration == null || duration.Value <= TimeSpan.Zero)
+                                    continue;
+
+                                var start = currentTime;
+                                var end = start.Add(duration.Value);
+
+                                singleSlotsDict[item.nlv.MaNgayLamViec] = (dayGroup.Key, start, end);
+                                currentTime = end; // Dịch vụ tiếp theo sẽ bắt đầu khi dịch vụ này kết thúc
+                            }
+                        }
+
+                        // Gom nhóm lại theo từng dịch vụ
+                        foreach (var dv in donDat.DonDatDichVus.OrderBy(x => x.MaDonDatDichVu))
+                        {
+                            var serviceSlots = new List<(DateOnly Ngay, TimeSpan GioBatDau, TimeSpan GioKetThuc)>();
+                            var maKyNang = dv.MaDichVuNavigation?.MaKyNang;
+
                             foreach (var nlv in dv.NgayLamViecs)
                             {
-                                if (nlv.NgayLam.HasValue && nlv.GioBatDau.HasValue)
+                                if (singleSlotsDict.TryGetValue(nlv.MaNgayLamViec, out var slot))
                                 {
-                                    // ✅ FIX 1: SUM duration (nhiều dịch vụ)
-                                    int duration = nlv.DonDatDichVuNgayLamViecs
-                                        .Sum(x => x.ThoiGianThucHien) ?? 0;
-
-                                    var start = nlv.GioBatDau.Value.ToTimeSpan();
-                                    var end = start.Add(TimeSpan.FromMinutes(duration));
-
-                                    lichDon.Add((nlv.NgayLam.Value, start, end));
+                                    serviceSlots.Add(slot);
+                                    allSlotsDon.Add(slot);
                                 }
                             }
+
+                            donInfo.Add((dv.MaDonDatDichVu, maKyNang, serviceSlots));
                         }
                     }
                 }
 
-                // ================================
-                // 2. Hồ sơ đã duyệt
-                // ================================
+                var allRequiredSkills = donInfo
+                    .Where(x => x.MaKyNang != null)
+                    .Select(x => x.MaKyNang!)
+                    .Distinct()
+                    .ToHashSet();
+
+                // ================================================================
+                // Bước 2: Lấy dữ liệu hồ sơ, đánh giá, lịch bận, lịch rảnh
+                // ================================================================
+
+                // 2.1. Hồ sơ
                 var hoSoDaDuyet = await _context.HoSoNguoiGiupViecs
                     .Where(hs => hs.TrangThaiXacMinh == "Đã duyệt")
                     .Include(hs => hs.MaNguoiGiupViecNavigation)
                         .ThenInclude(nd => nd.NguoiDungVaiTros)
                             .ThenInclude(nv => nv.MaVaiTroNavigation)
                     .Include(hs => hs.KyNangNguoiGiupViecs)
+                        .ThenInclude(kn => kn.MaKyNangNavigation)
                     .AsNoTracking()
                     .ToListAsync();
 
-                // ================================
-                // 3. Lịch đã phân công
-                // ================================
+                // 2.2. Đánh giá (tính toán số sao và tổng số đánh giá)
+                var allRatingsRaw = await _context.DanhGia
+                    .Where(dg => dg.SoSao.HasValue)
+                    .SelectMany(dg => dg.MaDonNavigation.DonDatDichVus
+                        .SelectMany(dv => dv.NgayLamViecs)
+                        .Where(nlv => nlv.MaNguoiGiupViec != null)
+                        .Select(nlv => new { dg.MaDanhGia, MaidId = nlv.MaNguoiGiupViec, SoSao = dg.SoSao }))
+                    .ToListAsync();
+
+                var ratingsData = allRatingsRaw
+                    .DistinctBy(x => new { x.MaDanhGia, x.MaidId })
+                    .GroupBy(x => x.MaidId)
+                    .ToDictionary(g => g.Key!, g => new {
+                        TongSoDanhGia = g.Count(),
+                        SoSaoDanhGia = Math.Round(g.Average(x => x.SoSao!.Value), 1)
+                    });
+
+                // 2.3. Lịch bận
                 var tatCaNgayLamViec = await _context.NgayLamViecs
-                    .Include(nlv => nlv.DonDatDichVuNgayLamViecs)
                     .Where(nlv => nlv.MaNguoiGiupViec != null
                                   && nlv.NgayLam.HasValue
                                   && nlv.GioBatDau.HasValue
@@ -504,153 +646,359 @@ namespace MyWebApi.Controllers
                     .AsNoTracking()
                     .ToListAsync();
 
-                // ================================
-                // 4. Lịch rảnh
-                // ================================
+                var soLichDangCo = new Dictionary<string, int>();
+                var biBanLichAll = new HashSet<string>();
+
+                foreach (var nlv in tatCaNgayLamViec)
+                {
+                    var maidId = nlv.MaNguoiGiupViec!;
+
+                    if (!soLichDangCo.ContainsKey(maidId))
+                        soLichDangCo[maidId] = 0;
+                    soLichDangCo[maidId]++;
+
+                    if (allSlotsDon.Count > 0 && !biBanLichAll.Contains(maidId) && nlv.GioBatDau.HasValue)
+                    {
+                        TimeSpan maidStart = nlv.GioBatDau.Value.ToTimeSpan();
+                        TimeSpan maidEnd;
+
+                        if (nlv.GioKetThuc.HasValue)
+                            maidEnd = nlv.GioKetThuc.Value.ToTimeSpan();
+                        else if (nlv.ThoiLuongThucHien.HasValue && nlv.ThoiLuongThucHien.Value > 0)
+                            maidEnd = maidStart.Add(TimeSpan.FromMinutes(nlv.ThoiLuongThucHien.Value));
+                        else
+                            continue;
+
+                        foreach (var ld in allSlotsDon)
+                        {
+                            if (ld.Ngay == nlv.NgayLam!.Value && maidStart < ld.GioKetThuc && ld.GioBatDau < maidEnd)
+                            {
+                                biBanLichAll.Add(maidId);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 2.4. Lịch rảnh
                 var lichRanh = await _context.LichRanhs
                     .Include(lr => lr.LichRanhCaLamViecs)
                         .ThenInclude(lrc => lrc.MaCaLamViecNavigation)
                     .AsNoTracking()
                     .ToListAsync();
 
-                HashSet<string> biBanLich = new();
-                Dictionary<string, int> soLichDangCo = new();
-
-                foreach (var nlv in tatCaNgayLamViec)
+                bool CoLichRanhBaoPhu(string maidId, List<(DateOnly Ngay, TimeSpan GioBatDau, TimeSpan GioKetThuc)> slots)
                 {
-                    if (string.IsNullOrEmpty(nlv.MaNguoiGiupViec)) continue;
+                    if (slots.Count == 0) return true;
 
-                    if (!soLichDangCo.ContainsKey(nlv.MaNguoiGiupViec))
-                        soLichDangCo[nlv.MaNguoiGiupViec] = 0;
-
-                    soLichDangCo[nlv.MaNguoiGiupViec]++;
-
-                    if (lichDon.Count > 0 && !biBanLich.Contains(nlv.MaNguoiGiupViec))
+                    foreach (var ld in slots)
                     {
-                        int duration = nlv.DonDatDichVuNgayLamViecs
-                            .Sum(x => x.ThoiGianThucHien) ?? 0;
+                        var lichTrongNgay = lichRanh
+                            .Where(lr => lr.MaNguoiGiupViec == maidId && lr.Ngay == ld.Ngay)
+                            .ToList();
 
-                        var maidStart = nlv.GioBatDau.Value.ToTimeSpan();
-                        var maidEnd = maidStart.Add(TimeSpan.FromMinutes(duration));
+                        var caSlots = lichTrongNgay
+                            .SelectMany(lr => lr.LichRanhCaLamViecs)
+                            .Select(ca => (
+                                Start: ca.MaCaLamViecNavigation.GioBatDau.ToTimeSpan(),
+                                End: ca.MaCaLamViecNavigation.GioKetThuc.ToTimeSpan()
+                            ))
+                            .OrderBy(x => x.Start)
+                            .ToList();
 
-                        foreach (var ld in lichDon)
+                        var merged = new List<(TimeSpan Start, TimeSpan End)>();
+                        foreach (var slot in caSlots)
                         {
-                            if (ld.NgayLam == nlv.NgayLam.Value)
+                            if (!merged.Any())
                             {
-                                if (maidStart < ld.GioKetThuc && ld.GioBatDau < maidEnd)
-                                {
-                                    biBanLich.Add(nlv.MaNguoiGiupViec);
-                                    break;
-                                }
+                                merged.Add(slot);
+                            }
+                            else
+                            {
+                                var last = merged[merged.Count - 1];
+                                if (slot.Start <= last.End)
+                                    merged[merged.Count - 1] = (last.Start, slot.End > last.End ? slot.End : last.End);
+                                else
+                                    merged.Add(slot);
                             }
                         }
+
+                        bool covered = merged.Any(m => m.Start <= ld.GioBatDau && m.End >= ld.GioKetThuc);
+                        if (!covered) return false;
                     }
+
+                    return true;
                 }
 
-                // ================================
-                // 5. FILTER FINAL
-                // ================================
-                var danhSachPhuHop = hoSoDaDuyet
+                bool HopLeCoban(HoSoNguoiGiupViec hs)
+                {
+                    return hs.MaNguoiGiupViecNavigation?.NguoiDungVaiTros != null
+                           && hs.MaNguoiGiupViecNavigation.NguoiDungVaiTros.Any(nv =>
+                                nv.MaVaiTroNavigation != null &&
+                                nv.MaVaiTroNavigation.TenVaiTro == "Maid");
+                }
+
+                // ================================================================
+                // Bước 3: Lọc danh sách ứng viên Mode 1 (1 người cho toàn đơn)
+                // ================================================================
+                var candidates1Nguoi = hoSoDaDuyet
                     .Where(hs =>
                     {
-                        var maidId = hs.MaNguoiGiupViec;
+                        if (!HopLeCoban(hs)) return false;
+                        if (biBanLichAll.Contains(hs.MaNguoiGiupViec)) return false;
 
-                        bool coVaiTro = hs.MaNguoiGiupViecNavigation.NguoiDungVaiTros
-                            .Any(nv => nv.MaVaiTroNavigation.TenVaiTro == "Maid");
+                        var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToHashSet();
+                        bool duKyNang = allRequiredSkills.Count == 0
+                                        || allRequiredSkills.All(rs => maidSkills.Contains(rs));
+                        if (!duKyNang) return false;
 
-                        bool khongTrungLich = !biBanLich.Contains(maidId);
-
-                        var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList();
-                        bool coKyNangPhuHop = requiredSkills.Count == 0 || requiredSkills.All(rs => maidSkills.Contains(rs));
-
-                        // ======================
-                        // ✅ FIX 2: GHÉP CA
-                        // ======================
-                        bool coLichRanhPhuHop = true;
-
-                        if (lichDon.Count > 0)
-                        {
-                            foreach (var ld in lichDon)
-                            {
-                                var lichTrongNgay = lichRanh
-                                    .Where(lr => lr.MaNguoiGiupViec == maidId && lr.Ngay == ld.NgayLam)
-                                    .ToList();
-
-                                var allSlots = lichTrongNgay
-                                    .SelectMany(lr => lr.LichRanhCaLamViecs)
-                                    .Select(ca => new
-                                    {
-                                        Start = ca.MaCaLamViecNavigation.GioBatDau.ToTimeSpan(),
-                                        End = ca.MaCaLamViecNavigation.GioKetThuc.ToTimeSpan()
-                                    })
-                                    .OrderBy(x => x.Start)
-                                    .ToList();
-
-                                var merged = new List<(TimeSpan Start, TimeSpan End)>();
-
-                                foreach (var slot in allSlots)
-                                {
-                                    if (!merged.Any())
-                                    {
-                                        merged.Add((slot.Start, slot.End));
-                                    }
-                                    else
-                                    {
-                                        var last = merged.Last();
-
-                                        if (slot.Start <= last.End)
-                                        {
-                                            merged[merged.Count - 1] =
-                                                (last.Start, slot.End > last.End ? slot.End : last.End);
-                                        }
-                                        else
-                                        {
-                                            merged.Add((slot.Start, slot.End));
-                                        }
-                                    }
-                                }
-
-                                bool coSlotPhuHop = merged.Any(m =>
-                                    m.Start <= ld.GioBatDau && m.End >= ld.GioKetThuc
-                                );
-
-                                if (!coSlotPhuHop)
-                                {
-                                    coLichRanhPhuHop = false;
-                                    break;
-                                }
-                            }
-                        }
-
-                        return coVaiTro && khongTrungLich && coKyNangPhuHop && coLichRanhPhuHop;
+                        return CoLichRanhBaoPhu(hs.MaNguoiGiupViec, allSlotsDon);
                     })
                     .Select(hs =>
                     {
-                        var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList();
+                        var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNangNavigation?.TenKyNang ?? k.MaKyNang).ToList();
+                        var chiTietKyNang = hs.KyNangNguoiGiupViecs.Select(k => new { k.MaKyNang, TenKyNang = k.MaKyNangNavigation?.TenKyNang, k.KinhNghiem }).ToList();
+                        var maidId = hs.MaNguoiGiupViec;
+                        var rating = ratingsData.GetValueOrDefault(maidId);
+                        var soKyNangPhuHop = allRequiredSkills.Count(rs => hs.KyNangNguoiGiupViecs.Any(k => k.MaKyNang == rs));
 
                         return new
                         {
-                            maNguoiGiupViec = hs.MaNguoiGiupViec,
+                            maNguoiGiupViec = maidId,
                             hoTen = hs.MaNguoiGiupViecNavigation.HoTen,
                             soDienThoai = hs.MaNguoiGiupViecNavigation.SoDienThoai,
                             email = hs.MaNguoiGiupViecNavigation.Email,
-                            diaChi = hs.MaNguoiGiupViecNavigation.DiaChi,
+                            anhChanDung = hs.AnhChanDung,
                             danhSachKyNang = maidSkills,
-                            soKyNangPhuHop = requiredSkills.Count(rs => maidSkills.Contains(rs)),
-                            soLichDangCo = soLichDangCo.ContainsKey(hs.MaNguoiGiupViec)
-                                ? soLichDangCo[hs.MaNguoiGiupViec]
-                                : 0
+                            chiTietKyNang = chiTietKyNang,
+                            soSaoDanhGia = rating?.SoSaoDanhGia,
+                            tongSoDanhGia = rating?.TongSoDanhGia ?? 0,
+                            _soKyNangPhuHop = soKyNangPhuHop,
+                            _soLichDangCo = soLichDangCo.GetValueOrDefault(maidId, 0)
                         };
                     })
-                    .OrderByDescending(x => x.soKyNangPhuHop)
-                    .ThenBy(x => x.soLichDangCo)
+                    .OrderByDescending(x => x._soKyNangPhuHop)
+                    .ThenBy(x => x._soLichDangCo)
+                    .ThenByDescending(x => x.soSaoDanhGia ?? 0)
                     .ThenBy(x => x.maNguoiGiupViec)
-                    .ToList();
+                    .Select(x => new {
+                        x.maNguoiGiupViec,
+                        x.hoTen,
+                        x.soDienThoai,
+                        x.email,
+                        x.anhChanDung,
+                        x.danhSachKyNang,
+                        x.chiTietKyNang,
+                        x.soSaoDanhGia,
+                        x.tongSoDanhGia
+                    })
+                    .ToList<object>();
+
+                // ================================================================
+                // Bước 4: Lọc danh sách ứng viên Mode 2 (theo dịch vụ)
+                // ================================================================
+                var goiYTheoDichVu = new List<object>();
+
+                if ((donDat?.DonDatDichVus.Count ?? 0) > 0)
+                {
+                    foreach (var dvInfo in donInfo)
+                    {
+                        var biBanLichDv = new HashSet<string>();
+
+                        if (dvInfo.Slots.Count > 0)
+                        {
+                            foreach (var nlv in tatCaNgayLamViec)
+                            {
+                                var maidId = nlv.MaNguoiGiupViec!;
+                                if (biBanLichDv.Contains(maidId) || !nlv.GioBatDau.HasValue) continue;
+
+                                TimeSpan mS = nlv.GioBatDau.Value.ToTimeSpan();
+                                TimeSpan mE = nlv.GioKetThuc.HasValue
+                                    ? nlv.GioKetThuc.Value.ToTimeSpan()
+                                    : nlv.ThoiLuongThucHien.HasValue
+                                        ? mS.Add(TimeSpan.FromMinutes(nlv.ThoiLuongThucHien.Value))
+                                        : mS;
+
+                                foreach (var ld in dvInfo.Slots)
+                                {
+                                    if (ld.Ngay == nlv.NgayLam!.Value && mS < ld.GioKetThuc && ld.GioBatDau < mE)
+                                    {
+                                        biBanLichDv.Add(maidId);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        var candidatesDv = hoSoDaDuyet
+                            .Where(hs =>
+                            {
+                                if (!HopLeCoban(hs)) return false;
+                                if (biBanLichDv.Contains(hs.MaNguoiGiupViec)) return false;
+
+                                if (dvInfo.MaKyNang != null)
+                                {
+                                    var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToHashSet();
+                                    if (!maidSkills.Contains(dvInfo.MaKyNang)) return false;
+                                }
+
+                                return CoLichRanhBaoPhu(hs.MaNguoiGiupViec, dvInfo.Slots);
+                            })
+                            .Select(hs =>
+                            {
+                                var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNangNavigation?.TenKyNang ?? k.MaKyNang).ToList();
+                                var chiTietKyNang = hs.KyNangNguoiGiupViecs.Select(k => new { k.MaKyNang, TenKyNang = k.MaKyNangNavigation?.TenKyNang, k.KinhNghiem }).ToList();
+                                var maidId = hs.MaNguoiGiupViec;
+                                var rating = ratingsData.GetValueOrDefault(maidId);
+                                var soKyNangPhuHop = dvInfo.MaKyNang != null && hs.KyNangNguoiGiupViecs.Any(k => k.MaKyNang == dvInfo.MaKyNang) ? 1 : 0;
+
+                                return new
+                                {
+                                    maNguoiGiupViec = maidId,
+                                    hoTen = hs.MaNguoiGiupViecNavigation.HoTen,
+                                    soDienThoai = hs.MaNguoiGiupViecNavigation.SoDienThoai,
+                                    email = hs.MaNguoiGiupViecNavigation.Email,
+                                    anhChanDung = hs.AnhChanDung,
+                                    danhSachKyNang = maidSkills,
+                                    chiTietKyNang = chiTietKyNang,
+                                    soSaoDanhGia = rating?.SoSaoDanhGia,
+                                    tongSoDanhGia = rating?.TongSoDanhGia ?? 0,
+                                    _soKyNangPhuHop = soKyNangPhuHop,
+                                    _soLichDangCo = soLichDangCo.GetValueOrDefault(maidId, 0)
+                                };
+                            })
+                            .OrderByDescending(x => x._soKyNangPhuHop)
+                            .ThenBy(x => x._soLichDangCo)
+                            .ThenByDescending(x => x.soSaoDanhGia ?? 0)
+                            .ThenBy(x => x.maNguoiGiupViec)
+                            .Select(x => new {
+                                x.maNguoiGiupViec,
+                                x.hoTen,
+                                x.soDienThoai,
+                                x.email,
+                                x.anhChanDung,
+                                x.danhSachKyNang,
+                                x.chiTietKyNang,
+                                x.soSaoDanhGia,
+                                x.tongSoDanhGia
+                            })
+                            .ToList<object>();
+
+                        goiYTheoDichVu.Add(new
+                        {
+                            maDonDatDichVu = dvInfo.MaDonDatDichVu,
+                            candidates = candidatesDv
+                        });
+                    }
+                }
+
+                // ================================================================
+                // Bước 5: Lọc danh sách ứng viên Mode 3 (theo ngày làm việc)
+                // ================================================================
+                var goiYTheoNgayLamViec = new List<object>();
+
+                if (donDat != null && singleSlotsDict.Count > 0)
+                {
+                    foreach (var kvp in singleSlotsDict)
+                    {
+                        var maNgayLamViec = kvp.Key;
+                        var slot = kvp.Value;
+                        var singleSlotList = new List<(DateOnly Ngay, TimeSpan GioBatDau, TimeSpan GioKetThuc)> { slot };
+
+                        var dv = donDat.DonDatDichVus.FirstOrDefault(d => d.NgayLamViecs.Any(n => n.MaNgayLamViec == maNgayLamViec));
+                        var maKyNang = dv?.MaDichVuNavigation?.MaKyNang;
+
+                        var biBanLichNgay = new HashSet<string>();
+                        foreach (var tatCaNlv in tatCaNgayLamViec)
+                        {
+                            var maidId = tatCaNlv.MaNguoiGiupViec!;
+                            if (biBanLichNgay.Contains(maidId) || !tatCaNlv.GioBatDau.HasValue) continue;
+
+                            TimeSpan mS = tatCaNlv.GioBatDau.Value.ToTimeSpan();
+                            TimeSpan mE = tatCaNlv.GioKetThuc.HasValue
+                                ? tatCaNlv.GioKetThuc.Value.ToTimeSpan()
+                                : tatCaNlv.ThoiLuongThucHien.HasValue
+                                    ? mS.Add(TimeSpan.FromMinutes(tatCaNlv.ThoiLuongThucHien.Value))
+                                    : mS;
+
+                            if (slot.Ngay == tatCaNlv.NgayLam!.Value && mS < slot.GioKetThuc && slot.GioBatDau < mE)
+                            {
+                                biBanLichNgay.Add(maidId);
+                            }
+                        }
+
+                        var candidatesNgay = hoSoDaDuyet
+                            .Where(hs =>
+                            {
+                                if (!HopLeCoban(hs)) return false;
+                                if (biBanLichNgay.Contains(hs.MaNguoiGiupViec)) return false;
+
+                                if (maKyNang != null)
+                                {
+                                    var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToHashSet();
+                                    if (!maidSkills.Contains(maKyNang)) return false;
+                                }
+
+                                return CoLichRanhBaoPhu(hs.MaNguoiGiupViec, singleSlotList);
+                            })
+                            .Select(hs =>
+                            {
+                                var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNangNavigation?.TenKyNang ?? k.MaKyNang).ToList();
+                                var chiTietKyNang = hs.KyNangNguoiGiupViecs.Select(k => new { k.MaKyNang, TenKyNang = k.MaKyNangNavigation?.TenKyNang, k.KinhNghiem }).ToList();
+                                var maidId = hs.MaNguoiGiupViec;
+                                var rating = ratingsData.GetValueOrDefault(maidId);
+                                var soKyNangPhuHop = maKyNang != null && hs.KyNangNguoiGiupViecs.Any(k => k.MaKyNang == maKyNang) ? 1 : 0;
+
+                                return new
+                                {
+                                    maNguoiGiupViec = maidId,
+                                    hoTen = hs.MaNguoiGiupViecNavigation.HoTen,
+                                    soDienThoai = hs.MaNguoiGiupViecNavigation.SoDienThoai,
+                                    email = hs.MaNguoiGiupViecNavigation.Email,
+                                    anhChanDung = hs.AnhChanDung,
+                                    danhSachKyNang = maidSkills,
+                                    chiTietKyNang = chiTietKyNang,
+                                    soSaoDanhGia = rating?.SoSaoDanhGia,
+                                    tongSoDanhGia = rating?.TongSoDanhGia ?? 0,
+                                    _soKyNangPhuHop = soKyNangPhuHop,
+                                    _soLichDangCo = soLichDangCo.GetValueOrDefault(maidId, 0)
+                                };
+                            })
+                            .OrderByDescending(x => x._soKyNangPhuHop)
+                            .ThenBy(x => x._soLichDangCo)
+                            .ThenByDescending(x => x.soSaoDanhGia ?? 0)
+                            .ThenBy(x => x.maNguoiGiupViec)
+                            .Select(x => new {
+                                x.maNguoiGiupViec,
+                                x.hoTen,
+                                x.soDienThoai,
+                                x.email,
+                                x.anhChanDung,
+                                x.danhSachKyNang,
+                                x.chiTietKyNang,
+                                x.soSaoDanhGia,
+                                x.tongSoDanhGia
+                            })
+                            .ToList<object>();
+
+                        goiYTheoNgayLamViec.Add(new
+                        {
+                            maNgayLamViec = maNgayLamViec,
+                            maDonDatDichVu = dv?.MaDonDatDichVu,
+                            tenDichVu = dv?.MaDichVuNavigation?.TenDichVu,
+                            ngayLam = slot.Ngay.ToString("yyyy-MM-dd"),
+                            gioBatDau = slot.GioBatDau.ToString(@"hh\:mm"),
+                            candidates = candidatesNgay
+                        });
+                    }
+                }
 
                 return Ok(new
                 {
                     success = true,
-                    data = danhSachPhuHop
+                    data = candidates1Nguoi,
+                    goiY2Nguoi = goiYTheoDichVu,
+                    goiYTheoNgayLamViec = goiYTheoNgayLamViec
                 });
             }
             catch (Exception ex)
@@ -810,167 +1158,7 @@ namespace MyWebApi.Controllers
             }
         }
 
-        // =============================================
-        // 6. DANH SACH NGUOI GIUP VIEC (de phan cong)
-        // =============================================
 
-        // GET /api/v1/staff/danh-sach-nguoi-giup-viec?maDon=DD001
-        //[HttpGet("danh-sach-nguoi-giup-viec")]
-        //public async Task<IActionResult> GetDanhSachNguoiGiupViec([FromQuery] string? maDon = null)
-        //{
-        //    try
-        //    {
-        //        var requiredSkills = new HashSet<string>();
-        //        var lichDon = new List<(DateOnly NgayLam, TimeSpan GioBatDau, TimeSpan GioKetThuc)>();
-
-        //        if (!string.IsNullOrWhiteSpace(maDon))
-        //        {
-        //            // ── Bước 1: Phân tích đơn đặt để tìm yêu cầu kỹ năng và khoảng thời gian ──
-        //            var donDat = await _context.DonDats
-        //                .Include(d => d.DonDatDichVus)
-        //                    .ThenInclude(dv => dv.MaDichVuNavigation)
-        //                        .ThenInclude(mdv => mdv.DichVuThanhPhans)
-        //                            .ThenInclude(dvtp => dvtp.MaThanhPhanNavigation)
-        //                .Include(d => d.DonDatDichVus)
-        //                    .ThenInclude(dv => dv.NgayLamViecs)
-        //                        .ThenInclude(nlv => nlv.DonDatDichVuNgayLamViecs)
-        //                .AsNoTracking()
-        //                .FirstOrDefaultAsync(d => d.MaDon == maDon);
-
-        //            if (donDat != null)
-        //            {
-        //                // Lấy kỹ năng yêu cầu trực tiếp từ dịch vụ (DichVu)
-        //                var requiredSkillsList = donDat.DonDatDichVus
-        //                    .Where(dv => dv.MaDichVuNavigation != null && !string.IsNullOrWhiteSpace(dv.MaDichVuNavigation.MaKyNang))
-        //                    .Select(dv => dv.MaDichVuNavigation.MaKyNang!)
-        //                    .Distinct()
-        //                    .ToList();
-
-        //                foreach (var ks in requiredSkillsList)
-        //                {
-        //                    requiredSkills.Add(ks);
-        //                }
-
-        //                // Lấy lịch đơn với khoảng thời gian
-        //                foreach (var dv in donDat.DonDatDichVus)
-        //                {
-        //                    foreach (var nlv in dv.NgayLamViecs)
-        //                    {
-        //                        if (nlv.NgayLam.HasValue && nlv.GioBatDau.HasValue)
-        //                        {
-        //                            int duration = nlv.DonDatDichVuNgayLamViecs.FirstOrDefault()?.ThoiGianThucHien ?? 4;
-        //                            var start = nlv.GioBatDau.Value.ToTimeSpan();
-        //                            var end = start.Add(TimeSpan.FromMinutes(duration));
-        //                            lichDon.Add((nlv.NgayLam.Value, start, end));
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
-
-        //        // ── Bước 2: Lấy tất cả người giúp việc hợp lệ ──
-        //        var hoSoDaDuyet = await _context.HoSoNguoiGiupViecs
-        //            .Where(hs => hs.TrangThaiXacMinh == "Đã duyệt")
-        //            .Include(hs => hs.MaNguoiGiupViecNavigation)
-        //                .ThenInclude(nd => nd.NguoiDungVaiTros)
-        //                    .ThenInclude(nv => nv.MaVaiTroNavigation)
-        //            .Include(hs => hs.KyNangNguoiGiupViecs)
-        //            .AsNoTracking()
-        //            .ToListAsync();
-
-        //        // ── Bước 3: Lấy tất cả NgayLamViec đang hoạt động để tính trùng lịch và mức độ rảnh ──
-        //        var tatCaNgayLamViec = await _context.NgayLamViecs
-        //            .Include(nlv => nlv.DonDatDichVuNgayLamViecs)
-        //            .Where(nlv => nlv.MaNguoiGiupViec != null
-        //                          && nlv.NgayLam.HasValue
-        //                          && nlv.GioBatDau.HasValue
-        //                          && nlv.TrangThai != "Đã hủy")
-        //            .AsNoTracking()
-        //            .ToListAsync();
-
-        //        HashSet<string> biBanLich = new();
-        //        Dictionary<string, int> soLichDangCo = new();
-
-        //        foreach (var nlv in tatCaNgayLamViec)
-        //        {
-        //            if (string.IsNullOrEmpty(nlv.MaNguoiGiupViec)) continue;
-
-        //            if (!soLichDangCo.ContainsKey(nlv.MaNguoiGiupViec))
-        //                soLichDangCo[nlv.MaNguoiGiupViec] = 0;
-        //            soLichDangCo[nlv.MaNguoiGiupViec]++;
-
-        //            if (lichDon.Count > 0 && !biBanLich.Contains(nlv.MaNguoiGiupViec))
-        //            {
-        //                int duration = nlv.DonDatDichVuNgayLamViecs.FirstOrDefault()?.ThoiGianThucHien ?? 4;
-        //                var maidStart = nlv.GioBatDau.Value.ToTimeSpan();
-        //                var maidEnd = maidStart.Add(TimeSpan.FromHours(duration));
-
-        //                foreach (var ld in lichDon)
-        //                {
-        //                    if (ld.NgayLam == nlv.NgayLam.Value)
-        //                    {
-        //                        // Kiem tra overlap thoi gian: start1 < end2 && start2 < end1
-        //                        if (maidStart < ld.GioKetThuc && ld.GioBatDau < maidEnd)
-        //                        {
-        //                            biBanLich.Add(nlv.MaNguoiGiupViec);
-        //                            break;
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
-
-        //        // ── Bước 4: Tổng hợp kết quả ──
-        //        var danhSachPhuHop = hoSoDaDuyet
-        //            .Where(hs =>
-        //            {
-        //                // Kiểm tra vai trò Người giúp việc
-        //                bool coVaiTro = hs.MaNguoiGiupViecNavigation.NguoiDungVaiTros
-        //                    .Any(nv => nv.MaVaiTroNavigation.TenVaiTro == "Maid");
-
-        //                // Không được trùng lịch
-        //                bool khongTrungLich = !biBanLich.Contains(hs.MaNguoiGiupViec);
-
-        //                // Phải có tất cả kỹ năng yêu cầu của dịch vụ
-        //                var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList();
-        //                bool coKyNangPhuHop = requiredSkills.Count == 0 || requiredSkills.All(rs => maidSkills.Contains(rs));
-
-        //                return coVaiTro && khongTrungLich && coKyNangPhuHop;
-        //            })
-        //            .Select(hs =>
-        //            {
-        //                var maidSkills = hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList();
-        //                int soKyNangPhuHop = requiredSkills.Count(rs => maidSkills.Contains(rs));
-        //                int soLich = soLichDangCo.ContainsKey(hs.MaNguoiGiupViec) ? soLichDangCo[hs.MaNguoiGiupViec] : 0;
-
-        //                return new
-        //                {
-        //                    maNguoiGiupViec = hs.MaNguoiGiupViec,
-        //                    hoTen = hs.MaNguoiGiupViecNavigation.HoTen,
-        //                    soDienThoai = hs.MaNguoiGiupViecNavigation.SoDienThoai,
-        //                    email = hs.MaNguoiGiupViecNavigation.Email,
-        //                    diaChi = hs.MaNguoiGiupViecNavigation.DiaChi,
-        //                    danhSachKyNang = maidSkills,
-        //                    soKyNangPhuHop = soKyNangPhuHop,
-        //                    soLichDangCo = soLich
-        //                };
-        //            })
-        //            .OrderByDescending(x => x.soKyNangPhuHop) // giảm dần kỹ năng
-        //            .ThenBy(x => x.soLichDangCo)            // tăng dần mức độ bận rộn (rảnh rỗi ưu tiên)
-        //            .ThenBy(x => x.maNguoiGiupViec)         // ổn định thứ tự
-        //            .ToList();
-
-        //        return Ok(new
-        //        {
-        //            success = true,
-        //            data = danhSachPhuHop
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.Message });
-        //    }
-        //}
         // =============================================
         // HELPER
         // =============================================

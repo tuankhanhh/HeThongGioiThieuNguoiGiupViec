@@ -373,12 +373,12 @@ GO
 
 -- 1. Hồ Sơ (Đã sửa lỗi trùng lặp mã HS001 trong kịch bản gốc)
 INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, TrangThaiXacMinh, AnhChanDung) VALUES
-('HS001', 'ND001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Chờ duyệt', NULL),
+('HS001', 'ND001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', NULL),
 ('HS010', 'ND012', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Chờ duyệt', 'https://example.com/avatar_10.jpg'),
 ('HS011', 'ND013', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Chờ duyệt', 'https://example.com/avatar_11.jpg'),
-('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Chờ duyệt', 'https://example.com/avatar_12.jpg'),
-('HS021', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Chờ duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
-('HS022', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Chờ duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
+('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'https://example.com/avatar_12.jpg'),
+('HS021', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
+('HS022', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
 ('HS023', 'GV003', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Chờ duyệt', 'https://images.unsplash.com/photo-1594744803329-05206259021e?w=400');
 GO
 
@@ -475,3 +475,173 @@ select * from LichRanh
 select * from CaLamViec
 select * from LichRanhCaLamViec
 select * from DichVu
+
+-----TRƯỜNG TEST---
+-- =========================================================
+-- BỔ SUNG KỸ NĂNG CHO HỒ SƠ NGƯỜI GIÚP VIỆC
+-- =========================================================
+INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES
+('KN001', 'HS021', N'2 năm dọn dẹp'),
+('KN002', 'HS021', N'1 năm nấu ăn'),
+('KN001', 'HS022', N'3 năm dọn dẹp'),
+('KN005', 'HS023', N'1 năm giặt ủi');
+GO
+
+-- =========================================================
+-- LỊCH RẢNH MỚI CHO TEST
+-- (dùng mã mới để không trùng dữ liệu cũ)
+-- =========================================================
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
+('LR321', 'ND012', '2026-06-20'),
+('LR322', 'ND001', '2026-06-21'),
+('LR323', 'ND012', '2026-06-22'),
+('LR324', 'ND013', '2026-06-22'),
+('LR325', 'ND012', '2026-06-23'),
+('LR326', 'ND012', '2026-06-24'),
+('LR327', 'ND013', '2026-06-24'),
+('LR328', 'ND012', '2026-06-25'),
+('LR329', 'ND013', '2026-06-25');
+GO
+
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec, ThoiGianTao) VALUES
+('LR321', 'CA001', GETDATE()),
+('LR322', 'CA001', GETDATE()),
+('LR323', 'CA001', GETDATE()),
+('LR324', 'CA001', GETDATE()),
+('LR325', 'CA001', GETDATE()),
+('LR326', 'CA001', GETDATE()),
+('LR327', 'CA001', GETDATE()),
+('LR328', 'CA001', GETDATE()),
+('LR329', 'CA001', GETDATE());
+GO
+
+-- =========================================================
+-- CASE 1: 1 ngày + 1 dịch vụ
+-- Kỳ vọng: 1 người phù hợp
+-- TD201 -> ND012
+-- =========================================================
+
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec, ThoiGianTao)
+VALUES
+    -- TD202
+    ('LR322', 'CA002',GETDATE()),
+
+    -- TD203
+    ('LR324', 'CA002',GETDATE()),
+
+    -- TD205 - ngày 24
+    ('LR326', 'CA002',GETDATE()),
+    ('LR327', 'CA002',GETDATE()),
+
+    -- TD205 - ngày 25
+    ('LR328', 'CA002',GETDATE()),
+    ('LR329', 'CA002',GETDATE());
+    GO
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
+('TD201', 'ND010', NULL, N'Test 1 ngày 1 DV', 1, 120000, GETDATE(), NULL);
+GO
+
+INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
+('DDV41', 'TD201', 'DV001');
+GO
+
+INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, NgayLam, GioBatDau, GioKetThuc, ThoiLuongThucHien, ThoiGianPhanCong, TrangThai) VALUES
+('NLV41', 'DDV41', NULL, '2026-06-20', '08:00', '10:00', 120, NULL, N'Chờ phân công');
+GO
+
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
+('LS201', 'TD201', GETDATE(), N'Chờ xác nhận');
+GO
+
+-- =========================================================
+-- CASE 2: 1 ngày + 2 dịch vụ
+-- Kỳ vọng: 1 người đủ cả 2 dịch vụ
+-- TD202 -> ND001
+-- =========================================================
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
+('TD202', 'ND010', NULL, N'Test 1 ngày 2 DV - 1 người', 1, 200000, GETDATE(), NULL);
+GO
+
+INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
+('DDV42', 'TD202', 'DV001'),
+('DDV43', 'TD202', 'DV003');
+GO
+
+INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, NgayLam, GioBatDau, GioKetThuc, ThoiLuongThucHien, ThoiGianPhanCong, TrangThai) VALUES
+('NLV42', 'DDV42', NULL, '2026-06-21', '08:00', '10:00', 120, NULL, N'Chờ phân công'),
+('NLV43', 'DDV43', NULL, '2026-06-21', '10:00', '12:00', 120, NULL, N'Chờ phân công');
+GO
+
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
+('LS202', 'TD202', GETDATE(), N'Chờ xác nhận');
+GO
+
+-- =========================================================
+-- CASE 3: 1 ngày + 2 dịch vụ
+-- Kỳ vọng: không có 1 người đủ điều kiện -> phải tách 2 người
+-- TD203 -> ND012 + ND013
+-- =========================================================
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
+('TD203', 'ND010', NULL, N'Test 1 ngày 2 DV - 2 người', 1, 220000, GETDATE(), NULL);
+GO
+
+INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
+('DDV44', 'TD203', 'DV001'),
+('DDV45', 'TD203', 'DV005');
+GO
+
+INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, NgayLam, GioBatDau, GioKetThuc, ThoiLuongThucHien, ThoiGianPhanCong, TrangThai) VALUES
+('NLV44', 'DDV44', NULL, '2026-06-22', '08:00', '10:00', 120, NULL, N'Chờ phân công'),
+('NLV45', 'DDV45', NULL, '2026-06-22', '10:00', '12:00', 120, NULL, N'Chờ phân công');
+GO
+
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
+('LS203', 'TD203', GETDATE(), N'Chờ xác nhận');
+GO
+
+-- =========================================================
+-- CASE 4: nhiều ngày + 1 dịch vụ
+-- Kỳ vọng: cùng 1 người có thể nhận nhiều ngày
+-- TD204 -> ND012
+-- =========================================================
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
+('TD204', 'ND010', NULL, N'Test nhiều ngày 1 DV', 2, 240000, GETDATE(), NULL);
+GO
+
+INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
+('DDV46', 'TD204', 'DV001');
+GO
+
+INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, NgayLam, GioBatDau, GioKetThuc, ThoiLuongThucHien, ThoiGianPhanCong, TrangThai) VALUES
+('NLV46', 'DDV46', NULL, '2026-06-23', '08:00', '10:00', 120, NULL, N'Chờ phân công'),
+('NLV47', 'DDV46', NULL, '2026-06-24', '08:00', '10:00', 120, NULL, N'Chờ phân công');
+GO
+
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
+('LS204', 'TD204', GETDATE(), N'Chờ xác nhận');
+GO
+
+-- =========================================================
+-- CASE 5: nhiều ngày + 2 dịch vụ
+-- Kỳ vọng: phải tách theo từng dịch vụ / từng ngày
+-- TD205 -> ND012 + ND013
+-- =========================================================
+INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
+('TD205', 'ND010', NULL, N'Test nhiều ngày 2 DV', 2, 420000, GETDATE(), NULL);
+GO
+
+INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
+('DDV47', 'TD205', 'DV003'),
+('DDV48', 'TD205', 'DV005');
+GO
+
+INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, NgayLam, GioBatDau, GioKetThuc, ThoiLuongThucHien, ThoiGianPhanCong, TrangThai) VALUES
+('NLV48', 'DDV47', NULL, '2026-06-24', '08:00', '10:00', 120, NULL, N'Chờ phân công'),
+('NLV49', 'DDV48', NULL, '2026-06-24', '10:00', '12:00', 120, NULL, N'Chờ phân công'),
+('NLV50', 'DDV47', NULL, '2026-06-25', '08:00', '10:00', 120, NULL, N'Chờ phân công'),
+('NLV51', 'DDV48', NULL, '2026-06-25', '10:00', '12:00', 120, NULL, N'Chờ phân công');
+GO
+
+INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
+('LS205', 'TD205', GETDATE(), N'Chờ xác nhận');
+GO

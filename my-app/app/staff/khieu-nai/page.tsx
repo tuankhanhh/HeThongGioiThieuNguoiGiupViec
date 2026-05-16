@@ -21,12 +21,7 @@ interface KhieuNai {
   trangThai: string;
 }
 
-const STATUS_OPTIONS = [
-  "Tất cả",
-  "Chưa xử lý",
-  "Đang xử lý",
-  "Đã giải quyết",
-];
+const STATUS_OPTIONS = ["Tất cả", "Chờ xử lý", "Đang xử lý", "Đã xử lý"];
 
 export default function DanhSachKhieuNaiPage() {
   const router = useRouter();
@@ -41,12 +36,12 @@ export default function DanhSachKhieuNaiPage() {
     try {
       const res = await api.get<any>("/v1/staff/danh-sach-khieu-nai");
       let data = res?.data ?? [];
-      
+
       // Client-side filtering
       if (filterStatus !== "Tất cả") {
         data = data.filter((item: KhieuNai) => item.trangThai === filterStatus);
       }
-      
+
       setDanhSach(data);
     } catch (err: any) {
       setError(err?.message ?? "Không thể tải danh sách khiếu nại.");
@@ -63,7 +58,7 @@ export default function DanhSachKhieuNaiPage() {
     d ? new Date(d).toLocaleDateString("vi-VN") : "Không có dữ liệu";
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
@@ -82,20 +77,22 @@ export default function DanhSachKhieuNaiPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-slate-100">
-        {STATUS_OPTIONS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
-            className={`px-4 py-2 rounded-full text-[12.5px] font-semibold transition-all cursor-pointer ${
-              filterStatus === s
-                ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200"
-                : "bg-white border border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50"
-            }`}
-          >
-            {s}
-          </button>
-        ))}
+      <div className="flex mb-6 pb-6 border-b border-slate-100">
+        <div className="inline-flex bg-slate-200/50 p-1.5 rounded-xl overflow-x-auto w-full md:w-auto">
+          {STATUS_OPTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`px-5 py-2 rounded-lg text-[13.5px] font-bold transition-all duration-300 whitespace-nowrap cursor-pointer ${
+                filterStatus === s
+                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+                  : "text-slate-500 hover:text-indigo-600 hover:bg-slate-200/50"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}

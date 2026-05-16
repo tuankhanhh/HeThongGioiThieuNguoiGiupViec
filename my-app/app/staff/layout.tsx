@@ -14,7 +14,7 @@ export default function StaffLayout({
   const isAuthPage = pathname === "/staff/login";
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-[#f4f7fe]">
       {!isAuthPage && <NavigationStaff />}
       <main
         className={`flex-1 min-h-screen transition-all duration-300 ${
