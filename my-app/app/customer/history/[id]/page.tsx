@@ -10,13 +10,11 @@ import {
   Person,
   Phone,
   AccessTime,
-  CheckCircle,
-  Warning,
-  Download,
-  Help,
   Star,
   StarBorder,
   Send,
+  Assignment,
+  HomeRepairService,
 } from "@mui/icons-material";
 import { useParams } from "next/navigation";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -124,6 +122,23 @@ export default function OrderDetailPage() {
     }).format(amount);
   };
 
+  // Hàm trả về màu sắc động dựa theo trạng thái đơn hàng
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "Đã hoàn thành":
+      case "Hoàn thành":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "Đã huỷ":
+      case "Hủy đơn":
+        return "bg-rose-50 text-rose-700 border-rose-200";
+      case "Đang xử lý":
+      case "Đang thực hiện":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      default:
+        return "bg-amber-50 text-amber-700 border-amber-200";
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
@@ -162,118 +177,140 @@ export default function OrderDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <Link
-          href="/customer/history"
-          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-8 font-semibold transition-colors"
-        >
-          <ArrowBack sx={{ fontSize: 20 }} />
-          <span>Quay lại lịch sử</span>
-        </Link>
+        {/* THAY ĐỔI TẠI ĐÂY: Hàng trên cùng chứa nút quay lại bên trái và trạng thái đơn hàng bên phải */}
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <Link
+            href="/customer/history"
+            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+          >
+            <ArrowBack sx={{ fontSize: 20 }} />
+            <span>Quay lại</span>
+          </Link>
 
-        <div className="mb-8">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">
-                {order.tenDichVu}
-              </h1>
-              <p className="text-lg text-slate-600">
-                Mã đơn:{" "}
-                <span className="font-mono font-semibold text-slate-900">
-                  {order.maDon}
-                </span>
-              </p>
-            </div>
-            {/* <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold ${config.bg} ${config.text}`}
-            >
-              {config.label === "Hoàn thành" ? (
-                <CheckCircle sx={{ fontSize: 20 }} />
-              ) : config.label === "Đã huỷ" ? (
-                <Warning sx={{ fontSize: 20 }} />
-              ) : (
-                <AccessTime sx={{ fontSize: 20 }} />
-              )}
-              {config.label}
-            </div> */}
+          <div
+            className={`px-3 py-1 rounded-full text-xs md:text-sm font-bold border shadow-sm tracking-wide ${getStatusBadgeStyle(order.trangThai)}`}
+          >
+            {order.trangThai}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Timeline trạng thái đơn hàng */}
+        <div className="mb-4 w-full">
+          <OrderStatusTimeline
+            currentStatus={order.trangThai}
+            statusTimes={order.statusTimes || {}}
+            lichSuTrangThai={order.lichSuTrangThai || []}
+            orderDate={formatDate(order.ngayDat)}
+          />
+        </div>
+
+        {/* Grid nội dung chi tiết phía dưới */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Cột trái - Chi tiết lịch trình công việc */}
           <div className="lg:col-span-2 space-y-6">
-            <OrderStatusTimeline
-              currentStatus={order.trangThai} // <-- Truyền thẳng
-              statusTimes={order.statusTimes || {}} // <-- Truyền thẳng
-              orderDate={formatDate(order.ngayDat)}
-            />
-
-            <div className="bg-white rounded-2xl border border-slate-200 p-6">
-              <h2 className="text-lg font-bold text-slate-900 mb-3">
-                Mô tả dịch vụ
-              </h2>
-              <p className="text-slate-700 leading-relaxed">{order.moTa}</p>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200 p-6">
-              <h2 className="text-lg font-bold text-slate-900 mb-6">
+            {/* Khối thông tin đơn đặt */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-2">
+              <h2 className="text-base font-bold text-slate-900 mb-4">
                 Thông tin đơn đặt
               </h2>
 
-              <div className="space-y-5">
-                <div className="flex items-start gap-4">
-                  <div className="bg-blue-50 p-3 rounded-lg mt-1">
-                    <CalendarMonth
-                      className="text-blue-600"
-                      sx={{ fontSize: 20 }}
-                    />
+              {/* Bố cục lưới: 1 cột trên mobile, 2 cột trên màn hình desktop */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Mã đơn hàng */}
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="bg-indigo-50 p-2 rounded-lg flex-shrink-0 text-indigo-600 flex items-center justify-center">
+                    <Assignment sx={{ fontSize: 18 }} />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-500 font-medium mb-1">
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">
+                      Mã đơn hàng
+                    </p>
+                    <p className="text-sm font-mono font-bold text-slate-900">
+                      {order.maDon}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. Ngày đặt dịch vụ */}
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="bg-blue-50 p-2 rounded-lg flex-shrink-0 text-blue-600 flex items-center justify-center">
+                    <CalendarMonth sx={{ fontSize: 18 }} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">
                       Ngày đặt dịch vụ
                     </p>
-                    <p className="text-base font-semibold text-slate-900">
+                    <p className="text-sm font-semibold text-slate-800">
                       {formatDate(order.ngayDat)}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="bg-amber-50 p-3 rounded-lg mt-1">
-                    <LocationOn
-                      className="text-amber-600"
-                      sx={{ fontSize: 20 }}
-                    />
+                {/* 3. Số ngày thực hiện */}
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="bg-purple-50 p-2 rounded-lg flex-shrink-0 text-purple-600 flex items-center justify-center">
+                    <AccessTime sx={{ fontSize: 18 }} />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-500 font-medium mb-1">
-                      Địa chỉ thực hiện
-                    </p>
-                    <p className="text-base font-semibold text-slate-900">
-                      {order.diaChi}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="bg-purple-50 p-3 rounded-lg mt-1">
-                    <AccessTime
-                      className="text-purple-600"
-                      sx={{ fontSize: 20 }}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-500 font-medium mb-1">
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">
                       Số ngày thực hiện
                     </p>
-                    <p className="text-base font-semibold text-slate-900">
+                    <p className="text-sm font-semibold text-slate-800">
                       {order.soNgay} ngày
                     </p>
                   </div>
                 </div>
 
+                {/* Danh sách dịch vụ đặt */}
+                <div className="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 md:col-span-2">
+                  <div className="bg-teal-50 p-2 rounded-lg flex-shrink-0 text-teal-600 mt-0.5 flex items-center justify-center">
+                    <HomeRepairService sx={{ fontSize: 18 }} />
+                  </div>
+                  <div className="w-full">
+                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1.5">
+                      Dịch vụ
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Array.isArray(order.tenDichVu) ? (
+                        order.tenDichVu.map((dichVu: string, i: number) => (
+                          <span
+                            key={i}
+                            className="px-2.5 py-1 bg-teal-50 text-teal-700 text-xs font-semibold rounded-md border border-teal-100"
+                          >
+                            {dichVu}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="px-2.5 py-1 bg-teal-50 text-teal-700 text-xs font-semibold rounded-md border border-teal-100">
+                          {order.tenDichVu || "Chưa xác định"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Địa chỉ thực hiện */}
+                <div className="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 md:col-span-2">
+                  <div className="bg-amber-50 p-2 rounded-lg flex-shrink-0 text-amber-600 mt-0.5 flex items-center justify-center">
+                    <LocationOn sx={{ fontSize: 18 }} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">
+                      Địa chỉ thực hiện
+                    </p>
+                    <p className="text-sm font-semibold text-slate-800 leading-snug">
+                      {order.diaChi}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 5. Ghi chú (Nếu có) */}
                 {order.ghiChu && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <p className="text-sm text-amber-700">
-                      <span className="font-semibold">Ghi chú:</span>{" "}
+                  <div className="bg-amber-50/60 border border-amber-100/80 rounded-xl p-3 md:col-span-2 text-sm">
+                    <p className="text-slate-600 leading-relaxed text-xs md:text-sm">
+                      <span className="font-bold text-amber-800">
+                        Ghi chú từ khách hàng:
+                      </span>{" "}
                       {order.ghiChu}
                     </p>
                   </div>
@@ -281,88 +318,95 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* Work Schedule & Assignees */}
-            {order.ngayLamViec && order.ngayLamViec.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-6">
-                <h2 className="text-lg font-bold text-slate-900 mb-6">
-                  Lịch làm việc & Nhân viên phụ trách
-                </h2>
+            {/* Khối danh sách ngày làm việc */}
+            <div className="space-y-6 mb-2">
+              {order.ngayLamViec &&
+                order.ngayLamViec.map((dayGroup: any, index: number) => (
+                  <div
+                    key={index}
+                    className="border border-slate-200 rounded-xl p-5 bg-slate-50 shadow-sm mb-2"
+                  >
+                    <div className="flex items-center gap-3 mb-2 border-b border-slate-200 pb-1">
+                      <CalendarMonth className="text-blue-600" />
+                      <h3 className="text-lg font-bold text-slate-900">
+                        Ngày thực hiện: {formatDate(dayGroup.ngay)}
+                      </h3>
+                    </div>
 
-                <div className="space-y-4">
-                  {order.ngayLamViec.map((schedule: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="border border-slate-200 rounded-xl p-5 hover:bg-slate-50 transition-colors bg-white shadow-sm"
-                    >
-                      {/* Dòng 1: Thông tin ngày giờ & trạng thái */}
-                      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
-                        <div className="flex items-center gap-6">
-                          <div>
-                            <p className="text-xs text-slate-500 font-medium mb-1 uppercase tracking-wider">
-                              Ngày làm việc
-                            </p>
-                            <p className="font-semibold text-slate-900 text-lg">
-                              {formatDate(schedule.ngay)}
-                            </p>
-                          </div>
-                          <div className="hidden sm:block w-px h-8 bg-slate-200"></div>
-                          <div>
-                            <p className="text-xs text-slate-500 font-medium mb-1 uppercase tracking-wider">
-                              Thời gian
-                            </p>
-                            <p className="font-semibold text-slate-900 text-lg">
-                              {schedule.gioBatDau} - {schedule.gioKetThuc}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <span
-                            className={`inline-flex px-3 py-1.5 rounded-full text-xs font-semibold ${
-                              schedule.trangThai === "Hoàn thành"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-blue-100 text-blue-700"
-                            }`}
+                    <div className="space-y-4">
+                      {dayGroup.danhSachCa.map((ca: any, idx: number) => {
+                        const isPending = order.trangThai === "Chờ xác nhận";
+                        const displayStatus = isPending
+                          ? "Chờ phân công"
+                          : ca.trangThai;
+                        const showWorkerInfo = !isPending && ca.tenNhanVien;
+
+                        return (
+                          <div
+                            key={idx}
+                            className="bg-white p-4 rounded-lg border border-slate-100 relative overflow-hidden mb-2"
                           >
-                            {schedule.trangThai}
-                          </span>
-                        </div>
-                      </div>
+                            <div
+                              className={`absolute top-0 left-0 w-1.5 h-full ${dayGroup.danhSachCa[idx].trangThai === "Hoàn thành" ? "bg-emerald-500" : "bg-blue-500"}`}
+                            ></div>
 
-                      {/* Dòng 2: Thông tin nhân viên cho ca làm việc này */}
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center flex-shrink-0 border border-blue-300">
-                          <Person
-                            sx={{ fontSize: 24 }}
-                            className="text-blue-600"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          {schedule.tenNhanVien ? (
-                            <>
-                              <p className="font-semibold text-slate-900">
-                                {schedule.tenNhanVien}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-0.5 text-slate-600">
-                                <Phone sx={{ fontSize: 16 }} />
-                                <span className="text-sm">
-                                  {schedule.sdtNhanVien || "Đang cập nhật SĐT"}
+                            <div className="pl-2">
+                              <div className="flex justify-between items-center mb-3">
+                                <span className="font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md text-sm border border-indigo-100">
+                                  {ca.tenDichVu}
+                                </span>
+                                <span className="text-xs font-semibold bg-slate-100 px-3 py-1 rounded-full text-slate-700">
+                                  {displayStatus}
                                 </span>
                               </div>
-                            </>
-                          ) : (
-                            <p className="text-sm font-medium text-slate-500 italic">
-                              Hệ thống đang điều phối người giúp việc...
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {/* Review Section */}
+                              <div className="text-sm text-slate-600 mb-2">
+                                <span className="font-medium text-slate-800">
+                                  Thời gian:
+                                </span>{" "}
+                                {ca.gioBatDau} - {ca.gioKetThuc}
+                              </div>
+
+                              <div className="border-t border-slate-100 pt-4 mt-2">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center flex-shrink-0 border border-slate-300">
+                                    <Person
+                                      sx={{ fontSize: 24 }}
+                                      className="text-slate-500"
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    {showWorkerInfo ? (
+                                      <>
+                                        <p className="font-semibold text-slate-900">
+                                          {ca.tenNhanVien}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 mt-0.5 text-slate-600">
+                                          <Phone sx={{ fontSize: 16 }} />
+                                          <span className="text-sm">
+                                            {ca.sdtNhanVien ||
+                                              "Đang cập nhật SĐT"}
+                                          </span>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <p className="text-sm font-medium text-slate-500 italic">
+                                        Hệ thống đang điều phối nhân viên...
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            {/* Đánh giá dịch vụ */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
               <h2 className="text-lg font-bold text-slate-900 mb-6">
                 Đánh giá của bạn
@@ -392,7 +436,8 @@ export default function OrderDetailPage() {
                     </div>
                   )}
                 </div>
-              ) : order.trangThai === "Hoàn thành" ? (
+              ) : order.trangThai === "Đã hoàn thành" ||
+                order.trangThai === "Hoàn thành" ? (
                 <div className="space-y-5">
                   <div className="flex items-center gap-2">
                     {[...Array(5)].map((_, i) => {
@@ -451,7 +496,7 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          {/* Right Column - Summary */}
+          {/* Cột phải - Chi tiết thanh toán */}
           <div className="space-y-6">
             <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white sticky top-25 shadow-md">
               <h2 className="text-lg font-bold mb-6">Chi tiết thanh toán</h2>

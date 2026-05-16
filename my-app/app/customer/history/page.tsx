@@ -13,10 +13,9 @@ import CircularProgress from "@mui/material/CircularProgress";
 import api from "@/services/api";
 import Swal, { SweetAlertIcon } from "sweetalert2";
 
-// Khai báo interface dựa theo dữ liệu API trả về
 interface Order {
   maDon: string;
-  tenDichVu: string;
+  tenDichVu: string | string[];
   ngayDat: string;
   trangThai: string;
   soTien: number;
@@ -62,18 +61,18 @@ export default function OrderHistoryPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
   const handleCancelOrder = async (maDon: string) => {
     const result = await Swal.fire({
       title: "Xác nhận hủy đơn?",
       text: "Bạn sẽ không thể hoàn tác hành động này!",
-      icon: "warning" as SweetAlertIcon, // Ép kiểu để TS không bắt bẻ string
+      icon: "warning" as SweetAlertIcon,
       showCancelButton: true,
-      confirmButtonColor: "#ef4444", // Màu đỏ của Tailwind (red-500)
-      cancelButtonColor: "#3b82f6", // Màu xanh của Tailwind (blue-500)
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#3b82f6",
       confirmButtonText: "Đồng ý hủy",
       cancelButtonText: "Quay lại",
       background: "#ffffff",
-      // Sử dụng customClass để chỉnh bo góc bằng Tailwind
       customClass: {
         popup: "rounded-2xl",
         title: "text-xl font-semibold text-gray-800",
@@ -86,10 +85,7 @@ export default function OrderHistoryPage() {
 
     try {
       setCancellingId(maDon);
-      // Lưu ý: Đảm bảo api.post trả về đúng cấu trúc bạn mong muốn
       const res: any = await api.post(`/Booking/CancelBooking/${maDon}`);
-
-      // Kiểm tra thành công linh hoạt hơn
       const isSuccess =
         res?.status === 200 || res?.data?.success || res?.success;
 
@@ -134,10 +130,7 @@ export default function OrderHistoryPage() {
         setLoading(true);
         setError(null);
 
-        // 1. Gọi API lấy thông tin user hiện tại (Sửa lại route cho khớp với controller của bạn VD: "/Auth/me")
         const userResponse: any = await api.get("/User/me");
-
-        // Tùy thuộc vào cách axios wrapper trả dữ liệu, có thể nằm trong userResponse.data hoặc trực tiếp
         const maNguoiDung =
           userResponse?.maNguoiDung || userResponse?.data?.maNguoiDung;
 
@@ -146,8 +139,6 @@ export default function OrderHistoryPage() {
           return;
         }
 
-        // 2. Gọi API lấy danh sách đơn (Sửa lại route cho khớp với controller của bạn VD: "/Booking")
-        // Lấy pageSize lớn một chút hoặc cấu hình phân trang sau để đếm số lượng các tab cho chuẩn
         const ordersResponse: any = await api.get(
           `/Booking/GetBookingsByCustomer/${maNguoiDung}?pageSize=100`,
         );
@@ -189,7 +180,6 @@ export default function OrderHistoryPage() {
     }).format(amount);
   };
 
-  // UI State: Đang tải
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
@@ -198,7 +188,6 @@ export default function OrderHistoryPage() {
     );
   }
 
-  // UI State: Lỗi
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center p-6">
@@ -217,17 +206,14 @@ export default function OrderHistoryPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6 md:p-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">
+        <div className="mb-3">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
             Lịch sử đơn đặt
           </h1>
-          <p className="text-lg text-slate-600">
-            Quản lý và theo dõi các dịch vụ đã đặt
-          </p>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex flex-wrap gap-3 mb-8 pb-6 border-b border-slate-200">
+        <div className="flex flex-wrap gap-3 mb-4 pb-6 border-b border-slate-200">
           <button
             onClick={() => setSelectedStatus(null)}
             className={`px-5 py-2 rounded-full font-medium transition-all duration-200 ${
@@ -266,7 +252,6 @@ export default function OrderHistoryPage() {
         <div className="space-y-4">
           {filteredOrders.length > 0 ? (
             filteredOrders.map((order) => {
-              // Xử lý fallback nếu trạng thái từ DB không khớp với config
               const config =
                 statusConfig[order.trangThai as keyof typeof statusConfig] ||
                 statusConfig["Mặc định"];
@@ -274,23 +259,50 @@ export default function OrderHistoryPage() {
               return (
                 <div
                   key={order.maDon}
-                  className="group relative bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 overflow-hidden"
+                  className="group bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 overflow-hidden"
                 >
-                  {/* Status Badge - Top Right */}
-                  <div className="absolute top-4 right-4 z-10">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${config.badge} ${config.text}`}
-                    >
-                      {order.trangThai}
-                    </span>
-                  </div>
-
                   {/* Main Content */}
-                  <div className="p-6 pr-5">
-                    {/* Service Name */}
-                    <h3 className="text-xl font-bold text-slate-900 mb-4 pr-4">
-                      {order.tenDichVu}
-                    </h3>
+                  <div className="p-6">
+                    {/* THAY ĐỔI TẠI ĐÂY: Đưa dịch vụ và trạng thái vào chung 1 hàng Flexbox, thẳng hàng và cỡ chữ bằng nhau (text-sm font-semibold) */}
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      {/* Cột trái: Danh sách dịch vụ dạng Badges */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {(() => {
+                          if (!order.tenDichVu) {
+                            return (
+                              <span className="px-3 py-1 bg-slate-50 text-slate-500 text-sm font-semibold rounded-md border border-slate-100">
+                                Chưa xác định
+                              </span>
+                            );
+                          }
+
+                          const danhsachDichVu =
+                            typeof order.tenDichVu === "string"
+                              ? order.tenDichVu.split(" + ")
+                              : order.tenDichVu;
+
+                          return danhsachDichVu.map(
+                            (dichVu: string, i: number) => (
+                              <span
+                                key={i}
+                                className="px-3 py-1 bg-teal-50 text-teal-700 text-sm font-semibold rounded-md border border-teal-100"
+                              >
+                                {dichVu.trim()}
+                              </span>
+                            ),
+                          );
+                        })()}
+                      </div>
+
+                      {/* Cột phải: Trạng thái đơn hàng */}
+                      <div className="flex-shrink-0">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${config.badge} ${config.text}`}
+                        >
+                          {order.trangThai}
+                        </span>
+                      </div>
+                    </div>
 
                     {/* Divider */}
                     <div className="h-px bg-gradient-to-r from-slate-200 to-transparent mb-4"></div>

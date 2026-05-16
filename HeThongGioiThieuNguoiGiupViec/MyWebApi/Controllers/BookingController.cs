@@ -73,7 +73,8 @@ namespace MyWebApi.Controllers
                 {
                     MaThanhToan = GenerateId("TT"),
                     MaDon = donDat.MaDon,
-                    TrangThaiThanhToan = $"{request.PhuongThucThanhToan} - Chờ xác nhận"
+                    //TrangThaiThanhToan = $"{request.PhuongThucThanhToan} - Chờ xác nhận"
+                    TrangThaiThanhToan = "Đã thanh toán"
                 };
                 _context.ThanhToans.Add(thanhToan);
 
@@ -380,14 +381,13 @@ namespace MyWebApi.Controllers
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập." });
                 }
 
-                // Đã cấu trúc lại Include do bảng trung gian bị xóa
                 var order = await _context.DonDats
                     .Where(d => d.MaDon == maDon && d.MaKhachhang == maKhachHang)
                     .Include(d => d.LichSuTrangThaiDons)
                     .Include(d => d.DonDatDichVus)
                         .ThenInclude(dd => dd.MaDichVuNavigation)
                     .Include(d => d.DonDatDichVus)
-                        .ThenInclude(dd => dd.NgayLamViecs) // Cập nhật Navigation Prop (Hãy chắc chắn Tên Property trong Model của bạn là NgayLamViecs)
+                        .ThenInclude(dd => dd.NgayLamViecs)
                             .ThenInclude(nl => nl.MaNguoiGiupViecNavigation)
                     .Include(d => d.DanhGia)
                     .Include(d => d.ThanhToans)
@@ -403,8 +403,6 @@ namespace MyWebApi.Controllers
                     .Select(l => l.TrangThai)
                     .FirstOrDefault() ?? "Chờ xác nhận";
 
-                var mainService = order.DonDatDichVus.FirstOrDefault()?.MaDichVuNavigation;
-
                 var statusTimes = order.LichSuTrangThaiDons
                     .Where(l => l.TrangThai != null && l.ThoiGianCapNhat != null)
                     .GroupBy(l => l.TrangThai)
@@ -413,19 +411,31 @@ namespace MyWebApi.Controllers
                         g => g.OrderByDescending(x => x.ThoiGianCapNhat).First().ThoiGianCapNhat!.Value.ToString("HH:mm dd-MM-yyyy")
                     );
 
+                var lichSuTrangThai = order.LichSuTrangThaiDons
+                    .Where(l => l.ThoiGianCapNhat != null && !string.IsNullOrEmpty(l.TrangThai))
+                    .OrderByDescending(l => l.ThoiGianCapNhat)
+                    .Select(l => new
+                    {
+                        trangThai = l.TrangThai,
+                        thoiGian = l.ThoiGianCapNhat!.Value.ToString("HH:mm dd/MM/yyyy")
+                    })
+                    .ToList();
+
                 var thanhToanDb = order.ThanhToans.FirstOrDefault();
                 var danhGiaDb = order.DanhGia.FirstOrDefault();
 
-                // Quét qua các ngày làm việc (Đã điều chỉnh do bỏ bảng con)
-                var ngayLamViecs = order.DonDatDichVus
-                    .SelectMany(dd => dd.NgayLamViecs) // Lấy thẳng từ DonDatDichVu
-                    .Select(nl =>
+                var ngayLamViecsGrouped = order.DonDatDichVus
+                    .SelectMany(dd => dd.NgayLamViecs.Select(nl => new { NgayLamViec = nl, DonDatDichVu = dd }))
+                    .Select(x =>
                     {
+                        var nl = x.NgayLamViec;
+                        var dd = x.DonDatDichVu;
                         var nguoiGiupViec = nl.MaNguoiGiupViecNavigation;
 
                         return new
                         {
-                            ngay = nl.NgayLam.HasValue ? nl.NgayLam.Value.ToString("yyyy-MM-dd") : null,
+                            ngay = nl.NgayLam.HasValue ? nl.NgayLam.Value.ToString("yyyy-MM-dd") : "Chưa xác định",
+                            tenDichVu = dd.MaDichVuNavigation?.TenDichVu ?? "Chưa xác định",
                             gioBatDau = nl.GioBatDau.HasValue ? nl.GioBatDau.Value.ToString("HH:mm") : "00:00",
                             gioKetThuc = nl.GioKetThuc.HasValue ? nl.GioKetThuc.Value.ToString("HH:mm") : "Đang cập nhật",
                             trangThai = nl.TrangThai ?? "Chờ phân công",
@@ -433,16 +443,35 @@ namespace MyWebApi.Controllers
                             sdtNhanVien = nguoiGiupViec?.SoDienThoai
                         };
                     })
-                    .OrderBy(nl => nl.ngay)
+                    .GroupBy(x => x.ngay)
+                    .Select(g => new
+                    {
+                        ngay = g.Key,
+                        danhSachCa = g.OrderBy(c => c.gioBatDau).Select(c => new
+                        {
+                            tenDichVu = c.tenDichVu,
+                            gioBatDau = c.gioBatDau,
+                            gioKetThuc = c.gioKetThuc,
+                            trangThai = c.trangThai,
+                            tenNhanVien = c.tenNhanVien,
+                            sdtNhanVien = c.sdtNhanVien
+                        }).ToList()
+                    })
+                    .OrderBy(g => g.ngay)
                     .ToList();
 
                 var result = new
                 {
                     maDon = order.MaDon,
+
+                    // THAY ĐỔI TẠI ĐÂY: Trả về một mảng danh sách tên dịch vụ thay vì chuỗi join
                     tenDichVu = order.DonDatDichVus.Any()
-                        ? string.Join(" + ", order.DonDatDichVus.Select(dd => dd.MaDichVuNavigation.TenDichVu))
-                        : "Chưa xác định",
-                    moTa = mainService?.MoTa ?? "Không có mô tả",
+                        ? order.DonDatDichVus
+                            .Select(dd => dd.MaDichVuNavigation?.TenDichVu ?? "Chưa xác định")
+                            .Distinct() // Tránh trùng lặp nếu một dịch vụ xuất hiện nhiều lần
+                            .ToList()
+                        : new List<string> { "Chưa xác định" },
+
                     ngayDat = order.NgayDat,
                     trangThai = currentStatus,
                     soTien = order.TongTien,
@@ -450,7 +479,7 @@ namespace MyWebApi.Controllers
                     diaChi = order.DiaChi,
                     soNgay = order.SoNgay ?? 1,
                     ghiChu = order.GhiChu,
-                    ngayLamViec = ngayLamViecs,
+                    ngayLamViec = ngayLamViecsGrouped,
                     danhGia = danhGiaDb != null ? new
                     {
                         soSao = danhGiaDb.SoSao ?? 5,
@@ -462,7 +491,8 @@ namespace MyWebApi.Controllers
                         phuongThuc = "Thanh toán trực tuyến",
                         ngayThanhToan = order.NgayDat
                     },
-                    statusTimes = statusTimes
+                    statusTimes = statusTimes,
+                    lichSuTrangThai = lichSuTrangThai
                 };
 
                 return Ok(new { success = true, data = result });
