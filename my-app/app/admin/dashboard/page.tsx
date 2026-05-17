@@ -166,7 +166,6 @@ export default function AdminDashboard() {
             <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a", marginBottom: "20px" }}>Việc cần xử lý</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {[
-                { label: "Hồ sơ chờ duyệt", count: stats.pendingProfiles, path: "/admin/profiles", color: "#3b82f6", bg: "#eff6ff" },
                 { label: "Đơn hàng mới", count: stats.pendingBookings, path: "/admin/reports", color: "#f97316", bg: "#fff7ed" },
               ].map((item, idx) => (
                 <button 
