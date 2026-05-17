@@ -47,7 +47,33 @@ namespace MyWebApi.Controllers
         {
             try
             {
-                var maDichVu = GenerateId("DV");
+                // 1. Phân tích & Kiểm tra biểu mẫu (Validation)
+                if (string.IsNullOrWhiteSpace(request.TenDichVu))
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ không được để trống." });
+                }
+                if (request.TenDichVu.Length > 100)
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ vượt quá giới hạn 100 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.MoTa) && request.MoTa.Length > 500)
+                {
+                    return BadRequest(new { success = false, message = "Mô tả dịch vụ vượt quá giới hạn 500 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.HinhAnh) && request.HinhAnh.Length > 255)
+                {
+                    return BadRequest(new { success = false, message = "URL hình ảnh vượt quá giới hạn 255 ký tự. Vui lòng sử dụng URL ngắn hơn hoặc link ảnh khác." });
+                }
+
+                // 2. Tạo ID dịch vụ đảm bảo KHÔNG trùng lặp trong cơ sở dữ liệu
+                string maDichVu = "";
+                bool isUnique = false;
+                while (!isUnique)
+                {
+                    maDichVu = GenerateId("DV");
+                    isUnique = !await _context.DichVus.AnyAsync(dv => dv.MaDichVu == maDichVu);
+                }
+
                 var dichVu = new DichVu
                 {
                     MaDichVu = maDichVu,
@@ -75,6 +101,24 @@ namespace MyWebApi.Controllers
         {
             try
             {
+                // 1. Phân tích & Kiểm tra biểu mẫu (Validation)
+                if (string.IsNullOrWhiteSpace(request.TenDichVu))
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ không được để trống." });
+                }
+                if (request.TenDichVu.Length > 100)
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ vượt quá giới hạn 100 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.MoTa) && request.MoTa.Length > 500)
+                {
+                    return BadRequest(new { success = false, message = "Mô tả dịch vụ vượt quá giới hạn 500 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.HinhAnh) && request.HinhAnh.Length > 255)
+                {
+                    return BadRequest(new { success = false, message = "URL hình ảnh vượt quá giới hạn 255 ký tự. Vui lòng sử dụng URL ngắn hơn hoặc link ảnh khác." });
+                }
+
                 var dichVu = await _context.DichVus.FindAsync(maDichVu);
                 if (dichVu == null)
                     return NotFound(new { success = false, message = "Không tìm thấy dịch vụ" });
@@ -103,7 +147,8 @@ namespace MyWebApi.Controllers
                 if (dichVu == null)
                     return NotFound(new { success = false, message = "Không tìm thấy dịch vụ" });
 
-                dichVu.TrangThai = "Ngừng hoạt động";
+                // Đồng bộ chính xác với ràng buộc CHK_TrangThaiDichVu trong database
+                dichVu.TrangThai = "Ngừng cung cấp";
                 await _context.SaveChangesAsync();
 
                 return Ok(new { success = true, message = "Xóa dịch vụ thành công" });
@@ -184,7 +229,8 @@ namespace MyWebApi.Controllers
         private string GenerateId(string prefix)
         {
             int randomNum = new Random().Next(1000, 9999);
-            return prefix + randomNum.ToString();
+            string id = prefix + randomNum.ToString();
+            return id.Length > 5 ? id.Substring(0, 5) : id;
         }
 
         // ================= QUẢN LÝ NGƯỜI DÙNG =================
