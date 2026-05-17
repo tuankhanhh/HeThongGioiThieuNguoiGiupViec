@@ -19,6 +19,5 @@ namespace MyWebApi.DTO.Request
         public TimeOnly GioBatDau { get; set; }
         [Required]
         public TimeOnly GioKetThuc { get; set; }
-        public string? GhiChu { get; set; }
     }
 }

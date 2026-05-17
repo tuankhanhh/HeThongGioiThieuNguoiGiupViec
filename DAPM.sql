@@ -270,6 +270,10 @@ ADD CONSTRAINT CHK_TrangThaiHoSoXacMinh CHECK (TrangThaiXacMinh IN (
     N'Từ chối'
 ));
 GO
+--
+ALTER TABLE CaLamViec
+ADD CONSTRAINT UQ_CaLamViec_Gio
+UNIQUE (GioBatDau, GioKetThuc);
 -- =========================================================================
 -- PHẦN 1: DỮ LIỆU TỪ ĐIỂN / DANH MỤC CƠ BẢN (Không phụ thuộc khóa ngoại)
 -- =========================================================================
@@ -347,7 +351,7 @@ INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, 
 ('KH002', N'Đỗ Minh Quân', 'customer2@example.com', '0905555666', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Sơn Trà, Đà Nẵng', 1, GETDATE()),
 
 -- Người Giúp Việc (Mật khẩu: 123456)
-('ND001', N'Nguyễn Thị Lan', 'lanmaid@gmail.com', '0912345678', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Nha Trang', 1, GETDATE()),
+('ND001', N'Nguyễn Thị Lan', 'lanmaid@gmail.com', '2222222222', '$2a$11$/lqmXkq1sP9rn9D55z7NvuuTiU9g7ljzq3M/E7Pe4jGRhJLFvFKde', N'Nha Trang', 1, GETDATE()),
 ('ND012', N'Lê Thị Mai', 'nd012@gmail.com', '0909000012', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Hải Châu, Đà Nẵng', 1, GETDATE()),
 ('ND013', N'Phạm Thị Hoa', 'nd013@gmail.com', '0909000013', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Sơn Trà, Đà Nẵng', 1, GETDATE()),
 ('ND014', N'Võ Thị Hạnh', 'nd014@gmail.com', '0909000014', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Thanh Khê, Đà Nẵng', 1, GETDATE()),
@@ -759,3 +763,4 @@ VALUES (
     GETDATE(),
     N'Hoàn thành'
 );
+*/

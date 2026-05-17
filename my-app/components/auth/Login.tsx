@@ -67,7 +67,7 @@ export default function Login({
 
       // 4. Luồng xử lý điều hướng dựa trên Role từ API /me
       if (role === "Maid") {
-        const { hasProfile, status } = await api.get<any>("/v1/maid/status");
+        const { hasProfile, status } = await api.get<any>("/v1/hoso/status");
         if (!hasProfile) {
           router.push(ROUTES.MAID.REGISTER_INFO);
         } else if (status === "Đã duyệt") {

@@ -170,7 +170,7 @@ export default function ProfileUpdatePage() {
     const fetchAllData = async () => {
       try {
         const [profileData, skillsData] = await Promise.all([
-          api.get<any>("/v1/maid/profile"),
+          api.get<any>("/v1/hoso/profile"),
           api.get<SkillItem[]>("/KyNang/getAll"),
         ]);
 
@@ -312,7 +312,7 @@ export default function ProfileUpdatePage() {
         })),
       };
 
-      await api.put("/v1/maid/update-profile", payload);
+      await api.put("/v1/hoso/update-profile", payload);
 
       setOriginalProfile(JSON.parse(JSON.stringify(profile)));
       setToast({

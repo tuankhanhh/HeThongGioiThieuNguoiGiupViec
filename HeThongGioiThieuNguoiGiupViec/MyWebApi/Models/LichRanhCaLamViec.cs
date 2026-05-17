@@ -21,7 +21,7 @@ public partial class LichRanhCaLamViec
     public string MaCaLamViec { get; set; } = null!;
 
     [Column(TypeName = "datetime")]
-    public DateTime? ThoiGianTao { get; set; }
+    public DateTime ThoiGianTao { get; set; }
 
     [ForeignKey("MaCaLamViec")]
     [InverseProperty("LichRanhCaLamViecs")]
