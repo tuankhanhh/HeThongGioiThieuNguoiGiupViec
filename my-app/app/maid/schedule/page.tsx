@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -11,107 +11,75 @@ import {
   WarningAmber,
 } from "@mui/icons-material";
 
+// Import apiService mà bạn đã định nghĩa
+import api from "@/services/api";
+
+// Cập nhật Interface khớp với dữ liệu JSON trả về từ API C#
 interface Job {
-  id: string;
-  date: string;
-  startTime: string;
-  serviceType: string;
-  customerAddress: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
+  maCongViec: string;
+  ngay: string;
+  gioBatDau: string;
+  loaiDichVu: string;
+  diaChiKhachHang: string;
+  trangThai: string;
 }
 
+// Cập nhật tên các thống kê để khớp với logic nghiệp vụ
 interface DayStats {
   totalJobs: number;
   inProgress: number;
-  completed: number;
-  pending: number;
+  assigned: number;
+  cancelled: number;
 }
-
-const mockJobs: Job[] = [
-  {
-    id: "1",
-    date: "2026-06-05",
-    startTime: "08:00",
-    serviceType: "Dọn vệ sinh",
-    customerAddress: "123 Đường Lê Lợi, Q1",
-    status: "completed",
-  },
-  {
-    id: "2",
-    date: "2026-06-05",
-    startTime: "10:30",
-    serviceType: "Giặt ủi",
-    customerAddress: "456 Nguyễn Huệ, Q1",
-    status: "in_progress",
-  },
-  {
-    id: "3",
-    date: "2026-06-06",
-    startTime: "09:00",
-    serviceType: "Nấu ăn",
-    customerAddress: "789 Trần Hưng Đạo, Q5",
-    status: "pending",
-  },
-  {
-    id: "4",
-    date: "2026-06-08",
-    startTime: "14:00",
-    serviceType: "Dọn vệ sinh",
-    customerAddress: "101 Đinh Tiên Hoàng, Q2",
-    status: "pending",
-  },
-  {
-    id: "5",
-    date: "2026-06-10",
-    startTime: "08:00",
-    serviceType: "Chăm sóc trẻ",
-    customerAddress: "202 Calmette, Q1",
-    status: "completed",
-  },
-  {
-    id: "6",
-    date: "2026-06-12",
-    startTime: "11:00",
-    serviceType: "Dọn vệ sinh",
-    customerAddress: "303 Pasteur, Q3",
-    status: "completed",
-  },
-  {
-    id: "7",
-    date: "2026-06-15",
-    startTime: "09:00",
-    serviceType: "Giặt ủi",
-    customerAddress: "404 Võ Văn Kiệt, Q4",
-    status: "pending",
-  },
-  {
-    id: "8",
-    date: "2026-06-20",
-    startTime: "10:00",
-    serviceType: "Nấu ăn",
-    customerAddress: "505 Nguyễn Thị Minh Khai, Q2",
-    status: "pending",
-  },
-];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1));
-  const [stats] = useState<DayStats>({
-    totalJobs: mockJobs.length,
-    inProgress: mockJobs.filter((j) => j.status === "in_progress").length,
-    completed: mockJobs.filter((j) => j.status === "completed").length,
-    pending: mockJobs.filter((j) => j.status === "pending").length,
-  });
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Gọi API mỗi khi thay đổi tháng/năm
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setIsLoading(true);
+      try {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
+
+        // Dùng apiService để gọi GET, tự động handle token và lỗi
+        const data = await api.get<Job[]>(
+          `/v1/maid/schedule?year=${year}&month=${month}`,
+        );
+        setJobs(data || []);
+      } catch (error) {
+        console.error("Lỗi khi tải lịch làm việc:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [currentDate]);
+
+  // Tính toán số lượng cho 4 thẻ thống kê ở trên
+  const stats: DayStats = useMemo(() => {
+    return {
+      totalJobs: jobs.length,
+      inProgress: jobs.filter((j) => j.trangThai === "Đang làm việc").length,
+      assigned: jobs.filter((j) => j.trangThai === "Đã phân công").length,
+      cancelled: jobs.filter((j) => j.trangThai === "Hủy lịch").length,
+    };
+  }, [jobs]);
+
+  // Gom nhóm công việc theo ngày để đánh dấu trên lịch
   const jobsByDate = useMemo(() => {
     const map = new Map<string, Job[]>();
-    mockJobs.forEach((job) => {
-      if (!map.has(job.date)) map.set(job.date, []);
-      map.get(job.date)!.push(job);
+    jobs.forEach((job) => {
+      if (!map.has(job.ngay)) map.set(job.ngay, []);
+      map.get(job.ngay)!.push(job);
     });
     return map;
-  }, []);
+  }, [jobs]);
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -154,13 +122,11 @@ export default function DashboardPage() {
     return jobsByDate.has(dateStr);
   };
 
-  // Lấy chuỗi tên tháng gốc (ví dụ: "tháng 6, 2026")
   const rawMonthName = currentDate.toLocaleDateString("vi-VN", {
     month: "long",
     year: "numeric",
   });
 
-  // Viết hoa chữ cái đầu tiên (ví dụ: "Tháng 6, 2026")
   const monthName =
     rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
 
@@ -188,6 +154,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* Cập nhật nhãn thống kê để khớp với dữ liệu API nhưng giữ nguyên Layout & Icon */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             icon={<Business sx={{ width: 24, height: 24 }} />}
@@ -203,19 +170,26 @@ export default function DashboardPage() {
           />
           <StatsCard
             icon={<CheckCircle sx={{ width: 24, height: 24 }} />}
-            label="Hoàn Thành"
-            value={stats.completed}
+            label="Đã Phân Công"
+            value={stats.assigned}
             color="green"
           />
           <StatsCard
             icon={<WarningAmber sx={{ width: 24, height: 24 }} />}
-            label="Chờ Xử Lý"
-            value={stats.pending}
+            label="Hủy Lịch"
+            value={stats.cancelled}
             color="orange"
           />
         </div>
 
-        <div className="w-full bg-white rounded-2xl shadow-lg p-8 border border-cyan-100">
+        <div className="w-full bg-white rounded-2xl shadow-lg p-8 border border-cyan-100 relative">
+          {/* Hiệu ứng mờ khi đang tải dữ liệu API */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-2xl transition-all duration-300">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-gray-900">{monthName}</h2>
             <div className="flex gap-2">

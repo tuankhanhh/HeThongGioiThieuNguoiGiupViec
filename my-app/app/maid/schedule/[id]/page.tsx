@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowBack,
@@ -10,7 +10,9 @@ import {
   AccessTime,
   LocationOn,
 } from "@mui/icons-material";
-// src/data/mockJobs.ts
+
+// Import file apiService của bạn
+import api from "@/services/api";
 
 export interface Job {
   maNgayLamViec: string;
@@ -24,63 +26,11 @@ export interface Job {
   diaChi: string;
   tongTien: number;
   ghiChu: string;
-  trangThai:
-    | "Chờ phân công"
-    | "Đã phân công"
-    | "Đang làm việc"
-    | "Hoàn thành"
-    | "Không đến làm"
-    | "Hủy lịch";
+  trangThai: "Đã phân công" | "Đang làm việc";
 }
-
-export const mockJobs: Job[] = [
-  {
-    maNgayLamViec: "NLV01",
-    maDon: "DD001",
-    ngayLam: "2026-06-05",
-    gioBatDau: "08:00:00",
-    tenDichVu: "Dọn dẹp nhà cửa tiêu chuẩn (3 giờ)",
-    hinhAnh: "https://placehold.co/100x100/e0f2fe/0369a1?text=Clean",
-    hoTenKhach: "Nguyễn Văn A",
-    sdtKhach: "0901234567",
-    diaChi: "123 Đường Lê Lợi, Phường Bến Thành, Quận 1, TP. HCM",
-    tongTien: 180000,
-    ghiChu: "Nhà có nuôi chó nhỏ, chú ý khi quét dọn",
-    trangThai: "Đã phân công",
-  },
-  {
-    maNgayLamViec: "NLV02",
-    maDon: "DD002",
-    ngayLam: "2026-06-05",
-    gioBatDau: "14:00:00",
-    tenDichVu: "Nấu ăn gia đình (Combo 4 món)",
-    hinhAnh: "https://placehold.co/100x100/ffedd5/c2410c?text=Cook",
-    hoTenKhach: "Trần Thị B",
-    sdtKhach: "0987654321",
-    diaChi: "456 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. HCM",
-    tongTien: 250000,
-    ghiChu: "Khách ăn nhạt, không ăn cay",
-    trangThai: "Đang làm việc",
-  },
-  {
-    maNgayLamViec: "NLV03",
-    maDon: "DD003",
-    ngayLam: "2026-06-05",
-    gioBatDau: "18:00:00",
-    tenDichVu: "Chăm sóc trẻ em (Buổi tối)",
-    hinhAnh: "https://placehold.co/100x100/fce7f3/be185d?text=Baby",
-    hoTenKhach: "Lê Hoàng C",
-    sdtKhach: "0912333444",
-    diaChi: "789 Trần Hưng Đạo, Phường 1, Quận 5, TP. HCM",
-    tongTien: 200000,
-    ghiChu: "Bé 3 tuổi, cần cho bé ăn và chơi cùng bé",
-    trangThai: "Chờ phân công",
-  },
-];
 
 const TABS = [
   { label: "Tất cả", value: "Tất cả" },
-  { label: "Chờ phân công", value: "Chờ phân công" },
   { label: "Đã phân công", value: "Đã phân công" },
   { label: "Đang làm việc", value: "Đang làm việc" },
 ];
@@ -92,12 +42,34 @@ export default function DailyJobsPage({
 }) {
   const router = useRouter();
   const resolvedParams = use(params);
-  const selectedDate = resolvedParams.id;
+  const selectedDate = resolvedParams.id; // Lấy ngày từ URL (vd: 2026-06-05)
 
   const [activeTab, setActiveTab] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
 
-  let filteredJobs = mockJobs.filter((job) => job.ngayLam === selectedDate);
+  // State quản lý dữ liệu từ API
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Gọi API lấy công việc theo ngày
+  useEffect(() => {
+    const fetchDailyJobs = async () => {
+      setIsLoading(true);
+      try {
+        const data = await api.get<Job[]>(`/v1/maid/schedule/${selectedDate}`);
+        setJobs(data || []);
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu công việc trong ngày:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDailyJobs();
+  }, [selectedDate]);
+
+  // Lọc dữ liệu dựa trên Tab và Ô tìm kiếm (Không cần lọc theo selectedDate nữa vì API đã lo việc đó)
+  let filteredJobs = jobs;
 
   if (activeTab !== "Tất cả") {
     filteredJobs = filteredJobs.filter((job) => job.trangThai === activeTab);
@@ -150,14 +122,14 @@ export default function DailyJobsPage({
           <input
             type="text"
             placeholder="Tìm theo tên khách, mã đơn hoặc dịch vụ..."
-            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm transition-all"
+            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm transition-all shadow-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
         {/* TABS */}
-        <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+        <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {TABS.map((tab) => (
             <button
               key={tab.value}
@@ -173,9 +145,14 @@ export default function DailyJobsPage({
           ))}
         </div>
 
-        {/* JOBS LIST */}
+        {/* JOBS LIST / LOADING STATE */}
         <div className="space-y-4">
-          {filteredJobs.length > 0 ? (
+          {isLoading ? (
+            // Hiệu ứng Loading
+            <div className="flex justify-center items-center p-12 bg-white rounded-lg border border-slate-200 shadow-sm">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : filteredJobs.length > 0 ? (
             filteredJobs.map((job) => (
               <JobCard
                 key={job.maNgayLamViec}
@@ -203,6 +180,7 @@ export default function DailyJobsPage({
   );
 }
 
+// Giao diện JobCard Giữ nguyên 100%
 function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use, useRef } from "react";
+import React, { useState, use, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowBack,
@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Flag,
 } from "@mui/icons-material";
-// src/data/mockJobs.ts
+import api from "@/services/api"; // Tích hợp API service
 
 export interface Job {
   maNgayLamViec: string;
@@ -31,60 +31,13 @@ export interface Job {
     | "Đã phân công"
     | "Đang làm việc"
     | "Hoàn thành"
-    // | "Không đến làm"
     | "Hủy lịch";
 }
-
-export const mockJobs: Job[] = [
-  {
-    maNgayLamViec: "NLV01",
-    maDon: "DD001",
-    ngayLam: "2026-06-05",
-    gioBatDau: "08:00:00",
-    tenDichVu: "Dọn dẹp nhà cửa tiêu chuẩn (3 giờ)",
-    hinhAnh: "https://placehold.co/100x100/e0f2fe/0369a1?text=Clean",
-    hoTenKhach: "Nguyễn Văn A",
-    sdtKhach: "0901234567",
-    diaChi: "123 Đường Lê Lợi, Phường Bến Thành, Quận 1, TP. HCM",
-    tongTien: 180000,
-    ghiChu: "Nhà có nuôi chó nhỏ, chú ý khi quét dọn",
-    trangThai: "Đã phân công",
-  },
-  {
-    maNgayLamViec: "NLV02",
-    maDon: "DD002",
-    ngayLam: "2026-06-05",
-    gioBatDau: "14:00:00",
-    tenDichVu: "Nấu ăn gia đình (Combo 4 món)",
-    hinhAnh: "https://placehold.co/100x100/ffedd5/c2410c?text=Cook",
-    hoTenKhach: "Trần Thị B",
-    sdtKhach: "0987654321",
-    diaChi: "456 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. HCM",
-    tongTien: 250000,
-    ghiChu: "Khách ăn nhạt, không ăn cay",
-    trangThai: "Đang làm việc",
-  },
-  {
-    maNgayLamViec: "NLV03",
-    maDon: "DD003",
-    ngayLam: "2026-06-05",
-    gioBatDau: "18:00:00",
-    tenDichVu: "Chăm sóc trẻ em (Buổi tối)",
-    hinhAnh: "https://placehold.co/100x100/fce7f3/be185d?text=Baby",
-    hoTenKhach: "Lê Hoàng C",
-    sdtKhach: "0912333444",
-    diaChi: "789 Trần Hưng Đạo, Phường 1, Quận 5, TP. HCM",
-    tongTien: 200000,
-    ghiChu: "Bé 3 tuổi, cần cho bé ăn và chơi cùng bé",
-    trangThai: "Chờ phân công",
-  },
-];
 
 const WORKER_STATUSES = [
   "Đã phân công",
   "Đang làm việc",
   "Hoàn thành",
-  // "Không đến làm",
 ];
 
 export default function JobDetailPage({
@@ -100,25 +53,27 @@ export default function JobDetailPage({
   const [status, setStatus] = useState<string>("Đã phân công");
   const [dragProgress, setDragProgress] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false); // Trạng thái khóa kéo khi đang lưu DB
+
   const dragRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
 
-  React.useEffect(() => {
+  // GỌI API LẤY CHI TIẾT
+  useEffect(() => {
     const loadJobDetail = async () => {
       setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const found = mockJobs.find(
-        (j) => j.maNgayLamViec === resolvedParams.slug,
-      );
-
-      if (found) {
-        setSelectedJob(found);
-        setStatus(found.trangThai);
-      } else {
+      try {
+        const data = await api.get<Job>(`/v1/maid/job/${resolvedParams.slug}`);
+        if (data) {
+          setSelectedJob(data);
+          setStatus(data.trangThai);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy chi tiết công việc:", error);
         setSelectedJob(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     loadJobDetail();
@@ -195,11 +150,6 @@ export default function JobDetailPage({
         bgColor: "bg-emerald-50 border-emerald-200",
         icon: "✓",
       },
-      // "Không đến làm": {
-      //   color: "text-red-600",
-      //   bgColor: "bg-red-50 border-red-200",
-      //   icon: "✗",
-      // },
       "Hủy lịch": {
         color: "text-slate-600",
         bgColor: "bg-slate-50 border-slate-200",
@@ -211,12 +161,14 @@ export default function JobDetailPage({
 
   const currentStatusIndex = WORKER_STATUSES.indexOf(status as any);
 
+  // LOGIC KÉO THẢ CHUỘT
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (isUpdating) return;
     startXRef.current = e.clientX;
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (startXRef.current === 0) return;
+    if (startXRef.current === 0 || isUpdating) return;
 
     const delta = e.clientX - startXRef.current;
     const maxDelta = 120;
@@ -229,23 +181,39 @@ export default function JobDetailPage({
     }
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (dragProgress > 0.7 && currentStatusIndex < WORKER_STATUSES.length - 1) {
+  const handleMouseUp = async () => {
+    if (dragProgress > 0.7 && currentStatusIndex < WORKER_STATUSES.length - 1 && !isUpdating) {
       const nextStatus = WORKER_STATUSES[currentStatusIndex + 1];
-      setStatus(nextStatus as any);
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 2000);
+      
+      try {
+        setIsUpdating(true); // Khóa kéo thả trong lúc lưu DB
+        // GỌI API LƯU TRẠNG THÁI VÀO C#
+        await api.put(`/v1/maid/job/${job.maNgayLamViec}/status`, {
+          trangThai: nextStatus,
+        });
+
+        setStatus(nextStatus);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
+      } catch (error) {
+        console.error("Lỗi khi cập nhật trạng thái:", error);
+        alert("Có lỗi xảy ra khi cập nhật trạng thái!");
+      } finally {
+        setIsUpdating(false);
+      }
     }
     setDragProgress(0);
     startXRef.current = 0;
   };
 
+  // LOGIC KÉO THẢ TRÊN ĐIỆN THOẠI
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isUpdating) return;
     startXRef.current = e.touches[0].clientX;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (startXRef.current === 0) return;
+    if (startXRef.current === 0 || isUpdating) return;
 
     const delta = e.touches[0].clientX - startXRef.current;
     const maxDelta = 120;
@@ -258,12 +226,25 @@ export default function JobDetailPage({
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (dragProgress > 0.7 && currentStatusIndex < WORKER_STATUSES.length - 1) {
+  const handleTouchEnd = async () => {
+    if (dragProgress > 0.7 && currentStatusIndex < WORKER_STATUSES.length - 1 && !isUpdating) {
       const nextStatus = WORKER_STATUSES[currentStatusIndex + 1];
-      setStatus(nextStatus as any);
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 2000);
+      
+      try {
+        setIsUpdating(true);
+        await api.put(`/api/v1/maid/job/${job.maNgayLamViec}/status`, {
+          trangThai: nextStatus,
+        });
+
+        setStatus(nextStatus);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
+      } catch (error) {
+        console.error("Lỗi khi cập nhật trạng thái:", error);
+        alert("Có lỗi xảy ra khi cập nhật trạng thái!");
+      } finally {
+        setIsUpdating(false);
+      }
     }
     setDragProgress(0);
     startXRef.current = 0;
@@ -436,7 +417,9 @@ export default function JobDetailPage({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="relative p-4 bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg border-2 border-dashed border-slate-300 cursor-grab active:cursor-grabbing transition-all overflow-hidden mb-4"
+              className={`relative p-4 bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg border-2 border-dashed border-slate-300 transition-all overflow-hidden mb-4 ${
+                isUpdating ? "cursor-wait opacity-70" : "cursor-grab active:cursor-grabbing"
+              }`}
               style={{
                 backgroundColor: `rgba(59, 130, 246, ${dragProgress * 0.1})`,
               }}
@@ -450,23 +433,25 @@ export default function JobDetailPage({
               <div className="relative flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-700 mb-1">
-                    Kéo để cập nhật trạng thái
+                    {isUpdating ? "Đang lưu..." : "Kéo để cập nhật trạng thái"}
                   </p>
                   <p className="text-xs text-slate-600">
                     Kéo từ trái sang phải để chuyển đến trạng thái tiếp theo
                   </p>
                 </div>
-                <ChevronRight
-                  sx={{
-                    fontSize: 32,
-                    color: `rgba(59, 130, 246, ${0.3 + dragProgress * 0.7})`,
-                    transform: `translateX(${dragProgress * 30}px)`,
-                    transition: "all 0.2s ease-out",
-                  }}
-                />
+                {!isUpdating && (
+                  <ChevronRight
+                    sx={{
+                      fontSize: 32,
+                      color: `rgba(59, 130, 246, ${0.3 + dragProgress * 0.7})`,
+                      transform: `translateX(${dragProgress * 30}px)`,
+                      transition: "all 0.2s ease-out",
+                    }}
+                  />
+                )}
               </div>
 
-              {dragProgress > 0 && (
+              {dragProgress > 0 && !isUpdating && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center">
                     <p className="text-sm font-bold text-blue-600">
@@ -518,28 +503,6 @@ export default function JobDetailPage({
             </div>
           </div>
         </div>
-
-        {/* ACTION BUTTONS */}
-        {/* <div className="mt-6 flex gap-3 justify-end">
-          <button
-            onClick={() => router.back()}
-            className="px-6 py-3 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-all"
-          >
-            Quay lại
-          </button>
-          <button
-            onClick={() => {
-              setShowSuccessMessage(true);
-              setTimeout(() => {
-                setShowSuccessMessage(false);
-                router.back();
-              }, 1500);
-            }}
-            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md"
-          >
-            Lưu & Quay lại
-          </button>
-        </div> */}
       </div>
     </div>
   );
