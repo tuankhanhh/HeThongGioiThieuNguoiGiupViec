@@ -45,7 +45,7 @@ export const ROUTES = {
     REGISTER_UPDATE: "/maid/register/updateResume",
     DASHBOARD: "/maid/dashboard",
     SCHEDULE: "/maid/schedule",
-    WORK_HISTORY: "/maid/workhistory",
+    WORK_HISTORY: "/maid/work-history",
     FREE_SCHEDULE: "/maid/freeschedule",
     INCOME: "/maid/income",
     PROFILE: "/maid/profile",

@@ -152,7 +152,7 @@ export default function UpdateProfilePage() {
         const skillsRes = await api.get<any[]>("/KyNang/getAll");
         if (skillsRes) setDbSkills(skillsRes);
 
-        const profileRes = await api.get<any>("/v1/maid/ho-so-cua-toi");
+        const profileRes = await api.get<any>("/v1/hoso/ho-so-cua-toi");
 
         if (profileRes && profileRes.hasProfile && profileRes.data) {
           const profileData = profileRes.data;
@@ -408,7 +408,7 @@ export default function UpdateProfilePage() {
       if (docs.residence instanceof File)
         submitData.append("FileAnhGiayXacNhanCuTru", docs.residence);
 
-      await api.post("/v1/maid/cap-nhat-ho-so", submitData);
+      await api.post("/v1/hoso/cap-nhat-ho-so", submitData);
 
       setToast({
         open: true,

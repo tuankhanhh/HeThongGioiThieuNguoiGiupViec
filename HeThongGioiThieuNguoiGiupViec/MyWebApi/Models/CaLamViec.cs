@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MyWebApi.Models;
 
 [Table("CaLamViec")]
+[Index("GioBatDau", "GioKetThuc", Name = "UQ_CaLamViec_Gio", IsUnique = true)]
 public partial class CaLamViec
 {
     [Key]

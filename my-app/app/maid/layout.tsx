@@ -22,9 +22,12 @@ export default function RootLayout({
       {!isAuthPage && <Sidebar />}
 
       <main
-        className={`flex-1 transition-all duration-300 ${
-          isAuthPage ? "ml-0 bg-white" : "ml-64 bg-gray-100 p-6"
-        } min-h-screen`}
+        className={`flex-1 transition-all duration-300 min-h-screen ${
+          isAuthPage
+            ? "ml-0 "
+            : // Thay đổi responsive ở dòng dưới:
+              "ml-0 md:ml-64 p-4 pt-16 md:p-6"
+        }`}
       >
         {children}
       </main>

@@ -120,15 +120,13 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
   }
 
   return (
-    /* TỐI ƯU 1: Giảm padding tổng thể của Card xuống py-4 px-6 thay vì p-6 md:p-8 */
     <div className="bg-white rounded-2xl border border-slate-200 py-4 px-6 w-full overflow-hidden">
-      {/* TỐI ƯU 2: Giảm margin bottom từ mb-8 xuống mb-4 */}
       <h2 className="text-base font-bold text-slate-900 mb-4">
         Lịch sử trạng thái
       </h2>
 
-      {/* TỐI ƯU 3: Thu nhỏ bớt pt-2 pb-2 của vùng chứa timeline */}
-      <div className="flex flex-row items-start justify-between w-full overflow-x-auto pt-2 pb-2 min-w-max md:min-w-0 gap-4 md:gap-0 scrollbar-thin">
+      {/* SỬA LAYOUT: justify-between giúp dàn đều khung nếu không dùng flex-1 */}
+      <div className="flex flex-row items-start justify-between w-full overflow-x-auto pt-2 pb-2 scrollbar-thin">
         {renderItems.map((item, index) => {
           const stepConfig = STATUS_TIMELINE[item.status] || {
             ...DEFAULT_STEP_CONFIG,
@@ -147,7 +145,8 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
           return (
             <div
               key={`${item.status}-${index}`}
-              className="relative flex flex-col items-center flex-1 min-w-[130px] text-center"
+              // SỬA TẠI ĐÂY: Thay w-[140px] flex-shrink-0 bằng flex-1 min-w-[90px]
+              className="relative flex flex-col items-center flex-1 min-w-[90px] text-center"
             >
               {/* Connector Line */}
               {!isLast && (
@@ -176,7 +175,6 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
               </div>
 
               {/* Content Wrapper */}
-              {/* TỐI ƯU 4: Giảm khoảng cách từ mt-4 xuống mt-2.5 */}
               <div className="mt-2.5 flex flex-col items-center px-1 z-10">
                 <div
                   className={`font-semibold text-sm tracking-wide ${
@@ -195,7 +193,6 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
                 )}
 
                 {isCurrent && (
-                  /* TỐI ƯU 5: Giảm margin-top của badge xuống mt-1 */
                   <div
                     className={`inline-block mt-1 px-2 py-0.5 ${stepConfig.bgColor} ${stepConfig.color} text-[10px] font-bold rounded-full whitespace-nowrap border border-current/10`}
                   >

@@ -47,7 +47,33 @@ namespace MyWebApi.Controllers
         {
             try
             {
-                var maDichVu = GenerateId("DV");
+                // 1. Phân tích & Kiểm tra biểu mẫu (Validation)
+                if (string.IsNullOrWhiteSpace(request.TenDichVu))
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ không được để trống." });
+                }
+                if (request.TenDichVu.Length > 100)
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ vượt quá giới hạn 100 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.MoTa) && request.MoTa.Length > 500)
+                {
+                    return BadRequest(new { success = false, message = "Mô tả dịch vụ vượt quá giới hạn 500 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.HinhAnh) && request.HinhAnh.Length > 255)
+                {
+                    return BadRequest(new { success = false, message = "URL hình ảnh vượt quá giới hạn 255 ký tự. Vui lòng sử dụng URL ngắn hơn hoặc link ảnh khác." });
+                }
+
+                // 2. Tạo ID dịch vụ đảm bảo KHÔNG trùng lặp trong cơ sở dữ liệu
+                string maDichVu = "";
+                bool isUnique = false;
+                while (!isUnique)
+                {
+                    maDichVu = GenerateId("DV");
+                    isUnique = !await _context.DichVus.AnyAsync(dv => dv.MaDichVu == maDichVu);
+                }
+
                 var dichVu = new DichVu
                 {
                     MaDichVu = maDichVu,
@@ -62,6 +88,42 @@ namespace MyWebApi.Controllers
                 _context.DichVus.Add(dichVu);
                 await _context.SaveChangesAsync();
 
+                // 3. Liên kết Dịch vụ thành phần
+                if (request.ThanhPhans != null && request.ThanhPhans.Any())
+                {
+                    foreach (var tpName in request.ThanhPhans)
+                    {
+                        if (string.IsNullOrWhiteSpace(tpName)) continue;
+
+                        var thanhPhan = await _context.ThanhPhans.FirstOrDefaultAsync(tp => tp.TenThanhPhan == tpName);
+                        if (thanhPhan == null)
+                        {
+                            string maThanhPhan = "";
+                            bool isTpUnique = false;
+                            while (!isTpUnique)
+                            {
+                                maThanhPhan = GenerateId("TP");
+                                isTpUnique = !await _context.ThanhPhans.AnyAsync(tp => tp.MaThanhPhan == maThanhPhan);
+                            }
+                            thanhPhan = new ThanhPhan
+                            {
+                                MaThanhPhan = maThanhPhan,
+                                TenThanhPhan = tpName
+                            };
+                            _context.ThanhPhans.Add(thanhPhan);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        var dvtp = new DichVuThanhPhan
+                        {
+                            MaDichVu = dichVu.MaDichVu,
+                            MaThanhPhan = thanhPhan.MaThanhPhan
+                        };
+                        _context.DichVuThanhPhans.Add(dvtp);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
                 return Ok(new { success = true, message = "Tạo dịch vụ thành công", maDichVu });
             }
             catch (Exception ex)
@@ -75,6 +137,24 @@ namespace MyWebApi.Controllers
         {
             try
             {
+                // 1. Phân tích & Kiểm tra biểu mẫu (Validation)
+                if (string.IsNullOrWhiteSpace(request.TenDichVu))
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ không được để trống." });
+                }
+                if (request.TenDichVu.Length > 100)
+                {
+                    return BadRequest(new { success = false, message = "Tên dịch vụ vượt quá giới hạn 100 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.MoTa) && request.MoTa.Length > 500)
+                {
+                    return BadRequest(new { success = false, message = "Mô tả dịch vụ vượt quá giới hạn 500 ký tự." });
+                }
+                if (!string.IsNullOrEmpty(request.HinhAnh) && request.HinhAnh.Length > 255)
+                {
+                    return BadRequest(new { success = false, message = "URL hình ảnh vượt quá giới hạn 255 ký tự. Vui lòng sử dụng URL ngắn hơn hoặc link ảnh khác." });
+                }
+
                 var dichVu = await _context.DichVus.FindAsync(maDichVu);
                 if (dichVu == null)
                     return NotFound(new { success = false, message = "Không tìm thấy dịch vụ" });
@@ -86,6 +166,50 @@ namespace MyWebApi.Controllers
                 dichVu.PhoBien = request.PhoBien;
 
                 await _context.SaveChangesAsync();
+
+                // 2. Cập nhật liên kết Dịch vụ thành phần: Xóa cũ, Thêm mới
+                var existingTps = await _context.DichVuThanhPhans.Where(x => x.MaDichVu == maDichVu).ToListAsync();
+                if (existingTps.Any())
+                {
+                    _context.DichVuThanhPhans.RemoveRange(existingTps);
+                    await _context.SaveChangesAsync();
+                }
+
+                if (request.ThanhPhans != null)
+                {
+                    foreach (var tpName in request.ThanhPhans)
+                    {
+                        if (string.IsNullOrWhiteSpace(tpName)) continue;
+
+                        var thanhPhan = await _context.ThanhPhans.FirstOrDefaultAsync(tp => tp.TenThanhPhan == tpName);
+                        if (thanhPhan == null)
+                        {
+                            string maThanhPhan = "";
+                            bool isTpUnique = false;
+                            while (!isTpUnique)
+                            {
+                                maThanhPhan = GenerateId("TP");
+                                isTpUnique = !await _context.ThanhPhans.AnyAsync(tp => tp.MaThanhPhan == maThanhPhan);
+                            }
+                            thanhPhan = new ThanhPhan
+                            {
+                                MaThanhPhan = maThanhPhan,
+                                TenThanhPhan = tpName
+                            };
+                            _context.ThanhPhans.Add(thanhPhan);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        var dvtp = new DichVuThanhPhan
+                        {
+                            MaDichVu = maDichVu,
+                            MaThanhPhan = thanhPhan.MaThanhPhan
+                        };
+                        _context.DichVuThanhPhans.Add(dvtp);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
                 return Ok(new { success = true, message = "Cập nhật dịch vụ thành công" });
             }
             catch (Exception ex)
@@ -103,7 +227,8 @@ namespace MyWebApi.Controllers
                 if (dichVu == null)
                     return NotFound(new { success = false, message = "Không tìm thấy dịch vụ" });
 
-                dichVu.TrangThai = "Ngừng hoạt động";
+                // Đồng bộ chính xác với ràng buộc CHK_TrangThaiDichVu trong database
+                dichVu.TrangThai = "Ngừng cung cấp";
                 await _context.SaveChangesAsync();
 
                 return Ok(new { success = true, message = "Xóa dịch vụ thành công" });
@@ -184,7 +309,8 @@ namespace MyWebApi.Controllers
         private string GenerateId(string prefix)
         {
             int randomNum = new Random().Next(1000, 9999);
-            return prefix + randomNum.ToString();
+            string id = prefix + randomNum.ToString();
+            return id.Length > 5 ? id.Substring(0, 5) : id;
         }
 
         // ================= QUẢN LÝ NGƯỜI DÙNG =================
@@ -329,6 +455,7 @@ namespace MyWebApi.Controllers
         public decimal GiaTheoGio { get; set; }
         public string HinhAnh { get; set; } = string.Empty;
         public bool PhoBien { get; set; }
+        public List<string> ThanhPhans { get; set; } = new List<string>();
     }
 
     public class RejectRequest

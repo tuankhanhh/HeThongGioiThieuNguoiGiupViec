@@ -253,7 +253,7 @@ export default function FinalSummaryStep() {
       if (step3_docs.residence)
         formData.append("FileAnhGiayXacNhanCuTru", step3_docs.residence);
 
-      await api.post("/v1/maid/hoan-thien-ho-so", formData);
+      await api.post("/v1/hoso/hoan-thien-ho-so", formData);
 
       // Đánh dấu thành công và hiển thị Toast
       isSuccessRef.current = true;

@@ -37,18 +37,21 @@ export interface Job {
     | "Đã phân công"
     | "Đang làm việc"
     | "Hoàn thành"
+    | "Không đến làm"
     | "Hủy lịch";
 }
 
+// Các trạng thái trong luồng công việc bình thường
 const WORKER_STATUSES = ["Đã phân công", "Đang làm việc", "Hoàn thành"];
 
 export default function JobDetailPage({
   params,
 }: {
-  params: Promise<{ id: string; slug: string }>;
+  params: Promise<{ id: string }>; // Đổi thành id vì tên thư mục là [id]
 }) {
   const router = useRouter();
   const resolvedParams = use(params);
+  const jobId = resolvedParams.id;
 
   // States
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -66,15 +69,13 @@ export default function JobDetailPage({
   const dragRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
 
-  // GỌI API LẤY CHI TIẾT
+  // GỌI API LẤY CHI TIẾT DỰA VÀO ID
   useEffect(() => {
     const loadJobDetail = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response: any = await api.get(
-          `/v1/maid/job/${resolvedParams.slug}`,
-        );
+        const response: any = await api.get(`/v1/maid/job/${jobId}`);
         const data = response?.data || response;
         if (data && data.maNgayLamViec) {
           setSelectedJob(data);
@@ -91,10 +92,10 @@ export default function JobDetailPage({
       }
     };
 
-    if (resolvedParams.slug) {
+    if (jobId) {
       loadJobDetail();
     }
-  }, [resolvedParams.slug]);
+  }, [jobId]);
 
   const job = selectedJob;
 
@@ -118,6 +119,7 @@ export default function JobDetailPage({
     switch (s) {
       case "Hoàn thành":
         return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "Không đến làm":
       case "Hủy lịch":
         return "bg-rose-50 text-rose-700 border-rose-200";
       case "Đang làm việc":
@@ -171,6 +173,7 @@ export default function JobDetailPage({
   const handleDragEnd = () => {
     if (
       dragProgress > 0.7 &&
+      currentStatusIndex >= 0 &&
       currentStatusIndex < WORKER_STATUSES.length - 1 &&
       !isUpdating &&
       job
@@ -410,7 +413,7 @@ export default function JobDetailPage({
                       >
                         <Phone sx={{ fontSize: 18 }} />
                       </a>
-                      <button className="p-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors border border-blue-200">
+                      <button className="p-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors border border-blue-200 cursor-pointer">
                         <ChatOutlined sx={{ fontSize: 18 }} />
                       </button>
                     </div>
@@ -472,71 +475,94 @@ export default function JobDetailPage({
             </div>
           </div>
 
-          {/* KHỐI CẬP NHẬT TIẾN ĐỘ (KÉO THẢ) */}
+          {/* KHỐI CẬP NHẬT TIẾN ĐỘ (KÉO THẢ HOẶC BANNER TRẠNG THÁI) */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6 shadow-sm">
             <h2 className="text-base md:text-lg font-bold text-slate-900 mb-5">
               Cập nhật tiến độ
             </h2>
 
-            {/* Progress Timeline (Đã xử lý khoảng cách 2 bên và căn chính giữa đường thẳng) */}
-            <div className="mb-16 mt-4 px-8 md:px-16">
-              <div className="relative flex items-center justify-between">
-                {/* Lớp chứa đường kẻ nền z-0 */}
-                <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-0 px-4">
-                  <div className="relative w-full h-[4px] bg-slate-200 rounded-full">
-                    {/* Thanh kẻ màu xanh chạy theo tiến độ */}
-                    <div
-                      className="absolute top-0 left-0 h-full bg-blue-600 rounded-full transition-all duration-500 ease-in-out"
-                      style={{
-                        width: `${(currentStatusIndex / (WORKER_STATUSES.length - 1)) * 100}%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Các vòng tròn mốc (z-10) */}
-                {WORKER_STATUSES.map((s, idx) => {
-                  const isCompleted =
-                    WORKER_STATUSES.indexOf(status as any) >= idx;
-                  const isCurrent = status === s;
-
-                  return (
-                    <div
-                      key={s}
-                      className="relative z-10 flex flex-col items-center"
-                    >
+            {/* Progress Timeline (Chỉ hiển thị nếu không phải trạng thái thất bại) */}
+            {!["Hủy lịch", "Không đến làm"].includes(status) && (
+              <div className="mb-16 mt-4 px-8 md:px-16">
+                <div className="relative flex items-center justify-between">
+                  <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-0 px-4">
+                    <div className="relative w-full h-[4px] bg-slate-200 rounded-full">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm ring-4 ring-white ${
-                          isCompleted
-                            ? "bg-blue-600 text-white"
-                            : "bg-slate-200 text-slate-500"
-                        }`}
-                      >
-                        {isCompleted && !isCurrent ? "✓" : idx + 1}
-                      </div>
+                        className="absolute top-0 left-0 h-full bg-blue-600 rounded-full transition-all duration-500 ease-in-out"
+                        style={{
+                          width: `${(Math.max(currentStatusIndex, 0) / (WORKER_STATUSES.length - 1)) * 100}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
 
-                      {/* Chữ mô tả, sử dụng absolute để chữ không đè/đẩy vòng tròn bị lệch */}
-                      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-32 text-center mt-1">
-                        <p
-                          className={`text-[12px] md:text-[13px] transition-colors ${
-                            isCurrent
-                              ? "text-blue-700 font-bold"
-                              : isCompleted
-                                ? "text-slate-800 font-semibold"
-                                : "text-slate-400 font-medium"
+                  {WORKER_STATUSES.map((s, idx) => {
+                    const isCompleted =
+                      WORKER_STATUSES.indexOf(status as any) >= idx;
+                    const isCurrent = status === s;
+
+                    return (
+                      <div
+                        key={s}
+                        className="relative z-10 flex flex-col items-center"
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm ring-4 ring-white ${
+                            isCompleted
+                              ? "bg-blue-600 text-white"
+                              : "bg-slate-200 text-slate-500"
                           }`}
                         >
-                          {s}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                          {isCompleted && !isCurrent ? "✓" : idx + 1}
+                        </div>
 
-            {/* DRAG TO ADVANCE */}
-            {currentStatusIndex < WORKER_STATUSES.length - 1 ? (
+                        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-32 text-center mt-1">
+                          <p
+                            className={`text-[12px] md:text-[13px] transition-colors ${
+                              isCurrent
+                                ? "text-blue-700 font-bold"
+                                : isCompleted
+                                  ? "text-slate-800 font-semibold"
+                                  : "text-slate-400 font-medium"
+                            }`}
+                          >
+                            {s}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ĐIỀU HƯỚNG HIỂN THỊ DỰA TRÊN TRẠNG THÁI HIỆN TẠI */}
+            {status === "Hoàn thành" ? (
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 text-center">
+                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-emerald-600 text-xl font-bold">✓</span>
+                </div>
+                <h3 className="text-emerald-800 font-bold mb-1">
+                  Công việc đã hoàn tất
+                </h3>
+                <p className="text-emerald-600 text-sm">
+                  Cảm ơn bạn đã hoàn thành xuất sắc công việc này.
+                </p>
+              </div>
+            ) : ["Hủy lịch", "Không đến làm"].includes(status) ? (
+              <div className="bg-rose-50 border border-rose-100 rounded-xl p-5 text-center">
+                <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-rose-600 text-xl font-bold">✗</span>
+                </div>
+                <h3 className="text-rose-800 font-bold mb-1">
+                  Công việc này đã thất bại / bị hủy
+                </h3>
+                <p className="text-rose-600 text-sm">
+                  Trạng thái hiện tại: <strong>{status}</strong>
+                </p>
+              </div>
+            ) : currentStatusIndex >= 0 &&
+              currentStatusIndex < WORKER_STATUSES.length - 1 ? (
               <div>
                 <div className="mb-3 text-sm flex items-center justify-between">
                   <span className="text-slate-500">Trạng thái tiếp theo:</span>
@@ -563,7 +589,6 @@ export default function JobDetailPage({
                       : "cursor-grab active:cursor-grabbing"
                   }`}
                 >
-                  {/* Progress Fill */}
                   <div
                     className="absolute inset-y-0 left-0 bg-blue-500/20 transition-all"
                     style={{ width: `${dragProgress * 100}%` }}
@@ -577,7 +602,7 @@ export default function JobDetailPage({
                             size={16}
                             className="text-slate-500"
                           />
-                          Đang chờ...
+                          Đang lưu...
                         </>
                       ) : (
                         "Vuốt sang phải để cập nhật"
@@ -606,19 +631,7 @@ export default function JobDetailPage({
                   )}
                 </div>
               </div>
-            ) : (
-              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 text-center">
-                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-emerald-600 text-xl font-bold">✓</span>
-                </div>
-                <h3 className="text-emerald-800 font-bold mb-1">
-                  Công việc đã hoàn tất
-                </h3>
-                <p className="text-emerald-600 text-sm">
-                  Cảm ơn bạn đã hoàn thành xuất sắc công việc này.
-                </p>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

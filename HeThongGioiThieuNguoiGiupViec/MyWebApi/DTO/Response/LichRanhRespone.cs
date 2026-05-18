@@ -10,9 +10,10 @@
 
     public class ChiTietCaLamResponse
     {
-        public string MaCaLamViec { get; set; } = null!;
-        public string GioBatDau { get; set; } = null!; // Format: HH:mm:ss
-        public string GioKetThuc { get; set; } = null!;
-        public string? GhiChu { get; set; }
+        public string MaCaLamViec { get; set; }
+        public string GioBatDau { get; set; }
+        public string GioKetThuc { get; set; }
+        
+        public DateTime ThoiGianTao { get; set; } 
     }
 }

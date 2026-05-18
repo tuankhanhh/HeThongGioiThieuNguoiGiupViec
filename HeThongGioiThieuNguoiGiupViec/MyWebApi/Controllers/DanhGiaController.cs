@@ -3,24 +3,22 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using MyWebApi.Models; // Sửa lại namespace theo project của bạn
+using MyWebApi.Extensions; 
+using MyWebApi.Models;
 
 namespace MyWebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bắt buộc đăng nhập
+    [Authorize] 
     public class ReviewController : ControllerBase
     {
-        private readonly ApplicationDbContext _context; // Sửa MyDbContext thành DbContext của bạn
+        private readonly ApplicationDbContext _context;
 
         public ReviewController(ApplicationDbContext context)
         {
             _context = context;
         }
-
-        // DTO nhận dữ liệu từ React
-
 
         [HttpPost("Submit")]
         public async Task<IActionResult> SubmitReview([FromBody] DanhGiaRequest request)
@@ -37,7 +35,7 @@ namespace MyWebApi.Controllers
                 // 2. Tìm đơn đặt & kiểm tra quyền sở hữu
                 var order = await _context.DonDats
                     .Include(d => d.LichSuTrangThaiDons)
-                    .Include(d => d.DanhGia) // EF tự sinh là DanhGia hoặc DanhGiums
+                    .Include(d => d.DanhGia)
                     .FirstOrDefaultAsync(d => d.MaDon == request.MaDon && d.MaKhachhang == maKhachHang);
 
                 if (order == null)
@@ -62,19 +60,10 @@ namespace MyWebApi.Controllers
                     return BadRequest(new { success = false, message = "Đơn dịch vụ này đã được đánh giá rồi." });
                 }
 
-                // 5. Tạo mã đánh giá tự động (Ví dụ: DG001) vì MaDanhGia là CHAR(5)
-                var lastReview = await _context.DanhGia // Tên Dbset của bạn (có thể là DanhGias hoặc DanhGiums)
-                    .OrderByDescending(d => d.MaDanhGia)
-                    .FirstOrDefaultAsync();
-
-                string newMaDanhGia = "DG001";
-                if (lastReview != null && lastReview.MaDanhGia.StartsWith("DG"))
-                {
-                    if (int.TryParse(lastReview.MaDanhGia.Substring(2), out int lastId))
-                    {
-                        newMaDanhGia = $"DG{(lastId + 1):D3}";
-                    }
-                }
+                // =========================================================================
+                // 5. THAY ĐỔI TẠI ĐÂY: Tạo mã đánh giá tự động tuần tự từ Database (Ví dụ: DG001)
+                // =========================================================================
+                string newMaDanhGia = await _context.GenerateIdAsync("DanhGia", "MaDanhGia", "DG");
 
                 // 6. Tạo record đánh giá mới
                 var newReview = new DanhGium
@@ -82,7 +71,7 @@ namespace MyWebApi.Controllers
                     MaDanhGia = newMaDanhGia,
                     MaDon = request.MaDon,
                     SoSao = request.SoSao,
-                     NoiDung = request.NoiDung
+                    NoiDung = request.NoiDung
                 };
 
                 _context.DanhGia.Add(newReview);
@@ -96,6 +85,7 @@ namespace MyWebApi.Controllers
             }
         }
     }
+
     public class DanhGiaRequest
     {
         [Required]
@@ -104,7 +94,6 @@ namespace MyWebApi.Controllers
         [Range(1, 5, ErrorMessage = "Số sao phải từ 1 đến 5.")]
         public int SoSao { get; set; }
 
-        // Nhận lời nhận xét từ UI (Nếu sau này DB có cột NhanXet thì dùng)
         public string? NoiDung { get; set; }
     }
 }
