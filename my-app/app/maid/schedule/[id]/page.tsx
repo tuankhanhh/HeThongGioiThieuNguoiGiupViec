@@ -109,15 +109,12 @@ export default function DailyJobsPage({
         <div className="mb-6 flex items-center gap-3">
           <button
             onClick={() => router.push("/maid/schedule")}
-            className="p-2 bg-white hover:bg-slate-50 rounded-lg transition-all shadow-sm border border-slate-200"
+            className="p-2 bg-white hover:bg-slate-50 rounded-lg transition-all shadow-sm border border-slate-200 cursor-pointer"
           >
             <ArrowBack className="text-slate-600" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
-              Công việc hôm nay
-            </h1>
-            <p className="text-sm text-slate-500 mt-1 capitalize">{dateStr}</p>
+            <h1 className="text-3xl font-bold text-slate-900">{dateStr}</h1>
           </div>
         </div>
 
@@ -339,18 +336,6 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
               {job.diaChi}
             </span>
           </div>
-
-          {job.ghiChu && (
-            <div className="flex items-start gap-3 bg-amber-50/50 p-3.5 rounded-xl border border-amber-100/60">
-              <NotesOutlined
-                className="text-amber-600 flex-shrink-0 mt-0.5"
-                sx={{ fontSize: 18 }}
-              />
-              <span className="text-sm font-medium text-amber-800 leading-snug italic">
-                {job.ghiChu}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* LINE DIVIDER */}

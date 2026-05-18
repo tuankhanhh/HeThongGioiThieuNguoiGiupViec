@@ -12,7 +12,7 @@ import {
 import CircularProgress from "@mui/material/CircularProgress";
 import api from "@/services/api";
 import Swal, { SweetAlertIcon } from "sweetalert2";
-
+import { ROUTES } from "@/lib/routes";
 interface Order {
   maDon: string;
   tenDichVu: string | string[];
@@ -43,7 +43,7 @@ const statusConfig = {
     text: "text-yellow-700",
     badge: "bg-yellow-100",
   },
-  "Đã hủy": {
+  "Hủy đơn": {
     bg: "bg-red-50",
     text: "text-red-700",
     badge: "bg-red-100",
@@ -380,10 +380,12 @@ export default function OrderHistoryPage() {
 
                       <div className="flex gap-3">
                         {order.trangThai === "Hoàn thành" && (
-                          <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition-colors duration-200 text-sm cursor-pointer">
-                            <RestartAlt sx={{ fontSize: 16 }} />
-                            Đặt lại
-                          </button>
+                          <Link href={ROUTES.CUSTOMER.SERVICE_TYPE}>
+                            <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition-colors duration-200 text-sm cursor-pointer">
+                              <RestartAlt sx={{ fontSize: 16 }} />
+                              Đặt lại
+                            </button>
+                          </Link>
                         )}
 
                         {order.trangThai === "Chờ xác nhận" && (

@@ -21,6 +21,10 @@ public partial class ThuNhapNguoiGiupViec
     [Column(TypeName = "decimal(10, 2)")]
     public decimal? SoTien { get; set; }
 
+    [StringLength(30)]
+    public string? TrangThai { get; set; }
+    public DateTime? ThoiGianTao { get; set; }
+
     [ForeignKey("MaNgayLamViec")]
     [InverseProperty("ThuNhapNguoiGiupViecs")]
     public virtual NgayLamViec MaNgayLamViecNavigation { get; set; } = null!;

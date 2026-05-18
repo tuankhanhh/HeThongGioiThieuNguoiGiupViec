@@ -15,6 +15,9 @@ import {
   Send,
   Assignment,
   HomeRepairService,
+  HelpOutline,
+  CheckCircleOutline,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { useParams } from "next/navigation";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -22,16 +25,40 @@ import { OrderStatusTimeline } from "@/components/componentsCustomer/Orderstatus
 
 import api from "@/services/api";
 
-const getTimelineStatus = (rawStatus: string) => {
-  switch (rawStatus) {
-    case "Đã hoàn thành":
-      return "Hoàn thành";
+// Hàm xử lý màu sắc động cho từng trạng thái ca làm việc
+const getShiftStatusColor = (status: string) => {
+  switch (status) {
+    case "Hoàn thành":
+      return {
+        badge: "bg-emerald-100 text-emerald-700",
+        border: "bg-emerald-500",
+      };
+    case "Đang thực hiện":
+    case "Đang làm việc":
+      return {
+        badge: "bg-purple-100 text-purple-700",
+        border: "bg-purple-500",
+      };
     case "Đã huỷ":
-      return "Hủy đơn";
-    case "Đang xử lý":
-      return "Đang thực hiện";
+    case "Hủy":
+    case "Hủy ca":
+      return {
+        badge: "bg-rose-100 text-rose-700",
+        border: "bg-rose-500",
+      };
+    case "Đã xác nhận":
+    case "Đã phân công":
+      return {
+        badge: "bg-blue-100 text-blue-700",
+        border: "bg-blue-500",
+      };
+    case "Chờ phân công":
+    case "Chờ xác nhận":
     default:
-      return "Chờ xác nhận";
+      return {
+        badge: "bg-amber-100 text-amber-700",
+        border: "bg-amber-500",
+      };
   }
 };
 
@@ -46,6 +73,30 @@ export default function OrderDetailPage() {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
+
+  // STATE CHO MODAL XÁC NHẬN VÀ THÔNG BÁO TOAST
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    maThuNhap: string | null;
+    isSubmitting: boolean;
+  }>({ isOpen: false, maThuNhap: null, isSubmitting: false });
+
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+  }>({ show: false, message: "", type: "success" });
+
+  // Hàm hiển thị Toast
+  const showToast = (
+    message: string,
+    type: "success" | "error" = "success",
+  ) => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast((prev) => ({ ...prev, show: false }));
+    }, 3000);
+  };
 
   useEffect(() => {
     const fetchOrderDetail = async () => {
@@ -80,6 +131,51 @@ export default function OrderDetailPage() {
     }
   }, [orderId]);
 
+  // Hàm mở Modal Xác nhận
+  const handleOpenConfirm = (maThuNhap: string) => {
+    if (!maThuNhap) {
+      showToast("Không tìm thấy mã thu nhập để xác nhận!", "error");
+      return;
+    }
+    setConfirmModal({ isOpen: true, maThuNhap, isSubmitting: false });
+  };
+
+  // Hàm thực thi gọi API xác nhận
+  const executeConfirmCompletion = async () => {
+    if (!confirmModal.maThuNhap) return;
+    setConfirmModal((prev) => ({ ...prev, isSubmitting: true }));
+
+    try {
+      const response: any = await api.put(
+        `/ThuNhap/${confirmModal.maThuNhap}/status`,
+        { TrangThai: "Đã xác nhận" },
+      );
+
+      // BỎ QUA ĐIỀU KIỆN IF KHẮT KHE:
+      // Vì nếu Axios không throw error (không nhảy xuống catch),
+      // tức là API đã gọi thành công (HTTP 200).
+      // Ta đóng modal và hiện thông báo luôn.
+      setConfirmModal({ isOpen: false, maThuNhap: null, isSubmitting: false });
+      showToast("Xác nhận hoàn thành thành công!", "success");
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      console.error("Lỗi khi xác nhận hoàn thành:", error);
+
+      // Tắt vòng xoay loading khi có lỗi
+      setConfirmModal((prev) => ({ ...prev, isSubmitting: false }));
+
+      showToast(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Đã xảy ra lỗi khi cập nhật trạng thái.",
+        "error",
+      );
+    }
+  };
+
   const handleSubmitReview = async () => {
     try {
       const response: any = await api.post("/Review/Submit", {
@@ -89,17 +185,19 @@ export default function OrderDetailPage() {
       });
 
       if (response?.data?.success || response?.success) {
-        alert("Cảm ơn bạn đã gửi đánh giá!");
-        window.location.reload();
+        showToast("Cảm ơn bạn đã gửi đánh giá!", "success");
+        setTimeout(() => window.location.reload(), 1500);
       } else {
-        alert(
+        showToast(
           "Có lỗi xảy ra: " + (response?.data?.message || response?.message),
+          "error",
         );
       }
     } catch (error: any) {
       console.error("Lỗi khi gửi đánh giá:", error);
-      alert(
+      showToast(
         error?.response?.data?.message || "Đã xảy ra lỗi khi gửi đánh giá.",
+        "error",
       );
     }
   };
@@ -122,7 +220,6 @@ export default function OrderDetailPage() {
     }).format(amount);
   };
 
-  // Hàm trả về màu sắc động dựa theo trạng thái đơn hàng
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
       case "Đã hoàn thành":
@@ -175,9 +272,8 @@ export default function OrderDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6 md:p-8 relative">
       <div className="max-w-6xl mx-auto">
-        {/* THAY ĐỔI TẠI ĐÂY: Hàng trên cùng chứa nút quay lại bên trái và trạng thái đơn hàng bên phải */}
         <div className="flex items-center justify-between gap-4 mb-3">
           <Link
             href="/customer/history"
@@ -188,13 +284,14 @@ export default function OrderDetailPage() {
           </Link>
 
           <div
-            className={`px-3 py-1 rounded-full text-xs md:text-sm font-bold border shadow-sm tracking-wide ${getStatusBadgeStyle(order.trangThai)}`}
+            className={`px-3 py-1 rounded-full text-xs md:text-sm font-bold border shadow-sm tracking-wide ${getStatusBadgeStyle(
+              order.trangThai,
+            )}`}
           >
             {order.trangThai}
           </div>
         </div>
 
-        {/* Timeline trạng thái đơn hàng */}
         <div className="mb-4 w-full">
           <OrderStatusTimeline
             currentStatus={order.trangThai}
@@ -204,19 +301,15 @@ export default function OrderDetailPage() {
           />
         </div>
 
-        {/* Grid nội dung chi tiết phía dưới */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Cột trái - Chi tiết lịch trình công việc */}
+          {/* Cột trái */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Khối thông tin đơn đặt */}
+            {/* Thông tin đơn đặt */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-2">
               <h2 className="text-base font-bold text-slate-900 mb-4">
                 Thông tin đơn đặt
               </h2>
-
-              {/* Bố cục lưới: 1 cột trên mobile, 2 cột trên màn hình desktop */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 1. Mã đơn hàng */}
                 <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div className="bg-indigo-50 p-2 rounded-lg flex-shrink-0 text-indigo-600 flex items-center justify-center">
                     <Assignment sx={{ fontSize: 18 }} />
@@ -231,7 +324,6 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                {/* 2. Ngày đặt dịch vụ */}
                 <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div className="bg-blue-50 p-2 rounded-lg flex-shrink-0 text-blue-600 flex items-center justify-center">
                     <CalendarMonth sx={{ fontSize: 18 }} />
@@ -246,7 +338,6 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                {/* 3. Số ngày thực hiện */}
                 <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div className="bg-purple-50 p-2 rounded-lg flex-shrink-0 text-purple-600 flex items-center justify-center">
                     <AccessTime sx={{ fontSize: 18 }} />
@@ -261,7 +352,6 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                {/* Danh sách dịch vụ đặt */}
                 <div className="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 md:col-span-2">
                   <div className="bg-teal-50 p-2 rounded-lg flex-shrink-0 text-teal-600 mt-0.5 flex items-center justify-center">
                     <HomeRepairService sx={{ fontSize: 18 }} />
@@ -289,7 +379,6 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                {/* 4. Địa chỉ thực hiện */}
                 <div className="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 md:col-span-2">
                   <div className="bg-amber-50 p-2 rounded-lg flex-shrink-0 text-amber-600 mt-0.5 flex items-center justify-center">
                     <LocationOn sx={{ fontSize: 18 }} />
@@ -304,7 +393,6 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                {/* 5. Ghi chú (Nếu có) */}
                 {order.ghiChu && (
                   <div className="bg-amber-50/60 border border-amber-100/80 rounded-xl p-3 md:col-span-2 text-sm">
                     <p className="text-slate-600 leading-relaxed text-xs md:text-sm">
@@ -318,7 +406,7 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* Khối danh sách ngày làm việc */}
+            {/* Danh sách ngày làm việc */}
             <div className="space-y-6 mb-2">
               {order.ngayLamViec &&
                 order.ngayLamViec.map((dayGroup: any, index: number) => (
@@ -341,13 +429,15 @@ export default function OrderDetailPage() {
                           : ca.trangThai;
                         const showWorkerInfo = !isPending && ca.tenNhanVien;
 
+                        const statusColors = getShiftStatusColor(displayStatus);
+
                         return (
                           <div
                             key={idx}
-                            className="bg-white p-4 rounded-lg border border-slate-100 relative overflow-hidden mb-2"
+                            className="bg-white p-4 rounded-lg border border-slate-100 relative overflow-hidden mb-2 shadow-sm"
                           >
                             <div
-                              className={`absolute top-0 left-0 w-1.5 h-full ${dayGroup.danhSachCa[idx].trangThai === "Hoàn thành" ? "bg-emerald-500" : "bg-blue-500"}`}
+                              className={`absolute top-0 left-0 w-1.5 h-full ${statusColors.border}`}
                             ></div>
 
                             <div className="pl-2">
@@ -355,7 +445,10 @@ export default function OrderDetailPage() {
                                 <span className="font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md text-sm border border-indigo-100">
                                   {ca.tenDichVu}
                                 </span>
-                                <span className="text-xs font-semibold bg-slate-100 px-3 py-1 rounded-full text-slate-700">
+
+                                <span
+                                  className={`text-xs font-semibold px-3 py-1 rounded-full ${statusColors.badge}`}
+                                >
                                   {displayStatus}
                                 </span>
                               </div>
@@ -367,7 +460,7 @@ export default function OrderDetailPage() {
                                 {ca.gioBatDau} - {ca.gioKetThuc}
                               </div>
 
-                              <div className="border-t border-slate-100 pt-4 mt-2">
+                              <div className="border-t border-slate-100 pt-4 mt-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
                                   <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center flex-shrink-0 border border-slate-300">
                                     <Person
@@ -396,6 +489,19 @@ export default function OrderDetailPage() {
                                     )}
                                   </div>
                                 </div>
+
+                                {/* Nút xác nhận */}
+                                {ca.trangThai === "Hoàn thành" &&
+                                  ca.trangThaiThuNhap !== "Đã xác nhận" && (
+                                    <button
+                                      onClick={() =>
+                                        handleOpenConfirm(ca.maThuNhap)
+                                      }
+                                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
+                                    >
+                                      Xác nhận hoàn thành
+                                    </button>
+                                  )}
                               </div>
                             </div>
                           </div>
@@ -478,7 +584,7 @@ export default function OrderDetailPage() {
                     <button
                       onClick={handleSubmitReview}
                       disabled={rating === 0}
-                      className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
                     >
                       <Send sx={{ fontSize: 18 }} />
                       Gửi đánh giá
@@ -544,6 +650,80 @@ export default function OrderDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* --- MODAL XÁC NHẬN --- */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <HelpOutline sx={{ fontSize: 32 }} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                Xác nhận hoàn thành
+              </h3>
+              <p className="text-sm text-slate-500 mb-6">
+                Bạn có chắc chắn muốn xác nhận hoàn thành cho ca làm việc này?
+                Hành động này sẽ gửi thông báo và cập nhật thu nhập cho nhân
+                viên.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() =>
+                    setConfirmModal({
+                      isOpen: false,
+                      maThuNhap: null,
+                      isSubmitting: false,
+                    })
+                  }
+                  disabled={confirmModal.isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={executeConfirmCompletion}
+                  disabled={confirmModal.isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px] cursor-pointer"
+                >
+                  {confirmModal.isSubmitting ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    "Đồng ý"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- TOAST THÔNG BÁO --- */}
+      <div
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg transition-all duration-300 transform ${
+          toast.show
+            ? "translate-y-0 opacity-100"
+            : "translate-y-8 opacity-0 pointer-events-none"
+        } ${
+          toast.type === "success"
+            ? "bg-emerald-600 text-white"
+            : "bg-red-500 text-white"
+        }`}
+      >
+        {toast.type === "success" ? (
+          <CheckCircleOutline sx={{ fontSize: 20 }} />
+        ) : (
+          <CloseIcon sx={{ fontSize: 20 }} />
+        )}
+        <span className="text-sm font-semibold pr-2">{toast.message}</span>
+        <button
+          onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+          className="text-white/80 hover:text-white"
+        >
+          <CloseIcon sx={{ fontSize: 16 }} />
+        </button>
       </div>
     </div>
   );

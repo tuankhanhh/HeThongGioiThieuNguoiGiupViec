@@ -376,6 +376,10 @@ namespace MyWebApi.Controllers
                     .Include(d => d.DonDatDichVus)
                         .ThenInclude(dd => dd.NgayLamViecs)
                             .ThenInclude(nl => nl.MaNguoiGiupViecNavigation)
+                    // THÊM INCLUDE: Lấy thêm bảng Thu Nhập liên kết với Ngày Làm Việc
+                    .Include(d => d.DonDatDichVus)
+                        .ThenInclude(dd => dd.NgayLamViecs)
+                            .ThenInclude(nl => nl.ThuNhapNguoiGiupViecs)
                     .Include(d => d.DanhGia)
                     .Include(d => d.ThanhToans)
                     .FirstOrDefaultAsync();
@@ -419,6 +423,9 @@ namespace MyWebApi.Controllers
                         var dd = x.DonDatDichVu;
                         var nguoiGiupViec = nl.MaNguoiGiupViecNavigation;
 
+                        // Lấy bản ghi thu nhập đầu tiên (nếu có) tương ứng với ngày làm việc này
+                        var thuNhap = nl.ThuNhapNguoiGiupViecs.FirstOrDefault();
+
                         return new
                         {
                             ngay = nl.NgayLam.HasValue ? nl.NgayLam.Value.ToString("yyyy-MM-dd") : "Chưa xác định",
@@ -427,7 +434,11 @@ namespace MyWebApi.Controllers
                             gioKetThuc = nl.GioKetThuc.HasValue ? nl.GioKetThuc.Value.ToString("HH:mm") : "Đang cập nhật",
                             trangThai = nl.TrangThai ?? "Chờ phân công",
                             tenNhanVien = nguoiGiupViec?.HoTen,
-                            sdtNhanVien = nguoiGiupViec?.SoDienThoai
+                            sdtNhanVien = nguoiGiupViec?.SoDienThoai,
+
+                            // THÊM: Truyền dữ liệu Thu Nhập vào DTO
+                            maThuNhap = thuNhap?.MaThuNhap?.Trim(),
+                            trangThaiThuNhap = thuNhap?.TrangThai
                         };
                     })
                     .GroupBy(x => x.ngay)
@@ -441,7 +452,11 @@ namespace MyWebApi.Controllers
                             gioKetThuc = c.gioKetThuc,
                             trangThai = c.trangThai,
                             tenNhanVien = c.tenNhanVien,
-                            sdtNhanVien = c.sdtNhanVien
+                            sdtNhanVien = c.sdtNhanVien,
+
+                            // MAP: Chuyển dữ liệu ra kết quả trả về cho client
+                            maThuNhap = c.maThuNhap,
+                            trangThaiThuNhap = c.trangThaiThuNhap
                         }).ToList()
                     })
                     .OrderBy(g => g.ngay)
@@ -450,15 +465,12 @@ namespace MyWebApi.Controllers
                 var result = new
                 {
                     maDon = order.MaDon,
-
-                    // THAY ĐỔI TẠI ĐÂY: Trả về một mảng danh sách tên dịch vụ thay vì chuỗi join
                     tenDichVu = order.DonDatDichVus.Any()
                         ? order.DonDatDichVus
                             .Select(dd => dd.MaDichVuNavigation?.TenDichVu ?? "Chưa xác định")
-                            .Distinct() // Tránh trùng lặp nếu một dịch vụ xuất hiện nhiều lần
+                            .Distinct()
                             .ToList()
                         : new List<string> { "Chưa xác định" },
-
                     ngayDat = order.NgayDat,
                     trangThai = currentStatus,
                     soTien = order.TongTien,
@@ -498,7 +510,7 @@ namespace MyWebApi.Controllers
 
             try
             {
-                // Thay đổi: Include thêm DonDatDichVus và NgayLamViecs để xử lý việc hủy lịch cấp dưới
+                
                 var booking = await _context.DonDats
                     .Include(d => d.LichSuTrangThaiDons)
                     .Include(d => d.DonDatDichVus)
@@ -541,7 +553,7 @@ namespace MyWebApi.Controllers
                         ngayLam.TrangThai = "Hủy lịch";
 
                         // (Tùy chọn) Gán null cho nhân viên để hệ thống dọn dẹp sạch sẽ hơn
-                        // ngayLam.MaNguoiGiupViec = null; 
+                        ngayLam.MaNguoiGiupViec = null;
                     }
                 }
 
@@ -754,7 +766,9 @@ namespace MyWebApi.Controllers
             {
                 return StatusCode(500, new { message = "Lỗi server khi xử lý kiểm tra lịch rảnh.", error = ex.Message });
             }
+
         }
+
     }
 
     // =========================================================================

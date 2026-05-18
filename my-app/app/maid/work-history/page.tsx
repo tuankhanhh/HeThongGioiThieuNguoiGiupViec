@@ -370,18 +370,6 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
               {job.diaChi}
             </span>
           </div>
-
-          {job.ghiChu && (
-            <div className="flex items-start gap-3 bg-amber-50/50 p-3 rounded-xl border border-amber-100/60">
-              <NotesOutlined
-                className="text-amber-600 flex-shrink-0 mt-0.5"
-                sx={{ fontSize: 18 }}
-              />
-              <span className="text-sm font-medium text-amber-800 leading-snug italic">
-                {job.ghiChu}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* BOTTOM SECTION: MÃ ĐƠN & ACTIONS */}

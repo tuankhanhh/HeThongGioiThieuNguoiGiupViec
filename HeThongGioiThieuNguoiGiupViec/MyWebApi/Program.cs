@@ -12,7 +12,8 @@ using BCrypt.Net;
 //Console.WriteLine(BCrypt.Net.BCrypt.HashPassword("123456"));
 //
 var builder = WebApplication.CreateBuilder(args);
-
+// Đăng ký Background Service chạy ngầm
+builder.Services.AddHostedService<IncomeConfirmationWorker>();
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen(); CŨ

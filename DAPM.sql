@@ -181,9 +181,10 @@ CREATE TABLE ThuNhapNguoiGiupViec (
     MaThuNhap CHAR(5) PRIMARY KEY,
     MaNgayLamViec CHAR(5) NOT NULL,
     SoTien DECIMAL(10,2),
+	TrangThai NVARCHAR(30), 
+	ThoiGianTao DATETIME DEFAULT GETDATE(),
     FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec)
 );
-
 -- 17. ThanhToan
 CREATE TABLE ThanhToan (
     MaThanhToan CHAR(5) PRIMARY KEY,
@@ -236,6 +237,8 @@ ALTER TABLE DichVu ADD CONSTRAINT CHK_TrangThaiDichVu CHECK (TrangThai IN (N'Đa
 ALTER TABLE KhieuNai ADD CONSTRAINT CHK_TrangThaiKhieuNai CHECK (TrangThai IN (N'Chờ xử lý', N'Đang xử lý', N'Đã xử lý'));
 ALTER TABLE HoSoNguoiGiupViec ADD CONSTRAINT CHK_TrangThaiHoSoXacMinh CHECK (TrangThaiXacMinh IN (N'Chờ duyệt', N'Đã duyệt', N'Từ chối'));
 ALTER TABLE CaLamViec ADD CONSTRAINT UQ_CaLamViec_Gio UNIQUE (GioBatDau, GioKetThuc);
+ALTER TABLE ThuNhapNguoiGiupViec ADD CONSTRAINT CK_TrangThaiThuNhap CHECK (TrangThai IN (N'Chờ xác nhận',N'Đã xác nhận',N'Đã hủy'));
+
 GO
 
 -- =========================================================================
@@ -492,6 +495,11 @@ SELECT * FROM DonDat;
 SELECT * FROM DonDatDichVu;
 SELECT * FROM NgayLamViec;
 
+SELECT * FROM ThuNhapNguoiGiupViec;
 SELECT * FROM ThanhToan;
 SELECT * FROM LichSuTrangThaiDon;
 GO
+/*
+Insert into LichSuTrangThaiDon
+values ('LS015','DD014',GETDATE(),N'Đã xác nhận')
+*/

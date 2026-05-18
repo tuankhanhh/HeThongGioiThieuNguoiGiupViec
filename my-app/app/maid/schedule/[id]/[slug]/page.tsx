@@ -254,16 +254,16 @@ export default function JobDetailPage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 md:p-8 rounded-3xl">
       <div className="max-w-4xl mx-auto">
         {/* HEADER */}
         <div className="flex items-center justify-between gap-4 mb-6">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold transition-colors cursor-pointer"
           >
             <ArrowBack sx={{ fontSize: 20 }} />
-            <span>Quay lại danh sách</span>
+            <span>Quay lại</span>
           </button>
 
           <div
