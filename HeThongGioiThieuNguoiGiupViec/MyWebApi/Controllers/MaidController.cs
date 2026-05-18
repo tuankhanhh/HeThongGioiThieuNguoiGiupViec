@@ -104,7 +104,6 @@ namespace MyWebApi.Controllers
                 ThoiLuongThucHien = n.ThoiLuongThucHien ?? 0,
 
                 TenDichVu = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
-                HinhAnh = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.HinhAnh ?? "https://placehold.co/100x100/e0f2fe/0369a1?text=Clean",
 
                 HoTenKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.HoTen ?? "Chưa rõ khách hàng",
                 SdtKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.SoDienThoai ?? "Chưa có SDT",
@@ -187,6 +186,53 @@ namespace MyWebApi.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Cập nhật trạng thái thành công!" });
+        }
+
+        [HttpGet("history")]
+        public async Task<IActionResult> GetAllJobsHistory()
+        {
+            var maidId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(maidId))
+            {
+                return Unauthorized(new { message = "Không tìm thấy thông tin định danh." });
+            }
+
+            // Lấy tất cả các ngày làm việc của người giúp việc này
+            var rawJobs = await _context.NgayLamViecs
+                .Include(n => n.MaDonDatDichVuNavigation)
+                    .ThenInclude(d => d.MaDichVuNavigation)
+                .Include(n => n.MaDonDatDichVuNavigation)
+                    .ThenInclude(d => d.MaDonNavigation)
+                        .ThenInclude(m => m.MaKhachhangNavigation)
+                .Where(n => n.MaNguoiGiupViec == maidId && n.NgayLam.HasValue)
+                .OrderByDescending(n => n.NgayLam) // Sắp xếp ngày mới nhất lên trên
+                .ThenByDescending(n => n.GioBatDau) // Cùng ngày thì giờ trễ hơn lên trên
+                .ToListAsync();
+
+            var mappedJobs = rawJobs.Select(n => new ChiTietNgayLamViec
+            {
+                MaNgayLamViec = n.MaNgayLamViec,
+                MaDon = n.MaDonDatDichVuNavigation?.MaDon ?? "N/A",
+                NgayLam = n.NgayLam.Value.ToString("yyyy-MM-dd"),
+                GioBatDau = n.GioBatDau.HasValue ? n.GioBatDau.Value.ToString("HH:mm:ss") : "00:00:00",
+                GioKetThuc = n.GioKetThuc.HasValue ? n.GioKetThuc.Value.ToString("HH:mm:ss") : "00:00:00",
+                ThoiLuongThucHien = n.ThoiLuongThucHien ?? 0,
+
+                TenDichVu = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
+
+                HoTenKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.HoTen ?? "Chưa rõ khách hàng",
+                SdtKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.SoDienThoai ?? "Chưa có SDT",
+                DiaChi = n.MaDonDatDichVuNavigation?.MaDonNavigation?.DiaChi ?? "Chưa cập nhật địa chỉ",
+
+                TongTien = (n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.GiaTheoGio ?? 0m)
+                           * (decimal)(n.ThoiLuongThucHien ?? 0)
+                           * 0.6m,
+
+                GhiChu = n.MaDonDatDichVuNavigation?.MaDonNavigation?.GhiChu ?? "",
+                TrangThai = n.TrangThai ?? "Chờ phân công"
+            }).ToList();
+
+            return Ok(mappedJobs);
         }
 
         // ==========================================================
