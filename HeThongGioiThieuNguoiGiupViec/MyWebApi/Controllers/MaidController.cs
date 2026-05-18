@@ -45,14 +45,16 @@ namespace MyWebApi.Controllers
                             && targetStatuses.Contains(n.TrangThai))
                 .ToListAsync();
 
-            var mappedJobs = rawJobs.Select(n => new JobDto
+            var mappedJobs = rawJobs.Select(n => new NgayLamViec
             {
-                MaCongViec = n.MaNgayLamViec,
+                MaNgayLamViec = n.MaNgayLamViec,
                 Ngay = n.NgayLam.Value.ToString("yyyy-MM-dd"),
                 GioBatDau = n.GioBatDau.HasValue ? n.GioBatDau.Value.ToString("HH:mm") : "00:00",
                 LoaiDichVu = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
                 DiaChiKhachHang = n.MaDonDatDichVuNavigation?.MaDonNavigation?.DiaChi ?? "Chưa cập nhật địa chỉ",
-                TrangThai = n.TrangThai ?? "Chờ phân công"
+                TrangThai = n.TrangThai ?? "Chờ phân công",
+                // Bổ sung: Lấy thời lượng thực hiện
+                ThoiLuongThucHien = n.ThoiLuongThucHien ?? 0
             }).ToList();
 
             return Ok(mappedJobs);
@@ -70,13 +72,12 @@ namespace MyWebApi.Controllers
                 return Unauthorized(new { message = "Không tìm thấy thông tin định danh." });
             }
 
-            // Chuyển chuỗi YYYY-MM-DD sang DateOnly
+            // Chuyển chuỗi YYYY-MM-DD sang DateOnly (Hoặc DateTime tuỳ thuộc vào Model Entity của bạn)
             if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
             {
                 return BadRequest(new { message = "Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng yyyy-MM-dd." });
             }
 
-            // 1. KHAI BÁO CÁC TRẠNG THÁI MUỐN HIỂN THỊ
             var validStatuses = new List<string> { "Đã phân công", "Đang làm việc" };
 
             var rawJobs = await _context.NgayLamViecs
@@ -88,16 +89,19 @@ namespace MyWebApi.Controllers
                 .Where(n => n.MaNguoiGiupViec == maidId
                             && n.NgayLam.HasValue
                             && n.NgayLam.Value == parsedDate
-                            // 2. THÊM ĐIỀU KIỆN LỌC VÀO ĐÂY
                             && validStatuses.Contains(n.TrangThai))
                 .ToListAsync();
 
-            var mappedJobs = rawJobs.Select(n => new DailyJobDto
+            var mappedJobs = rawJobs.Select(n => new ChiTietNgayLamViec
             {
                 MaNgayLamViec = n.MaNgayLamViec,
                 MaDon = n.MaDonDatDichVuNavigation?.MaDon ?? "N/A",
                 NgayLam = n.NgayLam.Value.ToString("yyyy-MM-dd"),
                 GioBatDau = n.GioBatDau.HasValue ? n.GioBatDau.Value.ToString("HH:mm:ss") : "00:00:00",
+
+                // Bổ sung: Lấy Giờ Kết Thúc và Thời Lượng Thực Hiện
+                GioKetThuc = n.GioKetThuc.HasValue ? n.GioKetThuc.Value.ToString("HH:mm:ss") : "00:00:00",
+                ThoiLuongThucHien = n.ThoiLuongThucHien ?? 0,
 
                 TenDichVu = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
                 HinhAnh = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.HinhAnh ?? "https://placehold.co/100x100/e0f2fe/0369a1?text=Clean",
@@ -106,7 +110,6 @@ namespace MyWebApi.Controllers
                 SdtKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.SoDienThoai ?? "Chưa có SDT",
                 DiaChi = n.MaDonDatDichVuNavigation?.MaDonNavigation?.DiaChi ?? "Chưa cập nhật địa chỉ",
 
-                // LOGIC THU NHẬP (Thời lượng tính bằng GIỜ)
                 TongTien = (n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.GiaTheoGio ?? 0m)
                            * (decimal)(n.ThoiLuongThucHien ?? 0)
                            * 0.6m,
@@ -117,6 +120,7 @@ namespace MyWebApi.Controllers
 
             return Ok(mappedJobs);
         }
+
         // ==========================================================
         // 3. API Lấy Chi Tiết 1 Công Việc
         // ==========================================================
@@ -137,15 +141,18 @@ namespace MyWebApi.Controllers
 
             if (rawJob == null) return NotFound(new { message = "Không tìm thấy công việc này." });
 
-            var jobDetail = new DailyJobDto
+            var jobDetail = new ChiTietNgayLamViec
             {
                 MaNgayLamViec = rawJob.MaNgayLamViec,
                 MaDon = rawJob.MaDonDatDichVuNavigation?.MaDon ?? "N/A",
                 NgayLam = rawJob.NgayLam.HasValue ? rawJob.NgayLam.Value.ToString("yyyy-MM-dd") : "",
                 GioBatDau = rawJob.GioBatDau.HasValue ? rawJob.GioBatDau.Value.ToString("HH:mm:ss") : "00:00:00",
 
+                // Bổ sung: Lấy Giờ Kết Thúc và Thời Lượng Thực Hiện
+                GioKetThuc = rawJob.GioKetThuc.HasValue ? rawJob.GioKetThuc.Value.ToString("HH:mm:ss") : "00:00:00",
+                ThoiLuongThucHien = rawJob.ThoiLuongThucHien ?? 0,
+
                 TenDichVu = rawJob.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
-                HinhAnh = rawJob.MaDonDatDichVuNavigation?.MaDichVuNavigation?.HinhAnh ?? "https://placehold.co/100x100/e0f2fe/0369a1?text=Clean",
 
                 HoTenKhach = rawJob.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.HoTen ?? "Chưa rõ khách hàng",
                 SdtKhach = rawJob.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.SoDienThoai ?? "Chưa có SDT",
@@ -185,24 +192,31 @@ namespace MyWebApi.Controllers
         // ==========================================================
         // CÁC LỚP DATA TRANSFER OBJECTS (DTOs)
         // ==========================================================
-        public class JobDto
+        public class NgayLamViec
         {
-            public string MaCongViec { get; set; } = null!;
+            public string MaNgayLamViec { get; set; } = null!;
             public string Ngay { get; set; } = null!;
             public string GioBatDau { get; set; } = null!;
             public string LoaiDichVu { get; set; } = null!;
             public string DiaChiKhachHang { get; set; } = null!;
             public string TrangThai { get; set; } = null!;
+
+            // Trường mới
+            public int ThoiLuongThucHien { get; set; }
         }
 
-        public class DailyJobDto
+        public class ChiTietNgayLamViec
         {
             public string MaNgayLamViec { get; set; } = null!;
             public string MaDon { get; set; } = null!;
             public string NgayLam { get; set; } = null!;
             public string GioBatDau { get; set; } = null!;
+
+            // Các trường mới
+            public string GioKetThuc { get; set; } = null!;
+            public int ThoiLuongThucHien { get; set; }
+
             public string TenDichVu { get; set; } = null!;
-            public string HinhAnh { get; set; } = null!;
             public string HoTenKhach { get; set; } = null!;
             public string SdtKhach { get; set; } = null!;
             public string DiaChi { get; set; } = null!;
@@ -210,6 +224,7 @@ namespace MyWebApi.Controllers
             public string GhiChu { get; set; } = null!;
             public string TrangThai { get; set; } = null!;
         }
+
         public class UpdateStatusDto
         {
             public string TrangThai { get; set; } = null!;

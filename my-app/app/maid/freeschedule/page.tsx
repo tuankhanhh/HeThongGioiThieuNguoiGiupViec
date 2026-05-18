@@ -514,7 +514,14 @@ export default function HelperAvailability() {
     hasAnyInvalidGap || isSaving || selectedKeys.length === 0 || !hasNewChanges;
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f1f5f9", py: 6 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "#f1f5f9",
+        py: 6,
+        borderRadius: "24px",
+      }}
+    >
       <Container sx={{ maxWidth: "1000px !important", px: { xs: 2, md: 4 } }}>
         <Box sx={{ mb: 5, display: "flex", flexDirection: "column", gap: 1 }}>
           <Typography

@@ -8,24 +8,26 @@ import {
   History,
   Paid,
   Logout,
+  Menu,
+  Close,
 } from "@mui/icons-material";
 import { ROUTES } from "@/lib/routes";
-import { useEffect, useState } from "react"; // Thêm useState
+import { useEffect, useState } from "react";
 import { api } from "@/services/api";
 
 const Sidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
 
-  // State lưu trữ tên người dùng
+  // State lưu trữ tên người dùng và trạng thái Sidebar (Mobile)
   const [userName, setUserName] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Gọi API /me để lấy thông tin người dùng
+  // Gọi API lấy thông tin người dùng
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
         const response: any = await api.get("/User/me");
-        // Lưu ý: Điều chỉnh 'response.data.name' tuỳ thuộc vào cấu trúc trả về thực tế của API của bạn
         const name = response.hoTen;
         setUserName(name);
       } catch (error) {
@@ -36,7 +38,12 @@ const Sidebar = () => {
     fetchUserProfile();
   }, []);
 
-  // Danh sách các mục chính
+  // Tự động đóng Sidebar trên Mobile mỗi khi chuyển trang
+  useEffect(() => {
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+    setIsOpen(false);
+  }, [pathname]);
+
   const menuItems = [
     {
       title: "Hồ sơ cá nhân",
@@ -71,87 +78,111 @@ const Sidebar = () => {
     router.push(ROUTES.MAID.LOGIN);
   };
 
-  // Hàm xử lý lấy 2 chữ cái đầu của tên
   const getInitials = (name: string) => {
     if (!name) return "";
     const words = name.trim().split(" ");
-
-    // Nếu tên có từ 2 chữ trở lên (VD: "Nguyễn Văn A" -> "NA")
     if (words.length >= 2) {
       return (words[0][0] + words[words.length - 1][0]).toUpperCase();
     }
-    // Nếu tên chỉ có 1 chữ (VD: "Admin" -> "AD")
     return name.substring(0, 2).toUpperCase();
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
-      {/* Logo / Brand */}
-      <div className="p-6 border-b border-gray-100">
-        <h1 className="text-xl font-bold text-green-600 tracking-tight">
-          Homezy
-        </h1>
-      </div>
+    <>
+      {/* Nút Hamburger cho Mobile (Chỉ hiện trên màn hình nhỏ) */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="md:hidden fixed top-4 left-4 z-40 p-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:bg-gray-50 focus:outline-none"
+      >
+        <Menu />
+      </button>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 mt-4 px-4 space-y-1">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.path;
+      {/* Lớp phủ (Overlay) tối màu khi mở Sidebar trên Mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
 
-          return (
-            <Link
-              key={item.path}
-              href={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                isActive
-                  ? "bg-blue-50 text-blue-600 font-semibold"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              <span
-                className={`${
+      {/* Sidebar Chính */}
+      <aside
+        className={`fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0`}
+      >
+        {/* Logo / Brand & Nút Close cho Mobile */}
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-green-600 tracking-tight">
+            Homezy
+          </h1>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="md:hidden p-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            <Close />
+          </button>
+        </div>
+
+        {/* Navigation Links */}
+        {/* Thêm overflow-y-auto để cuộn mượt mà nếu màn hình quá thấp */}
+        <nav className="flex-1 mt-4 px-4 space-y-1 overflow-y-auto">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.path;
+
+            return (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                   isActive
-                    ? "text-blue-600"
-                    : "text-gray-400 group-hover:text-gray-600"
+                    ? "bg-blue-50 text-blue-600 font-semibold"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
-                {item.icon}
-              </span>
-              <span className="text-sm">{item.title}</span>
-            </Link>
-          );
-        })}
-      </nav>
+                <span
+                  className={`${
+                    isActive
+                      ? "text-blue-600"
+                      : "text-gray-400 group-hover:text-gray-600"
+                  }`}
+                >
+                  {item.icon}
+                </span>
+                <span className="text-sm">{item.title}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      {/* Bottom Section: Logout & Profile */}
-      <div className="p-4 border-t border-gray-100 space-y-4">
-        {/* Nút Đăng xuất */}
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200 group"
-        >
-          <Logout className="text-red-400 group-hover:text-red-500" />
-          <span className="text-sm font-medium cursor-pointer">Đăng xuất</span>
-        </button>
+        {/* Bottom Section: Logout & Profile */}
+        <div className="p-4 border-t border-gray-100 space-y-4">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200 group"
+          >
+            <Logout className="text-red-400 group-hover:text-red-500" />
+            <span className="text-sm font-medium cursor-pointer">
+              Đăng xuất
+            </span>
+          </button>
 
-        {/* Profile Stub */}
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-            {/* Hiển thị 2 chữ cái đầu */}
-            {getInitials(userName) || "--"}
-          </div>
-          <div className="flex-1 min-w-0">
-            {/* Hiển thị tên đầy đủ */}
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {userName || "Đang tải..."}
-            </p>
-            <p className="text-xs text-green-500 font-medium">
-              Đang trực tuyến
-            </p>
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+              {getInitials(userName) || "--"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {userName || "Đang tải..."}
+              </p>
+              <p className="text-xs text-green-500 font-medium">
+                Đang trực tuyến
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 

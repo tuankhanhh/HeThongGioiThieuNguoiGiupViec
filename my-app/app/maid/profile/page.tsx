@@ -345,7 +345,7 @@ export default function ProfileUpdatePage() {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8 flex justify-center font-sans">
+      <div className="min-h-screen  p-4 md:p-8 flex justify-center font-sans">
         <div className="max-w-4xl w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* HEADER PROFILE */}
           <div className="bg-emerald-700 p-8 text-center text-white">
