@@ -50,6 +50,42 @@ export default function ReportsPage() {
     }
   };
 
+  const exportToExcel = () => {
+    // Chuẩn bị dữ liệu CSV với BOM UTF-8 để hiển thị đúng tiếng Việt trong Excel
+    let csvContent = "\uFEFF"; // Byte Order Mark
+    
+    // Tiêu đề báo cáo
+    csvContent += `"BÁO CÁO DOANH THU NĂM ${year}"\n\n`;
+    
+    // Thông tin tổng quan
+    csvContent += `"Ngày xuất báo cáo:", "${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}"\n`;
+    csvContent += `"Tổng doanh thu cả năm:", "${totalRevenue.toLocaleString()} đ"\n`;
+    csvContent += `"Tổng đơn hàng:", "${totalBookings} đơn"\n`;
+    csvContent += `"Doanh thu trung bình / đơn:", "${avgPerOrder.toLocaleString()} đ"\n\n`;
+    
+    // Tiêu đề cột
+    csvContent += `"Tháng", "Số lượng đơn hàng", "Doanh thu (VND)", "Trung bình trên đơn (VND)"\n`;
+    
+    // Dữ liệu từng tháng
+    revenueData.forEach((data, index) => {
+      const avg = data.count > 0 ? Math.round(data.revenue / data.count) : 0;
+      csvContent += `"${monthFullNames[index]}", "${data.count} đơn", "${data.revenue}", "${avg > 0 ? avg : '-'}"\n`;
+    });
+    
+    // Dòng tổng kết
+    csvContent += `\n"Tổng cộng cả năm", "${totalBookings} đơn", "${totalRevenue}", "${avgPerOrder > 0 ? avgPerOrder : '-'}"\n`;
+    
+    // Tạo blob và tải xuống dưới dạng .csv
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Bao_Cao_Doanh_Thu_Nam_${year}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const totalRevenue = revenueData.reduce((s,m) => s + m.revenue, 0);
   const totalBookings = revenueData.reduce((s,m) => s + m.count, 0);
   const maxRevenue = Math.max(...revenueData.map(d => d.revenue), 1);
@@ -85,19 +121,53 @@ export default function ReportsPage() {
           <p style={{ color: "#64748b", marginTop: "6px", fontSize: "15px" }}>Phân tích số liệu kinh doanh theo năm {year}.</p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <label style={{ fontSize: "14px", fontWeight: 700, color: "#475569" }}>Chọn năm:</label>
-          <select
-            title="Chọn năm báo cáo"
-            aria-label="Chọn năm để xem báo cáo doanh thu"
-            value={year}
-            onChange={e => setYear(Number(e.target.value))}
-            style={{ padding: "10px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "14px", fontWeight: 700, color: "#1e293b", outline: "none", cursor: "pointer", background: "#fff" }}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <label style={{ fontSize: "14px", fontWeight: 700, color: "#475569" }}>Chọn năm:</label>
+            <select
+              title="Chọn năm báo cáo"
+              aria-label="Chọn năm để xem báo cáo doanh thu"
+              value={year}
+              onChange={e => setYear(Number(e.target.value))}
+              style={{ padding: "10px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "14px", fontWeight: 700, color: "#1e293b", outline: "none", cursor: "pointer", background: "#fff" }}
+            >
+              {Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={exportToExcel}
+            style={{
+              padding: "10px 20px",
+              borderRadius: "12px",
+              border: "none",
+              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: "14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
+              transition: "transform 0.15s, box-shadow 0.15s"
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.3)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = "none";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.2)";
+            }}
           >
-            {Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i).map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Xuất Excel Báo Cáo
+          </button>
         </div>
       </div>
 
