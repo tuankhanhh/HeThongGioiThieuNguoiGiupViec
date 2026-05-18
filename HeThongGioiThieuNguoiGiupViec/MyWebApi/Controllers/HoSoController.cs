@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyWebApi.DTO.Request;
 using MyWebApi.DTO.Response;
+using MyWebApi.Extensions; 
 using MyWebApi.Models;
 
 namespace MyWebApi.Controllers
@@ -59,7 +60,10 @@ namespace MyWebApi.Controllers
                 string pathChanDung = await SaveFileAsync(request.FileAnhChanDung);
                 string pathCuTru = await SaveFileAsync(request.FileAnhGiayXacNhanCuTru);
 
-                string newMaHoSo = await GenerateMaHoSoAsync();
+                // =========================================================================
+                // THAY ĐỔI TẠI ĐÂY: Sử dụng phương thức mở rộng sinh mã tự động tuần tự từ DB
+                // =========================================================================
+                string newMaHoSo = await _context.GenerateIdAsync("HoSoNguoiGiupViec", "MaHoSo", "HS");
 
                 var hoSoMoi = new HoSoNguoiGiupViec
                 {
@@ -78,7 +82,7 @@ namespace MyWebApi.Controllers
                 };
 
                 await _context.HoSoNguoiGiupViecs.AddAsync(hoSoMoi);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(); // Lưu ngay để giữ chỗ mã hồ sơ mới
 
                 // Lưu danh sách kỹ năng cùng với kinh nghiệm tương ứng
                 if (request.DanhSachKyNang != null && request.DanhSachKyNang.Any())
@@ -90,7 +94,7 @@ namespace MyWebApi.Controllers
                         {
                             MaHoSo = newMaHoSo,
                             MaKyNang = k.MaKyNang,
-                            KinhNghiem = k.KinhNghiem // Lưu trực tiếp chuỗi vào DB
+                            KinhNghiem = k.KinhNghiem
                         }).ToList();
 
                     await _context.KyNangNguoiGiupViecs.AddRangeAsync(danhSachKyNang);
@@ -138,7 +142,7 @@ namespace MyWebApi.Controllers
                           (kn, k) => new {
                               id = k.MaKyNang,
                               name = k.TenKyNang,
-                              experienceYears = kn.KinhNghiem // Lấy chuỗi kinh nghiệm trực tiếp
+                              experienceYears = kn.KinhNghiem
                           })
                     .ToListAsync();
 
@@ -324,7 +328,6 @@ namespace MyWebApi.Controllers
                                     .Join(_context.KyNangs,
                                           kn_hs => kn_hs.MaKyNang,
                                           kn => kn.MaKyNang,
-                                          // Trả về tên kỹ năng kèm kinh nghiệm. Vd: "Dọn dẹp nhà cửa (1 - 3 năm)"
                                           (kn_hs, kn) => kn.TenKyNang + " (" + kn_hs.KinhNghiem + ")")
                                     .ToList()
                     })
@@ -369,19 +372,5 @@ namespace MyWebApi.Controllers
 
             return "/uploads/" + uniqueFileName;
         }
-
-        private async Task<string> GenerateMaHoSoAsync()
-        {
-            string maHoSo;
-            do
-            {
-                maHoSo = "HS" + Random.Shared.Next(100, 1000);
-            }
-            while (await _context.HoSoNguoiGiupViecs.AnyAsync(x => x.MaHoSo == maHoSo));
-
-            return maHoSo;
-        }
-
-
     }
 }

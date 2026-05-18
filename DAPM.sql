@@ -239,17 +239,17 @@ ALTER TABLE CaLamViec ADD CONSTRAINT UQ_CaLamViec_Gio UNIQUE (GioBatDau, GioKetT
 GO
 
 -- =========================================================================
--- PHẦN 3: THÊM DỮ LIỆU (DML) - ĐÃ GỘP TẤT CẢ THEO BẢNG
+-- PHẦN 3: THÊM DỮ LIỆU (DML) - ĐÃ CHUẨN HÓA PREFIX VÀ ID (TĂNG TỪ 001)
 -- =========================================================================
 
--- 1. VaiTro
+-- 1. VaiTro (Mặc định bắt đầu từ VT)
 INSERT INTO VaiTro (MaVaiTro, TenVaiTro, MoTa) VALUES 
 ('VT001', N'Admin', N'Quản trị viên hệ thống'),
 ('VT002', N'Staff', N'Nhân viên'),
 ('VT003', N'Customer', N'Khách hàng'),
 ('VT004', N'Maid', N'Người giúp việc');
 
--- 2. KyNang
+-- 2. KyNang (Tiền tố: KN)
 INSERT INTO KyNang (MaKyNang, TenKyNang, MoTa, IconName) VALUES 
 ('KN001', N'Dọn dẹp nhà cửa', N'Vệ sinh, lau dọn, sắp xếp nhà cửa gọn gàng', 'cleaning'),
 ('KN002', N'Tổng vệ sinh', N'Làm sạch chuyên sâu toàn bộ không gian sống', 'deep_cleaning'),
@@ -258,7 +258,7 @@ INSERT INTO KyNang (MaKyNang, TenKyNang, MoTa, IconName) VALUES
 ('KN005', N'Chăm sóc người cao tuổi', N'Hỗ trợ sinh hoạt và chăm sóc người lớn tuổi', 'eldercare'),
 ('KN006', N'Giặt sofa và nệm', N'Vệ sinh sofa, nệm và khử khuẩn chuyên sâu', 'sofa_cleaning');
 
--- 3. ThanhPhan
+-- 3. ThanhPhan (Tiền tố: TP)
 INSERT INTO ThanhPhan (MaThanhPhan, TenThanhPhan) VALUES 
 ('TP001', N'Quét & lau sàn'),       ('TP002', N'Lau bụi nội thất'),    ('TP003', N'Thu gom rác'),
 ('TP004', N'Tẩy vết bẩn cứng đầu'), ('TP005', N'Vệ sinh bếp & toilet'),('TP006', N'Hút bụi rèm cửa'),
@@ -267,18 +267,18 @@ INSERT INTO ThanhPhan (MaThanhPhan, TenThanhPhan) VALUES
 ('TP013', N'Hỗ trợ di chuyển'),     ('TP014', N'Nhắc uống thuốc'),     ('TP015', N'Trò chuyện tâm sự'),
 ('TP016', N'Hút bụi bằng máy'),     ('TP017', N'Tẩy ố bằng hơi nước'), ('TP018', N'Khử mùi diệt khuẩn');
 
--- 4. CaLamViec (Gộp chuẩn và test cases)
+-- 4. CaLamViec (Tiền tố: CA)
 INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) VALUES
 ('CA001', '08:00', '10:00'),
 ('CA002', '10:00', '12:00'),
 ('CA003', '13:00', '15:00'),
 ('CA004', '15:00', '17:00'),
 ('CA005', '18:00', '21:00'),
-('CA100', '08:00', '14:00'),
-('CA101', '14:00', '20:00'),
-('CA102', '07:00', '13:00');
+('CA006', '08:00', '14:00'),
+('CA007', '14:00', '20:00'),
+('CA008', '07:00', '13:00');
 
--- 5. DichVu
+-- 5. DichVu (Tiền tố: DV)
 INSERT INTO DichVu (MaDichVu, MaKyNang, TenDichVu, MoTa, GiaTheoGio, HinhAnh, PhoBien, TrangThai) VALUES 
 ('DV001','KN001', N'Dọn dẹp nhà cửa', N'Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.', 60000, 'https://images.unsplash.com/photo-1581578731548-c64695cc6952', 1, N'Đang hoạt động'),
 ('DV002','KN002', N'Tổng vệ sinh', N'Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.', 150000, 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac', 0, N'Đang hoạt động'),
@@ -290,177 +290,189 @@ INSERT INTO DichVu (MaDichVu, MaKyNang, TenDichVu, MoTa, GiaTheoGio, HinhAnh, Ph
 -- 6. DichVuThanhPhan
 INSERT INTO DichVuThanhPhan (MaDichVu, MaThanhPhan, GhiChu) VALUES 
 ('DV001', 'TP001', N'Sử dụng nước lau sàn chuyên dụng'), ('DV001', 'TP002', NULL), ('DV001', 'TP003', NULL),
-('DV002', 'TP004', N'Bao gồm tẩy mốc tường'),           ('DV002', 'TP005', NULL), ('DV002', 'TP006', NULL),
+('DV002', 'TP004', N'Bao gồm tẩy mốc tường'),            ('DV002', 'TP005', NULL), ('DV002', 'TP006', NULL),
 ('DV003', 'TP007', NULL),                              ('DV003', 'TP008', N'Chi phí chợ khách hàng thanh toán riêng'), ('DV003', 'TP009', NULL),
 ('DV004', 'TP010', NULL),                              ('DV004', 'TP011', NULL), ('DV004', 'TP012', NULL),
 ('DV005', 'TP013', NULL),                              ('DV005', 'TP014', NULL), ('DV005', 'TP015', NULL),
 ('DV006', 'TP016', NULL),                              ('DV006', 'TP017', NULL), ('DV006', 'TP018', NULL);
 
--- 7. NguoiDung
+-- 7. NguoiDung (Tiền tố theo vai trò: AD, NV, KH, GV)
 INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai, NgayTao) VALUES
 ('AD001', N'Admin Hệ Thống', 'admin@example.com', '0900000000', '$2a$10$clZ4L9Y/E2HwH0X8W8G.Ou4A6N0f9p1YV2F3.A2j6z7.B8f5.G.mG', N'Đà Nẵng', 1, GETDATE()),
-('ST001', N'Lê Nhân Viên', 'staff@example.com', '0905111222', '$2a$10$vM8tX7F9zD3yPzS8W8X8Z8ueG2f5L5gX6f9f5f5f5f5f5f5f5f5f5', N'Quận Thanh Khê, Đà Nẵng', 1,GETDATE()),
-('ND010', N'Khách hàng A', 'nd010@gmail.com', '0909000010', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Đà Nẵng', 1, GETDATE()),
-('ND011', N'Khách hàng B', 'nd011@gmail.com', '0909000011', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Đà Nẵng', 1, GETDATE()),
-('KH001', N'Phạm Khách Hàng', 'customer1@example.com', '0905333444', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Ngũ Hành Sơn, Đà Nẵng', 1, GETDATE()),
-('KH002', N'Đỗ Minh Quân', 'customer2@example.com', '0905555666', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Sơn Trà, Đà Nẵng', 1, GETDATE()),
-('ND001', N'Nguyễn Thị Lan', 'lanmaid@gmail.com', '2222222222', '$2a$11$/lqmXkq1sP9rn9D55z7NvuuTiU9g7ljzq3M/E7Pe4jGRhJLFvFKde', N'Nha Trang', 1, GETDATE()),
-('ND012', N'Lê Thị Mai', 'nd012@gmail.com', '0909000012', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Hải Châu, Đà Nẵng', 1, GETDATE()),
-('ND013', N'Phạm Thị Hoa', 'nd013@gmail.com', '0909000013', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Sơn Trà, Đà Nẵng', 1, GETDATE()),
-('ND014', N'Võ Thị Hạnh', 'nd014@gmail.com', '0909000014', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Thanh Khê, Đà Nẵng', 1, GETDATE()),
-('GV001', N'Nguyễn Thị Hoa', 'hoanguyen@example.com', '0912345678', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'123 Hải Phòng, Đà Nẵng', 1, GETDATE()),
-('GV002', N'Trần Văn Nam', 'namtran@example.com', '0987654321', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'456 Lê Duẩn, Đà Nẵng', 1, GETDATE()),
-('GV003', N'Bùi Thị Tám', 'tam@example.com', '0905777888', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Liên Chiểu, Đà Nẵng', 1, GETDATE());
+('NV001', N'Lê Nhân Viên', 'staff@example.com', '0905111222', '$2a$10$vM8tX7F9zD3yPzS8W8X8Z8ueG2f5L5gX6f9f5f5f5f5f5f5f5f5f5', N'Quận Thanh Khê, Đà Nẵng', 1,GETDATE()),
+('KH001', N'Khách hàng A', 'nd010@gmail.com', '0909000010', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Đà Nẵng', 1, GETDATE()),
+('KH002', N'Khách hàng B', 'nd011@gmail.com', '0909000011', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Đà Nẵng', 1, GETDATE()),
+('KH003', N'Phạm Khách Hàng', 'customer1@example.com', '0905333444', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Ngũ Hành Sơn, Đà Nẵng', 1, GETDATE()),
+('KH004', N'Đỗ Minh Quân', 'customer2@example.com', '0905555666', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Sơn Trà, Đà Nẵng', 1, GETDATE()),
+('GV001', N'Nguyễn Thị Lan', 'lanmaid@gmail.com', '2222222222', '$2a$11$/lqmXkq1sP9rn9D55z7NvuuTiU9g7ljzq3M/E7Pe4jGRhJLFvFKde', N'Nha Trang', 1, GETDATE()),
+('GV002', N'Lê Thị Mai', 'nd012@gmail.com', '0909000012', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Hải Châu, Đà Nẵng', 1, GETDATE()),
+('GV003', N'Phạm Thị Hoa', 'nd013@gmail.com', '0909000013', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Sơn Trà, Đà Nẵng', 1, GETDATE()),
+('GV004', N'Võ Thị Hạnh', 'nd014@gmail.com', '0909000014', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Thanh Khê, Đà Nẵng', 1, GETDATE()),
+('GV005', N'Nguyễn Thị Hoa', 'hoanguyen@example.com', '0912345678', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'123 Hải Phòng, Đà Nẵng', 1, GETDATE()),
+('GV006', N'Trần Văn Nam', 'namtran@example.com', '0987654321', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'456 Lê Duẩn, Đà Nẵng', 1, GETDATE()),
+('GV007', N'Bùi Thị Tám', 'tam@example.com', '0905777888', '$2a$10$P1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V1V', N'Quận Liên Chiểu, Đà Nẵng', 1, GETDATE());
 
 -- 8. NguoiDungVaiTro
 INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro, NgayGan) VALUES
-('AD001', 'VT001', GETDATE()), ('ST001', 'VT002', GETDATE()),
-('ND010', 'VT003', GETDATE()), ('ND011', 'VT003', GETDATE()),
+('AD001', 'VT001', GETDATE()), ('NV001', 'VT002', GETDATE()),
 ('KH001', 'VT003', GETDATE()), ('KH002', 'VT003', GETDATE()),
-('ND001', 'VT004', GETDATE()), ('ND012', 'VT004', GETDATE()), 
-('ND013', 'VT004', GETDATE()), ('ND014', 'VT004', GETDATE()),
+('KH003', 'VT003', GETDATE()), ('KH004', 'VT003', GETDATE()),
 ('GV001', 'VT004', GETDATE()), ('GV002', 'VT004', GETDATE()), 
-('GV003', 'VT004', GETDATE());
+('GV003', 'VT004', GETDATE()), ('GV004', 'VT004', GETDATE()),
+('GV005', 'VT004', GETDATE()), ('GV006', 'VT004', GETDATE()), 
+('GV007', 'VT004', GETDATE());
 
--- 9. HoSoNguoiGiupViec
+-- 9. HoSoNguoiGiupViec (Tiền tố: HS)
 INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, TrangThaiXacMinh, AnhChanDung) VALUES
-('HS001', 'ND001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', NULL),
-('HS010', 'ND012', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', 'https://example.com/avatar_10.jpg'),
-('HS011', 'ND013', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Đã duyệt', 'https://example.com/avatar_11.jpg'),
-('HS012', 'ND014', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'https://example.com/avatar_12.jpg'),
-('HS021', 'GV001', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
-('HS022', 'GV002', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
-('HS023', 'GV003', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Đã duyệt', 'https://images.unsplash.com/photo-1594744803329-05206259021e?w=400');
+('HS001', 'GV001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', NULL),
+('HS002', 'GV002', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', 'https://example.com/avatar_10.jpg'),
+('HS003', 'GV003', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Đã duyệt', 'https://example.com/avatar_11.jpg'),
+('HS004', 'GV004', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'https://example.com/avatar_12.jpg'),
+('HS005', 'GV005', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
+('HS006', 'GV006', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
+('HS007', 'GV007', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Đã duyệt', 'https://images.unsplash.com/photo-1594744803329-05206259021e?w=400');
 
--- 10. KyNangNguoiGiupViec (Gộp chuẩn và test cases)
+-- 10. KyNangNguoiGiupViec (Mã KN và Mã HS đã chuẩn hóa)
 INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES
 ('KN001', 'HS001', N'2 năm kinh nghiệm dọn dẹp'), ('KN002', 'HS001', N'Biết nấu ăn gia đình'), ('KN005', 'HS001', N'Giặt ủi chuyên nghiệp'),
-('KN001', 'HS010', N'3 năm'), ('KN002', 'HS010', N'2 năm'), ('KN003', 'HS010', N'1 năm'),
-('KN001', 'HS011', N'4 năm'), ('KN005', 'HS011', N'1 năm'), ('KN004', 'HS011', N'2 năm'),
-('KN003', 'HS012', N'6 tháng'), ('KN004', 'HS012', N'1 năm'),
-('KN001', 'HS021', N'2 năm dọn dẹp'), ('KN002', 'HS021', N'1 năm nấu ăn'), 
-('KN001', 'HS022', N'3 năm dọn dẹp'), ('KN005', 'HS023', N'1 năm giặt ủi');
+('KN001', 'HS002', N'3 năm'), ('KN002', 'HS002', N'2 năm'), ('KN003', 'HS002', N'1 năm'),
+('KN001', 'HS003', N'4 năm'), ('KN005', 'HS003', N'1 năm'), ('KN004', 'HS003', N'2 năm'),
+('KN003', 'HS004', N'6 tháng'), ('KN004', 'HS004', N'1 năm'),
+('KN001', 'HS005', N'2 năm dọn dẹp'), ('KN002', 'HS005', N'1 năm nấu ăn'), 
+('KN001', 'HS006', N'3 năm dọn dẹp'), ('KN005', 'HS007', N'1 năm giặt ủi');
 
--- 11. LichRanh (Gộp chuẩn và test cases)
+-- 11. LichRanh (Tiền tố: LR)
 INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
-('LR001', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR002', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR003', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR100', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR101', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR102', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR103', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR104', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR105', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR106', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR107', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR200', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR201', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR300', 'ND001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR301', 'ND001', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
-('LR302', 'ND001', DATEADD(DAY, 3, CAST(GETDATE() AS DATE))),
-('LR303', 'ND012', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR304', 'ND012', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
-('LR305', 'ND012', DATEADD(DAY, 4, CAST(GETDATE() AS DATE))),
-('LR306', 'ND013', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR307', 'ND013', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
-('LR308', 'ND013', DATEADD(DAY, 5, CAST(GETDATE() AS DATE))),
-('LR309', 'ND014', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
-('LR310', 'ND014', DATEADD(DAY, 3, CAST(GETDATE() AS DATE))),
-('LR311', 'ND014', DATEADD(DAY, 6, CAST(GETDATE() AS DATE))),
-('LR321', 'ND012', '2026-06-20'), ('LR322', 'ND001', '2026-06-21'),
-('LR323', 'ND012', '2026-06-22'), ('LR324', 'ND013', '2026-06-22'),
-('LR325', 'ND012', '2026-06-23'), ('LR326', 'ND012', '2026-06-24'),
-('LR327', 'ND013', '2026-06-24'), ('LR328', 'ND012', '2026-06-25'),
-('LR329', 'ND013', '2026-06-25');
+('LR001', 'GV001', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR002', 'GV002', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR003', 'GV003', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR004', 'GV001', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
+('LR005', 'GV002', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
+('LR006', 'GV003', DATEADD(DAY, 2, CAST(GETDATE() AS DATE))),
+('LR007', 'GV004', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR008', 'GV004', DATEADD(DAY, 3, CAST(GETDATE() AS DATE))),
+('LR009', 'GV002', '2026-06-20'), 
+('LR010', 'GV001', '2026-06-21'),
+('LR011', 'GV002', '2026-06-22'), 
+('LR012', 'GV003', '2026-06-22'),
+('LR013', 'GV002', '2026-06-23'), 
+('LR014', 'GV002', '2026-06-24'),
+('LR015', 'GV003', '2026-06-24'), 
+('LR016', 'GV002', '2026-06-25'),
+('LR017', 'GV003', '2026-06-25');
 
--- 12. LichRanhCaLamViec (Gộp chuẩn và test cases)
+-- 12. LichRanhCaLamViec (Mã LR và CA đã chuẩn hóa)
 INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) VALUES
 ('LR001', 'CA001'), ('LR001', 'CA002'),
-('LR100', 'CA001'), ('LR100', 'CA002'),
-('LR101', 'CA001'), ('LR101', 'CA002'),
-('LR300', 'CA100'), ('LR301', 'CA101'), ('LR302', 'CA102'),
-('LR303', 'CA101'), ('LR304', 'CA100'), ('LR305', 'CA102'),
-('LR306', 'CA100'), ('LR307', 'CA101'), ('LR308', 'CA102'),
-('LR309', 'CA102'), ('LR310', 'CA101'), ('LR311', 'CA100'),
-('LR321', 'CA001'), ('LR322', 'CA001'), ('LR323', 'CA001'), 
-('LR324', 'CA001'), ('LR325', 'CA001'), ('LR326', 'CA001'), 
-('LR327', 'CA001'), ('LR328', 'CA001'), ('LR329', 'CA001'),
-('LR322', 'CA002'), ('LR324', 'CA002'), ('LR326', 'CA002'), 
-('LR327', 'CA002'), ('LR328', 'CA002'), ('LR329', 'CA002');
+('LR002', 'CA001'), ('LR002', 'CA002'),
+('LR003', 'CA001'), ('LR003', 'CA002'),
+('LR004', 'CA006'), ('LR005', 'CA006'), 
+('LR006', 'CA006'), ('LR007', 'CA008'), 
+('LR008', 'CA007'), ('LR009', 'CA001'), 
+('LR010', 'CA001'), ('LR011', 'CA001'), 
+('LR012', 'CA001'), ('LR013', 'CA001'), 
+('LR014', 'CA001'), ('LR015', 'CA001'), 
+('LR016', 'CA001'), ('LR017', 'CA001');
 
--- 13. DonDat (Gộp chuẩn và test cases)
+-- 13. DonDat (Tiền tố: DD)
 INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
-('DD010', 'ND010', NULL, N'123 Lê Duẩn, Hải Châu, Đà Nẵng', 1, 180000, '2026-05-05 10:00:00', N'Nhà nhiều bụi, cần dọn dẹp kỹ'),
-('DD011', 'ND010', NULL, N'123 Lê Duẩn, Hải Châu, Đà Nẵng', 2, 300000, '2026-05-05 11:00:00', N'Có trẻ nhỏ, ưu tiên người chăm trẻ'),
-('DD012', 'ND011', NULL, N'45 Trần Phú, Hải Châu, Đà Nẵng', 1, 240000, '2026-05-06 09:00:00', N'Cần nấu ăn và phụ bếp'),
-('DD013', 'ND011', NULL, N'78 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng', 1, 160000, '2026-05-06 14:00:00', N'Có người lớn tuổi cần hỗ trợ'),
-('DD020', 'ND010', NULL, N'99 Nguyễn Văn Linh, Đà Nẵng', 1, 300000, GETDATE(), N'Đơn test 2 dịch vụ'),
-('DD001', 'KH001', 'ST001', N'Sơn Trà, Đà Nẵng', 1, 120000, GETDATE(), N'Dọn dẹp nhà cửa'),
-('DD002', 'KH002', 'ST001', N'Hải Châu, Đà Nẵng', 2, 300000, DATEADD(DAY, -1, GETDATE()), N'Tổng vệ sinh'),
-('DD003', 'KH001', NULL, N'Thanh Khê, Đà Nẵng', 1, 80000, GETDATE(), N'Nấu ăn'),
-('TD201', 'ND010', NULL, N'Test 1 ngày 1 DV', 1, 120000, GETDATE(), NULL),
-('TD202', 'ND010', NULL, N'Test 1 ngày 2 DV - 1 người', 1, 200000, GETDATE(), NULL),
-('TD203', 'ND010', NULL, N'Test 1 ngày 2 DV - 2 người', 1, 220000, GETDATE(), NULL),
-('TD204', 'ND010', NULL, N'Test nhiều ngày 1 DV', 2, 240000, GETDATE(), NULL),
-('TD205', 'ND010', NULL, N'Test nhiều ngày 2 DV', 2, 420000, GETDATE(), NULL);
+('DD001', 'KH001', NULL, N'123 Lê Duẩn, Hải Châu, Đà Nẵng', 1, 180000, '2026-05-05 10:00:00', N'Nhà nhiều bụi, cần dọn dẹp kỹ'),
+('DD002', 'KH001', NULL, N'123 Lê Duẩn, Hải Châu, Đà Nẵng', 2, 300000, '2026-05-05 11:00:00', N'Có trẻ nhỏ, ưu tiên người chăm trẻ'),
+('DD003', 'KH002', NULL, N'45 Trần Phú, Hải Châu, Đà Nẵng', 1, 240000, '2026-05-06 09:00:00', N'Cần nấu ăn và phụ bếp'),
+('DD004', 'KH002', NULL, N'78 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng', 1, 160000, '2026-05-06 14:00:00', N'Có người lớn tuổi cần hỗ trợ'),
+('DD005', 'KH001', NULL, N'99 Nguyễn Văn Linh, Đà Nẵng', 1, 300000, GETDATE(), N'Đơn test 2 dịch vụ'),
+('DD006', 'KH003', 'NV001', N'Sơn Trà, Đà Nẵng', 1, 120000, GETDATE(), N'Dọn dẹp nhà cửa'),
+('DD007', 'KH004', 'NV001', N'Hải Châu, Đà Nẵng', 2, 300000, DATEADD(DAY, -1, GETDATE()), N'Tổng vệ sinh'),
+('DD008', 'KH003', NULL, N'Thanh Khê, Đà Nẵng', 1, 80000, GETDATE(), N'Nấu ăn'),
+('DD009', 'KH001', NULL, N'Test 1 ngày 1 DV', 1, 120000, GETDATE(), NULL),
+('DD010', 'KH001', NULL, N'Test 1 ngày 2 DV - 1 người', 1, 200000, GETDATE(), NULL),
+('DD011', 'KH001', NULL, N'Test 1 ngày 2 DV - 2 người', 1, 220000, GETDATE(), NULL),
+('DD012', 'KH001', NULL, N'Test nhiều ngày 1 DV', 2, 240000, GETDATE(), NULL),
+('DD013', 'KH001', NULL, N'Test nhiều ngày 2 DV', 2, 420000, GETDATE(), NULL);
 
--- 14. DonDatDichVu (Gộp chuẩn và test cases)
+-- 14. DonDatDichVu (Tiền tố: DU)
 INSERT INTO DonDatDichVu (MaDonDatDichVu, MaDon, MaDichVu) VALUES
-('DDV10', 'DD010', 'DV001'), ('DDV11', 'DD011', 'DV004'),
-('DDV12', 'DD012', 'DV003'), ('DDV13', 'DD013', 'DV005'),
-('DDV20', 'DD020', 'DV001'), ('DDV21', 'DD020', 'DV003'),
-('DDV41', 'TD201', 'DV001'), ('DDV42', 'TD202', 'DV001'), 
-('DDV43', 'TD202', 'DV003'), ('DDV44', 'TD203', 'DV001'), 
-('DDV45', 'TD203', 'DV005'), ('DDV46', 'TD204', 'DV001'), 
-('DDV47', 'TD205', 'DV003'), ('DDV48', 'TD205', 'DV005');
+('DU001', 'DD001', 'DV001'), ('DU002', 'DD002', 'DV004'),
+('DU003', 'DD003', 'DV003'), ('DU004', 'DD004', 'DV005'),
+('DU005', 'DD005', 'DV001'), ('DU006', 'DD005', 'DV003'),
+('DU007', 'DD009', 'DV001'), ('DU008', 'DD010', 'DV001'), 
+('DU009', 'DD010', 'DV003'), ('DU010', 'DD011', 'DV001'), 
+('DU011', 'DD011', 'DV005'), ('DU012', 'DD012', 'DV001'), 
+('DU013', 'DD013', 'DV003'), ('DU014', 'DD013', 'DV005');
 
--- 15. NgayLamViec (Gộp từ test cases)
+-- 15. NgayLamViec (Tiền tố: NL)
 INSERT INTO NgayLamViec (MaNgayLamViec, MaDonDatDichVu, MaNguoiGiupViec, NgayLam, GioBatDau, GioKetThuc, ThoiLuongThucHien, ThoiGianPhanCong, TrangThai) VALUES
-('NLV41', 'DDV41', NULL, '2026-06-20', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
-('NLV42', 'DDV42', NULL, '2026-06-21', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
-('NLV43', 'DDV43', NULL, '2026-06-21', '10:00', '12:00', 2, NULL, N'Chờ phân công'),
-('NLV44', 'DDV44', NULL, '2026-06-22', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
-('NLV45', 'DDV45', NULL, '2026-06-22', '10:00', '12:00', 2, NULL, N'Chờ phân công'),
-('NLV46', 'DDV46', NULL, '2026-06-23', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
-('NLV47', 'DDV46', NULL, '2026-06-24', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
-('NLV48', 'DDV47', NULL, '2026-06-24', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
-('NLV49', 'DDV48', NULL, '2026-06-24', '10:00', '12:00', 2, NULL, N'Chờ phân công'),
-('NLV50', 'DDV47', NULL, '2026-06-25', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
-('NLV51', 'DDV48', NULL, '2026-06-25', '10:00', '12:00', 2, NULL, N'Chờ phân công');
+('NL001', 'DU007', NULL, '2026-06-20', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
+('NL002', 'DU008', NULL, '2026-06-21', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
+('NL003', 'DU009', NULL, '2026-06-21', '10:00', '12:00', 2, NULL, N'Chờ phân công'),
+('NL004', 'DU010', NULL, '2026-06-22', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
+('NL005', 'DU011', NULL, '2026-06-22', '10:00', '12:00', 2, NULL, N'Chờ phân công'),
+('NL006', 'DU012', NULL, '2026-06-23', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
+('NL007', 'DU012', NULL, '2026-06-24', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
+('NL008', 'DU013', NULL, '2026-06-24', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
+('NL009', 'DU014', NULL, '2026-06-24', '10:00', '12:00', 2, NULL, N'Chờ phân công'),
+('NL010', 'DU013', NULL, '2026-06-25', '08:00', '10:00', 2, NULL, N'Chờ phân công'),
+('NL011', 'DU014', NULL, '2026-06-25', '10:00', '12:00', 2, NULL, N'Chờ phân công');
 
--- 16. ThanhToan
+-- 16. ThanhToan (Tiền tố: TT)
 INSERT INTO ThanhToan (MaThanhToan, MaDon, TrangThaiThanhToan) VALUES
-('TT010', 'DD010', N'Chưa thanh toán'), ('TT011', 'DD011', N'Đã thanh toán'),
-('TT012', 'DD012', N'Chưa thanh toán'), ('TT013', 'DD013', N'Chưa thanh toán'),
-('TT001', 'DD001', N'Đã thanh toán'),   ('TT002', 'DD002', N'Đã thanh toán'),
-('TT003', 'DD003', N'Chưa thanh toán');
+('TT001', 'DD001', N'Chưa thanh toán'), ('TT002', 'DD002', N'Đã thanh toán'),
+('TT003', 'DD003', N'Chưa thanh toán'), ('TT004', 'DD004', N'Chưa thanh toán'),
+('TT005', 'DD006', N'Đã thanh toán'),   ('TT006', 'DD007', N'Đã thanh toán'),
+('TT007', 'DD008', N'Chưa thanh toán');
 
--- 17. LichSuTrangThaiDon (Gộp chuẩn và test cases)
+-- 17. LichSuTrangThaiDon (Tiền tố: LS)
 INSERT INTO LichSuTrangThaiDon (MaLichSu, MaDon, ThoiGianCapNhat, TrangThai) VALUES
-('LS010', 'DD010', '2026-05-05 10:00:00', N'Chờ xác nhận'),
-('LS011', 'DD011', '2026-05-05 11:00:00', N'Chờ xác nhận'),
-('LS012', 'DD012', '2026-05-06 09:00:00', N'Chờ xác nhận'),
-('LS013', 'DD013', '2026-05-06 14:00:00', N'Chờ xác nhận'),
-('LS014', 'DD020', '2026-05-07 16:00:00', N'Chờ xác nhận'),
-('LS001', 'DD001', GETDATE(), N'Hoàn thành'),
-('LS002', 'DD002', GETDATE(), N'Đang thực hiện'),
-('LS003', 'DD003', GETDATE(), N'Chờ xác nhận'),
-('LS201', 'TD201', GETDATE(), N'Chờ xác nhận'),
-('LS202', 'TD202', GETDATE(), N'Chờ xác nhận'),
-('LS203', 'TD203', GETDATE(), N'Chờ xác nhận'),
-('LS204', 'TD204', GETDATE(), N'Chờ xác nhận'),
-('LS205', 'TD205', GETDATE(), N'Chờ xác nhận');
+('LS001', 'DD001', '2026-05-05 10:00:00', N'Chờ xác nhận'),
+('LS002', 'DD002', '2026-05-05 11:00:00', N'Chờ xác nhận'),
+('LS003', 'DD003', '2026-05-06 09:00:00', N'Chờ xác nhận'),
+('LS004', 'DD004', '2026-05-06 14:00:00', N'Chờ xác nhận'),
+('LS005', 'DD005', '2026-05-07 16:00:00', N'Chờ xác nhận'),
+('LS006', 'DD006', GETDATE(), N'Hoàn thành'),
+('LS007', 'DD007', GETDATE(), N'Đang thực hiện'),
+('LS008', 'DD008', GETDATE(), N'Chờ xác nhận'),
+('LS009', 'DD009', GETDATE(), N'Chờ xác nhận'),
+('LS010', 'DD010', GETDATE(), N'Chờ xác nhận'),
+('LS011', 'DD011', GETDATE(), N'Chờ xác nhận'),
+('LS012', 'DD012', GETDATE(), N'Chờ xác nhận'),
+('LS013', 'DD013', GETDATE(), N'Chờ xác nhận');
 
--- 18. DanhGia
+-- 18. DanhGia (Tiền tố: DG)
 INSERT INTO DanhGia (MaDanhGia, MaDon, SoSao) VALUES 
-('DG001', 'DD001', 5), ('DG002', 'DD002', 4);
+('DG001', 'DD006', 5), ('DG002', 'DD007', 4);
 
--- 19. KhieuNai
+-- 19. KhieuNai (Tiền tố: KN001 hoặc theo mã hóa khác. Giữ nguyên KN001 như cũ do khác bảng)
 INSERT INTO KhieuNai (MaKhieuNai, MaDon, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai) VALUES 
-('KN001', 'DD001', 'KH001', 'ST001', N'Nhân viên đến muộn 15 phút', GETDATE(), N'Chờ xử lý');
+('KN001', 'DD006', 'KH003', 'NV001', N'Nhân viên đến muộn 15 phút', GETDATE(), N'Chờ xử lý');
 GO
+-- Hàm
+CREATE PROCEDURE sp_TaoMaTuDong
+    @Bang NVARCHAR(100),
+    @Cot NVARCHAR(100),
+    @Prefix CHAR(2),
+    @MaMoi CHAR(5) OUTPUT -- Trả về mã mới qua tham số OUTPUT
+AS
+BEGIN
+    DECLARE @So INT;
+    DECLARE @SQL NVARCHAR(MAX);
 
+    -- Chuẩn bị câu lệnh Dynamic SQL
+    SET @SQL = '
+        SELECT @SoOUT = ISNULL(MAX(CAST(RIGHT(' + @Cot + ',3) AS INT)), 0) + 1
+        FROM ' + @Bang + '
+        WHERE ' + @Cot + ' LIKE ''' + @Prefix + '%''
+    ';
+
+    -- Thực thi SQL động để lấy số tiếp theo
+    EXEC sp_executesql 
+        @SQL,
+        N'@SoOUT INT OUTPUT',
+        @SoOUT = @So OUTPUT;
+
+    -- Định dạng mã mới và gán vào biến OUTPUT
+    SET @MaMoi = @Prefix + RIGHT('000' + CAST(@So AS VARCHAR(3)), 3);
+END;
+GO
 -- =========================================================================
 -- KIỂM TRA LẠI DỮ LIỆU
 -- =========================================================================

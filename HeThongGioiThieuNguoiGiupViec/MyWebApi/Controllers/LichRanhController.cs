@@ -2,16 +2,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Data; 
 using MyWebApi.DTO.Request;
 using MyWebApi.DTO.Response;
-using MyWebApi.DTO;
 using MyWebApi.Models;
+using MyWebApi.Extensions;
 
 namespace MyWebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bắt buộc gửi kèm JWT Token
+    [Authorize]
     public class LichRanhController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -21,10 +22,10 @@ namespace MyWebApi.Controllers
             _context = context;
         }
 
+
         [HttpGet("my-schedule")]
         public async Task<IActionResult> GetMySchedule()
         {
-            // Lấy MaNguoiDung từ Claim NameIdentifier trong Token
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
 
@@ -39,10 +40,7 @@ namespace MyWebApi.Controllers
                         MaCaLamViec = lrc.MaCaLamViec,
                         GioBatDau = lrc.MaCaLamViecNavigation.GioBatDau.ToString("HH:mm:ss"),
                         GioKetThuc = lrc.MaCaLamViecNavigation.GioKetThuc.ToString("HH:mm:ss"),
-
-                        // THÊM DÒNG NÀY ĐỂ FRONTEND LẤY ĐƯỢC GIỜ TẠO CA
                         ThoiGianTao = lrc.ThoiGianTao
-
                     }).ToList()
                 })
                 .ToListAsync();
@@ -58,16 +56,16 @@ namespace MyWebApi.Controllers
 
             var today = DateOnly.FromDateTime(DateTime.Now);
 
-            // 1. Ràng buộc: Đăng ký sau 3 ngày
+            // 1. Ràng buộc thời gian
             if (request.Ngay < today.AddDays(3))
                 return BadRequest(new { message = "Bạn chỉ có thể đăng ký lịch rảnh sau 3 ngày kể từ hôm nay." });
 
-            // 2. Ràng buộc: Không trùng ngày
+            // 2. Ràng buộc không trùng ngày
             var exist = await _context.LichRanhs.AnyAsync(x => x.MaNguoiGiupViec == userId && x.Ngay == request.Ngay);
             if (exist)
                 return Conflict(new { message = $"Ngày {request.Ngay:dd/MM/yyyy} đã có lịch đăng ký trước đó." });
 
-            // 3. Ràng buộc về số lượng và thời gian ca làm việc
+            // 3. Ràng buộc về số lượng ca
             if (request.DanhSachCa == null || request.DanhSachCa.Count == 0)
                 return BadRequest(new { message = "Vui lòng chọn ít nhất 1 ca làm việc." });
 
@@ -80,14 +78,13 @@ namespace MyWebApi.Controllers
                     return BadRequest(new { message = "Mỗi ca làm việc phải kéo dài ít nhất 4 tiếng." });
             }
 
-            // 4. Kiểm tra khoảng cách và lồng giờ (nếu đăng ký 2 ca)
+            // 4. Kiểm tra khoảng cách các ca
             if (request.DanhSachCa.Count == 2)
             {
                 var c1 = request.DanhSachCa[0];
                 var c2 = request.DanhSachCa[1];
                 TimeSpan khoangCachYeuCau = TimeSpan.FromHours(2);
 
-                // Sắp xếp để c1 luôn là ca bắt đầu trước
                 if (c1.GioBatDau > c2.GioBatDau)
                 {
                     var temp = c1;
@@ -101,47 +98,62 @@ namespace MyWebApi.Controllers
                 }
             }
 
-            // 5. Bắt đầu giao dịch lưu dữ liệu
-            string maLichRanh = "LR" + Guid.NewGuid().ToString().Substring(0, 3).ToUpper();
-
-            var lichRanh = new LichRanh
+            // =========================================================
+            // 5. BẮT ĐẦU TRANSACTION & LƯU CUỐN CHIẾU ĐỂ TRÁNH TRÙNG ID
+            // =========================================================
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                MaLichRanh = maLichRanh,
-                MaNguoiGiupViec = userId,
-                Ngay = request.Ngay,
-                LichRanhCaLamViecs = new List<LichRanhCaLamViec>()
-            };
+                // Sinh mã Lịch Rảnh tuần tự từ DB
+                string maLichRanh = await _context.GenerateIdAsync("LichRanh", "MaLichRanh", "LR");
 
-            foreach (var caReq in request.DanhSachCa)
-            {
-
-                // Tìm ca làm việc có sẵn theo giờ
-                var caDb = await _context.CaLamViecs.FirstOrDefaultAsync(c => c.GioBatDau == caReq.GioBatDau && c.GioKetThuc == caReq.GioKetThuc);
-
-                // Nếu chưa có giờ này trong DB thì tạo mới CaLamViec
-                if (caDb == null)
-                {
-                    caDb = new CaLamViec
-                    {
-                        MaCaLamViec = "CA" + Guid.NewGuid().ToString().Substring(0, 3).ToUpper(),
-                        GioBatDau = caReq.GioBatDau,
-                        GioKetThuc = caReq.GioKetThuc
-                    };
-                    _context.CaLamViecs.Add(caDb);
-                }
-
-                lichRanh.LichRanhCaLamViecs.Add(new LichRanhCaLamViec
+                var lichRanh = new LichRanh
                 {
                     MaLichRanh = maLichRanh,
-                    MaCaLamViec = caDb.MaCaLamViec,
-                    ThoiGianTao = DateTime.Now
-                });
+                    MaNguoiGiupViec = userId,
+                    Ngay = request.Ngay
+                };
+                _context.LichRanhs.Add(lichRanh);
+                await _context.SaveChangesAsync(); // Lưu ngay để giữ chỗ mã LR
+
+                foreach (var caReq in request.DanhSachCa)
+                {
+                    // Tìm ca làm việc có sẵn theo giờ
+                    var caDb = await _context.CaLamViecs
+                        .FirstOrDefaultAsync(c => c.GioBatDau == caReq.GioBatDau && c.GioKetThuc == caReq.GioKetThuc);
+
+                    // Nếu chưa có giờ này trong DB thì tạo mới CaLamViec bằng mã sinh tự động
+                    if (caDb == null)
+                    {
+                        caDb = new CaLamViec
+                        {
+                            // Thay đổi: Thay thế đoạn Guid cũ bằng hàm sinh mã DB
+                            MaCaLamViec = await _context.GenerateIdAsync("CaLamViec", "MaCaLamViec", "CA"),
+                            GioBatDau = caReq.GioBatDau,
+                            GioKetThuc = caReq.GioKetThuc
+                        };
+                        _context.CaLamViecs.Add(caDb);
+                        await _context.SaveChangesAsync(); // Lưu ngay để lượt lặp sau tính toán MAX(CA) chính xác
+                    }
+
+                    _context.LichRanhCaLamViecs.Add(new LichRanhCaLamViec
+                    {
+                        MaLichRanh = maLichRanh,
+                        MaCaLamViec = caDb.MaCaLamViec,
+                        ThoiGianTao = DateTime.Now
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return CreatedAtAction(nameof(GetMySchedule), new { message = "Đăng ký lịch rảnh thành công!" });
             }
-
-            _context.LichRanhs.Add(lichRanh);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetMySchedule), new { message = "Đăng ký lịch rảnh thành công!" });
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { message = "Lỗi hệ thống khi đăng ký lịch rảnh.", detail = ex.Message });
+            }
         }
 
         [HttpPost("bo-sung-ca/{maLichRanh}")]
@@ -150,7 +162,6 @@ namespace MyWebApi.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
 
-            // 1. Tìm lịch rảnh hiện tại kèm theo các ca đã đăng ký
             var lichRanh = await _context.LichRanhs
                 .Include(lr => lr.LichRanhCaLamViecs)
                 .ThenInclude(lrc => lrc.MaCaLamViecNavigation)
@@ -159,64 +170,65 @@ namespace MyWebApi.Controllers
             if (lichRanh == null)
                 return NotFound(new { message = "Không tìm thấy thông tin lịch rảnh này." });
 
-            // 2. Ràng buộc thời gian: Đăng ký trước ít nhất 3 ngày
             var today = DateOnly.FromDateTime(DateTime.Now);
             if (lichRanh.Ngay < today.AddDays(3))
                 return BadRequest(new { message = "Chỉ có thể bổ sung ca làm việc cho các ngày sau 3 ngày kể từ hôm nay." });
 
-            // 3. Kiểm tra số lượng ca (Tối đa 2 ca/ngày)
             if (lichRanh.LichRanhCaLamViecs.Count >= 2)
                 return BadRequest(new { message = "Ngày này đã đăng ký đủ 2 ca (tối đa). Không thể bổ sung thêm." });
 
-            // 4. Kiểm tra độ dài ca mới (Tối thiểu 4 tiếng = 240 phút)
             double durationInMinutes = (newShift.GioKetThuc - newShift.GioBatDau).TotalMinutes;
             if (durationInMinutes < 240)
                 return BadRequest(new { message = "Mỗi ca làm việc bổ sung phải kéo dài ít nhất 4 tiếng." });
 
-            // 5. Kiểm tra lồng giờ và khoảng cách 2 tiếng với các ca đã có sẵn
             TimeSpan khoangCachYeuCau = TimeSpan.FromHours(2);
-
             foreach (var lrc in lichRanh.LichRanhCaLamViecs)
             {
                 var existingShift = lrc.MaCaLamViecNavigation;
-
                 bool hopLe = (newShift.GioKetThuc.Add(khoangCachYeuCau) <= existingShift.GioBatDau) ||
                              (newShift.GioBatDau >= existingShift.GioKetThuc.Add(khoangCachYeuCau));
 
                 if (!hopLe)
-                {
                     return BadRequest(new { message = "Thời gian ca mới bị trùng hoặc không cách ca đã đăng ký ít nhất 2 tiếng." });
-                }
             }
 
-            // 6. Xử lý lưu dữ liệu
-            var caDb = await _context.CaLamViecs
-                .FirstOrDefaultAsync(c => c.GioBatDau == newShift.GioBatDau && c.GioKetThuc == newShift.GioKetThuc);
-
-            if (caDb == null)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                caDb = new CaLamViec
+                var caDb = await _context.CaLamViecs
+                    .FirstOrDefaultAsync(c => c.GioBatDau == newShift.GioBatDau && c.GioKetThuc == newShift.GioKetThuc);
+
+                if (caDb == null)
                 {
-                    MaCaLamViec = "CA" + Guid.NewGuid().ToString().Substring(0, 3).ToUpper(),
-                    GioBatDau = newShift.GioBatDau,
-                    GioKetThuc = newShift.GioKetThuc
-                };
-                _context.CaLamViecs.Add(caDb);
+                    caDb = new CaLamViec
+                    {
+                        MaCaLamViec = await _context.GenerateIdAsync("CaLamViec", "MaCaLamViec", "CA"),
+                        GioBatDau = newShift.GioBatDau,
+                        GioKetThuc = newShift.GioKetThuc
+                    };
+                    _context.CaLamViecs.Add(caDb);
+                    await _context.SaveChangesAsync(); // Lưu ngay
+                }
+
+                lichRanh.LichRanhCaLamViecs.Add(new LichRanhCaLamViec
+                {
+                    MaLichRanh = lichRanh.MaLichRanh,
+                    MaCaLamViec = caDb.MaCaLamViec,
+                    ThoiGianTao = DateTime.Now
+                });
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new { message = "Bổ sung ca làm việc thành công!" });
             }
-
-            lichRanh.LichRanhCaLamViecs.Add(new LichRanhCaLamViec
+            catch (Exception ex)
             {
-                MaLichRanh = lichRanh.MaLichRanh,
-                MaCaLamViec = caDb.MaCaLamViec,
-                ThoiGianTao = DateTime.Now
-            });
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Bổ sung ca làm việc thành công!" });
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { message = "Lỗi hệ thống khi bổ sung ca.", detail = ex.Message });
+            }
         }
 
-        // GET: api/LichRanh/kiem-tra-huy/{maLichRanh}/{maCaLamViec}
         [HttpGet("kiem-tra-huy/{maLichRanh}/{maCaLamViec}")]
         public async Task<IActionResult> KiemTraHuyCa(string maLichRanh, string maCaLamViec)
         {
@@ -224,11 +236,8 @@ namespace MyWebApi.Controllers
                 .FirstOrDefaultAsync(x => x.MaLichRanh == maLichRanh && x.MaCaLamViec == maCaLamViec);
 
             if (caLamViec == null)
-            {
                 return NotFound(new { message = "Không tìm thấy ca làm việc này!" });
-            }
 
-            // Tính khoảng cách thời gian từ lúc tạo đến hiện tại
             var timeDifference = DateTime.Now - caLamViec.ThoiGianTao;
             var minutesDiff = timeDifference.TotalMinutes;
 
@@ -251,7 +260,6 @@ namespace MyWebApi.Controllers
             }
         }
 
-        // DELETE: api/LichRanh/huy-ca/{maLichRanh}/{maCaLamViec}
         [HttpDelete("huy-ca/{maLichRanh}/{maCaLamViec}")]
         public async Task<IActionResult> HuyCaLamViec(string maLichRanh, string maCaLamViec)
         {
@@ -259,29 +267,21 @@ namespace MyWebApi.Controllers
                 .FirstOrDefaultAsync(x => x.MaLichRanh == maLichRanh && x.MaCaLamViec == maCaLamViec);
 
             if (caLamViec == null)
-            {
                 return NotFound(new { message = "Không tìm thấy ca làm việc này!" });
-            }
 
             var timeDifference = DateTime.Now - caLamViec.ThoiGianTao;
             if (timeDifference.TotalMinutes > 15)
-            {
                 return BadRequest(new { message = "Đã quá 15 phút kể từ lúc đăng ký. Bạn không thể hủy ca này nữa!" });
-            }
 
             using (var transaction = await _context.Database.BeginTransactionAsync())
             {
                 try
                 {
-                    // Xóa ca làm việc trong bảng trung gian (LichRanhCaLamViec)
                     _context.LichRanhCaLamViecs.Remove(caLamViec);
                     await _context.SaveChangesAsync();
 
-                    // Cleanup: Kiểm tra xem Lịch rảnh của ngày đó còn ca nào không?
-                    var soCaConLai = await _context.LichRanhCaLamViecs
-                        .CountAsync(x => x.MaLichRanh == maLichRanh);
+                    var soCaConLai = await _context.LichRanhCaLamViecs.CountAsync(x => x.MaLichRanh == maLichRanh);
 
-                    // Nếu không còn ca nào, xóa luôn ngày đó khỏi bảng LichRanh để dọn rác
                     if (soCaConLai == 0)
                     {
                         var lichRanh = await _context.LichRanhs.FindAsync(maLichRanh);
@@ -293,7 +293,6 @@ namespace MyWebApi.Controllers
                     }
 
                     await transaction.CommitAsync();
-
                     return Ok(new { message = "Đã hủy (xóa) ca làm việc thành công!" });
                 }
                 catch (Exception ex)

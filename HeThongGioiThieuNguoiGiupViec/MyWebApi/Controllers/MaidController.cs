@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using MyWebApi.Models;
+using MyWebApi.Models; // Đảm bảo namespace này khớp với project của bạn
 using System.Security.Claims;
 using System.Globalization;
 
@@ -38,11 +38,17 @@ namespace MyWebApi.Controllers
                     .ThenInclude(d => d.MaDichVuNavigation)
                 .Include(n => n.MaDonDatDichVuNavigation)
                     .ThenInclude(d => d.MaDonNavigation)
+                        .ThenInclude(m => m.LichSuTrangThaiDons) // Bắt buộc Include bảng lịch sử
                 .Where(n => n.MaNguoiGiupViec == maidId
                             && n.NgayLam.HasValue
                             && n.NgayLam.Value.Year == year
                             && n.NgayLam.Value.Month == month
-                            && targetStatuses.Contains(n.TrangThai))
+                            && targetStatuses.Contains(n.TrangThai)
+                            // Kiểm tra trạng thái mới nhất trong bảng lịch sử
+                            && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
+                                .OrderByDescending(ls => ls.ThoiGianCapNhat)
+                                .Select(ls => ls.TrangThai)
+                                .FirstOrDefault() == "Đã xác nhận")
                 .ToListAsync();
 
             var mappedJobs = rawJobs.Select(n => new NgayLamViec
@@ -53,7 +59,6 @@ namespace MyWebApi.Controllers
                 LoaiDichVu = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
                 DiaChiKhachHang = n.MaDonDatDichVuNavigation?.MaDonNavigation?.DiaChi ?? "Chưa cập nhật địa chỉ",
                 TrangThai = n.TrangThai ?? "Chờ phân công",
-                // Bổ sung: Lấy thời lượng thực hiện
                 ThoiLuongThucHien = n.ThoiLuongThucHien ?? 0
             }).ToList();
 
@@ -72,7 +77,6 @@ namespace MyWebApi.Controllers
                 return Unauthorized(new { message = "Không tìm thấy thông tin định danh." });
             }
 
-            // Chuyển chuỗi YYYY-MM-DD sang DateOnly (Hoặc DateTime tuỳ thuộc vào Model Entity của bạn)
             if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
             {
                 return BadRequest(new { message = "Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng yyyy-MM-dd." });
@@ -86,10 +90,18 @@ namespace MyWebApi.Controllers
                 .Include(n => n.MaDonDatDichVuNavigation)
                     .ThenInclude(d => d.MaDonNavigation)
                         .ThenInclude(m => m.MaKhachhangNavigation)
+                .Include(n => n.MaDonDatDichVuNavigation)
+                    .ThenInclude(d => d.MaDonNavigation)
+                        .ThenInclude(m => m.LichSuTrangThaiDons) // Bắt buộc Include bảng lịch sử
                 .Where(n => n.MaNguoiGiupViec == maidId
                             && n.NgayLam.HasValue
                             && n.NgayLam.Value == parsedDate
-                            && validStatuses.Contains(n.TrangThai))
+                            && validStatuses.Contains(n.TrangThai)
+                            // Kiểm tra trạng thái mới nhất trong bảng lịch sử
+                            && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
+                                .OrderByDescending(ls => ls.ThoiGianCapNhat)
+                                .Select(ls => ls.TrangThai)
+                                .FirstOrDefault() == "Đã xác nhận")
                 .ToListAsync();
 
             var mappedJobs = rawJobs.Select(n => new ChiTietNgayLamViec
@@ -98,21 +110,15 @@ namespace MyWebApi.Controllers
                 MaDon = n.MaDonDatDichVuNavigation?.MaDon ?? "N/A",
                 NgayLam = n.NgayLam.Value.ToString("yyyy-MM-dd"),
                 GioBatDau = n.GioBatDau.HasValue ? n.GioBatDau.Value.ToString("HH:mm:ss") : "00:00:00",
-
-                // Bổ sung: Lấy Giờ Kết Thúc và Thời Lượng Thực Hiện
                 GioKetThuc = n.GioKetThuc.HasValue ? n.GioKetThuc.Value.ToString("HH:mm:ss") : "00:00:00",
                 ThoiLuongThucHien = n.ThoiLuongThucHien ?? 0,
-
                 TenDichVu = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
-
                 HoTenKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.HoTen ?? "Chưa rõ khách hàng",
                 SdtKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.SoDienThoai ?? "Chưa có SDT",
                 DiaChi = n.MaDonDatDichVuNavigation?.MaDonNavigation?.DiaChi ?? "Chưa cập nhật địa chỉ",
-
                 TongTien = (n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.GiaTheoGio ?? 0m)
                            * (decimal)(n.ThoiLuongThucHien ?? 0)
                            * 0.6m,
-
                 GhiChu = n.MaDonDatDichVuNavigation?.MaDonNavigation?.GhiChu ?? "",
                 TrangThai = n.TrangThai ?? "Chờ phân công"
             }).ToList();
@@ -135,7 +141,16 @@ namespace MyWebApi.Controllers
                 .Include(n => n.MaDonDatDichVuNavigation)
                     .ThenInclude(d => d.MaDonNavigation)
                         .ThenInclude(m => m.MaKhachhangNavigation)
-                .Where(n => n.MaNguoiGiupViec == maidId && n.MaNgayLamViec == maNgayLamViec)
+                .Include(n => n.MaDonDatDichVuNavigation)
+                    .ThenInclude(d => d.MaDonNavigation)
+                        .ThenInclude(m => m.LichSuTrangThaiDons) // Bắt buộc Include bảng lịch sử
+                .Where(n => n.MaNguoiGiupViec == maidId
+                            && n.MaNgayLamViec == maNgayLamViec
+                            // Kiểm tra trạng thái mới nhất trong bảng lịch sử
+                            && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
+                                .OrderByDescending(ls => ls.ThoiGianCapNhat)
+                                .Select(ls => ls.TrangThai)
+                                .FirstOrDefault() == "Đã xác nhận")
                 .FirstOrDefaultAsync();
 
             if (rawJob == null) return NotFound(new { message = "Không tìm thấy công việc này." });
@@ -146,21 +161,15 @@ namespace MyWebApi.Controllers
                 MaDon = rawJob.MaDonDatDichVuNavigation?.MaDon ?? "N/A",
                 NgayLam = rawJob.NgayLam.HasValue ? rawJob.NgayLam.Value.ToString("yyyy-MM-dd") : "",
                 GioBatDau = rawJob.GioBatDau.HasValue ? rawJob.GioBatDau.Value.ToString("HH:mm:ss") : "00:00:00",
-
-                // Bổ sung: Lấy Giờ Kết Thúc và Thời Lượng Thực Hiện
                 GioKetThuc = rawJob.GioKetThuc.HasValue ? rawJob.GioKetThuc.Value.ToString("HH:mm:ss") : "00:00:00",
                 ThoiLuongThucHien = rawJob.ThoiLuongThucHien ?? 0,
-
                 TenDichVu = rawJob.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
-
                 HoTenKhach = rawJob.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.HoTen ?? "Chưa rõ khách hàng",
                 SdtKhach = rawJob.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.SoDienThoai ?? "Chưa có SDT",
                 DiaChi = rawJob.MaDonDatDichVuNavigation?.MaDonNavigation?.DiaChi ?? "Chưa cập nhật địa chỉ",
-
                 TongTien = (rawJob.MaDonDatDichVuNavigation?.MaDichVuNavigation?.GiaTheoGio ?? 0m)
                            * (decimal)(rawJob.ThoiLuongThucHien ?? 0)
                            * 0.6m,
-
                 GhiChu = rawJob.MaDonDatDichVuNavigation?.MaDonNavigation?.GhiChu ?? "",
                 TrangThai = rawJob.TrangThai ?? "Chờ phân công"
             };
@@ -178,9 +187,18 @@ namespace MyWebApi.Controllers
             if (string.IsNullOrEmpty(maidId)) return Unauthorized();
 
             var job = await _context.NgayLamViecs
-                .FirstOrDefaultAsync(n => n.MaNguoiGiupViec == maidId && n.MaNgayLamViec == maNgayLamViec);
+                .Include(n => n.MaDonDatDichVuNavigation)
+                    .ThenInclude(d => d.MaDonNavigation)
+                        .ThenInclude(m => m.LichSuTrangThaiDons) // Join thêm để check trạng thái
+                .FirstOrDefaultAsync(n => n.MaNguoiGiupViec == maidId
+                                          && n.MaNgayLamViec == maNgayLamViec
+                                          // Kiểm tra trạng thái mới nhất trong bảng lịch sử
+                                          && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
+                                                .OrderByDescending(ls => ls.ThoiGianCapNhat)
+                                                .Select(ls => ls.TrangThai)
+                                                .FirstOrDefault() == "Đã xác nhận");
 
-            if (job == null) return NotFound(new { message = "Không tìm thấy công việc." });
+            if (job == null) return NotFound(new { message = "Không tìm thấy công việc hợp lệ để cập nhật." });
 
             job.TrangThai = request.TrangThai;
             await _context.SaveChangesAsync();
@@ -188,6 +206,9 @@ namespace MyWebApi.Controllers
             return Ok(new { message = "Cập nhật trạng thái thành công!" });
         }
 
+        // ==========================================================
+        // 5. API Lấy Toàn Bộ Lịch Sử 
+        // ==========================================================
         [HttpGet("history")]
         public async Task<IActionResult> GetAllJobsHistory()
         {
@@ -197,16 +218,24 @@ namespace MyWebApi.Controllers
                 return Unauthorized(new { message = "Không tìm thấy thông tin định danh." });
             }
 
-            // Lấy tất cả các ngày làm việc của người giúp việc này
             var rawJobs = await _context.NgayLamViecs
                 .Include(n => n.MaDonDatDichVuNavigation)
                     .ThenInclude(d => d.MaDichVuNavigation)
                 .Include(n => n.MaDonDatDichVuNavigation)
                     .ThenInclude(d => d.MaDonNavigation)
                         .ThenInclude(m => m.MaKhachhangNavigation)
-                .Where(n => n.MaNguoiGiupViec == maidId && n.NgayLam.HasValue)
-                .OrderByDescending(n => n.NgayLam) // Sắp xếp ngày mới nhất lên trên
-                .ThenByDescending(n => n.GioBatDau) // Cùng ngày thì giờ trễ hơn lên trên
+                .Include(n => n.MaDonDatDichVuNavigation)
+                    .ThenInclude(d => d.MaDonNavigation)
+                        .ThenInclude(m => m.LichSuTrangThaiDons) // Bắt buộc Include bảng lịch sử
+                .Where(n => n.MaNguoiGiupViec == maidId
+                            && n.NgayLam.HasValue
+                            // Kiểm tra trạng thái mới nhất trong bảng lịch sử
+                            && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
+                                .OrderByDescending(ls => ls.ThoiGianCapNhat)
+                                .Select(ls => ls.TrangThai)
+                                .FirstOrDefault() == "Đã xác nhận")
+                .OrderByDescending(n => n.NgayLam)
+                .ThenByDescending(n => n.GioBatDau)
                 .ToListAsync();
 
             var mappedJobs = rawJobs.Select(n => new ChiTietNgayLamViec
@@ -217,17 +246,13 @@ namespace MyWebApi.Controllers
                 GioBatDau = n.GioBatDau.HasValue ? n.GioBatDau.Value.ToString("HH:mm:ss") : "00:00:00",
                 GioKetThuc = n.GioKetThuc.HasValue ? n.GioKetThuc.Value.ToString("HH:mm:ss") : "00:00:00",
                 ThoiLuongThucHien = n.ThoiLuongThucHien ?? 0,
-
                 TenDichVu = n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.TenDichVu ?? "Dịch vụ hệ thống",
-
                 HoTenKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.HoTen ?? "Chưa rõ khách hàng",
                 SdtKhach = n.MaDonDatDichVuNavigation?.MaDonNavigation?.MaKhachhangNavigation?.SoDienThoai ?? "Chưa có SDT",
                 DiaChi = n.MaDonDatDichVuNavigation?.MaDonNavigation?.DiaChi ?? "Chưa cập nhật địa chỉ",
-
                 TongTien = (n.MaDonDatDichVuNavigation?.MaDichVuNavigation?.GiaTheoGio ?? 0m)
                            * (decimal)(n.ThoiLuongThucHien ?? 0)
                            * 0.6m,
-
                 GhiChu = n.MaDonDatDichVuNavigation?.MaDonNavigation?.GhiChu ?? "",
                 TrangThai = n.TrangThai ?? "Chờ phân công"
             }).ToList();
@@ -246,8 +271,6 @@ namespace MyWebApi.Controllers
             public string LoaiDichVu { get; set; } = null!;
             public string DiaChiKhachHang { get; set; } = null!;
             public string TrangThai { get; set; } = null!;
-
-            // Trường mới
             public int ThoiLuongThucHien { get; set; }
         }
 
@@ -257,11 +280,8 @@ namespace MyWebApi.Controllers
             public string MaDon { get; set; } = null!;
             public string NgayLam { get; set; } = null!;
             public string GioBatDau { get; set; } = null!;
-
-            // Các trường mới
             public string GioKetThuc { get; set; } = null!;
             public int ThoiLuongThucHien { get; set; }
-
             public string TenDichVu { get; set; } = null!;
             public string HoTenKhach { get; set; } = null!;
             public string SdtKhach { get; set; } = null!;

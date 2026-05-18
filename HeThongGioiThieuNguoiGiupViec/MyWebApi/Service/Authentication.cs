@@ -2,6 +2,7 @@ using MyWebApi.DTO.Request;
 using MyWebApi.DTO.Response;
 using MyWebApi.Models;
 using Microsoft.EntityFrameworkCore;
+using MyWebApi.Extensions;
 namespace MyWebApi.Service
 {
     public interface IAuthService
@@ -31,35 +32,27 @@ namespace MyWebApi.Service
 
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
-            Console.WriteLine($"--- Debug Đăng nhập ---");
-            Console.WriteLine($"SĐT nhập vào: {request.SoDienThoai}");
 
             var user = await _context.NguoiDungs
                 .Include(u => u.NguoiDungVaiTros)
                 .ThenInclude(ur => ur.MaVaiTroNavigation)
                 .FirstOrDefaultAsync(u => u.SoDienThoai == request.SoDienThoai);
 
-            if (user == null) {
-                Console.WriteLine("Kết quả: KHÔNG tìm thấy người dùng với SĐT này trong DB.");
+            if (user == null)
+            {
                 throw new UnauthorizedAccessException("Sai tài khoản hoặc mật khẩu");
             }
 
-            Console.WriteLine($"Tìm thấy người dùng: {user.HoTen} (ID: {user.MaNguoiDung})");
-            Console.WriteLine($"Mật khẩu trong DB: {user.MatKhau}");
-
             bool isPasswordValid = _passwordService.VerifyPassword(request.MatKhau, user.MatKhau);
-            Console.WriteLine($"Kết quả kiểm tra mật khẩu: {isPasswordValid}");
 
             if (!user.TrangThai || !isPasswordValid)
             {
                 throw new UnauthorizedAccessException("Sai tài khoản hoặc mật khẩu");
             }
 
-
-            // Sửa trong LoginAsync
             var roles = user.NguoiDungVaiTros
                 .Where(ur => ur.MaVaiTroNavigation != null && !string.IsNullOrEmpty(ur.MaVaiTroNavigation.TenVaiTro))
-                .Select(ur => ur.MaVaiTroNavigation.TenVaiTro) // Lấy thẳng tên vai trò từ DB
+                .Select(ur => ur.MaVaiTroNavigation.TenVaiTro)
                 .ToList();
 
             var accessToken = _tokenService.GenerateAccessToken(user, roles);
@@ -75,7 +68,7 @@ namespace MyWebApi.Service
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                VaiTro = roles.FirstOrDefault() // Trả về role từ DB
+                VaiTro = roles.FirstOrDefault()
             };
         }
 
@@ -91,9 +84,12 @@ namespace MyWebApi.Service
             }
             var hashedPassword = _passwordService.HashPassword(request.MatKhau);
 
+
+            string maKhachHangMoi = await _context.GenerateIdAsync("NguoiDung", "MaNguoiDung", "KH");
+
             var newUser = new NguoiDung
             {
-                MaNguoiDung = GenerateId("KH"),
+                MaNguoiDung = maKhachHangMoi,
                 MatKhau = hashedPassword,
                 HoTen = request.HoTen,
                 Email = request.Email,
@@ -126,9 +122,11 @@ namespace MyWebApi.Service
             }
             var hashedPassword = _passwordService.HashPassword(request.MatKhau);
 
+            string maMaidMoi = await _context.GenerateIdAsync("NguoiDung", "MaNguoiDung", "GV");
+
             var newUser = new NguoiDung
             {
-                MaNguoiDung = GenerateId("GV"),
+                MaNguoiDung = maMaidMoi,
                 MatKhau = hashedPassword,
                 HoTen = request.HoTen,
                 Email = request.Email,
@@ -156,43 +154,38 @@ namespace MyWebApi.Service
                 .ThenInclude(ur => ur.MaVaiTroNavigation)
                 .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
 
-            // Kiểm tra refresh token
             if (user == null || user.NgayHetHanRefreshToken == null || user.NgayHetHanRefreshToken < DateTime.UtcNow)
             {
                 throw new UnauthorizedAccessException("Refresh token không hợp lệ hoặc đã hết hạn");
             }
 
-            // Kiểm tra trạng thái user
             if (!user.TrangThai)
             {
                 throw new UnauthorizedAccessException("User đã bị khóa");
             }
 
-            // LẤY TRỰC TIẾP TỪ DB THÔNG QUA BẢNG NGUOIDUNGVAITRO -> VAITRO
             var roles = user.NguoiDungVaiTros
                 .Where(ur => ur.MaVaiTroNavigation != null && !string.IsNullOrEmpty(ur.MaVaiTroNavigation.TenVaiTro))
                 .Select(ur => ur.MaVaiTroNavigation.TenVaiTro)
                 .ToList();
 
-            // Tạo token mới
             var newAccessToken = _tokenService.GenerateAccessToken(user, roles);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
-            // Cập nhật refresh token mới
             user.RefreshToken = newRefreshToken;
             user.NgayTaoRefreshToken = DateTime.UtcNow;
             user.NgayHetHanRefreshToken = DateTime.UtcNow.AddDays(7);
 
             await _context.SaveChangesAsync();
 
-            // Trả kết quả (NHỚ BỔ SUNG Thuộc tính VaiTro ở đây)
             return new LoginResponse
             {
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken,
-                VaiTro = roles.FirstOrDefault() // Lấy vai trò đầu tiên từ DB trả về cho client
+                VaiTro = roles.FirstOrDefault()
             };
         }
+
         public async Task<bool> AssignRoleToUserAsync(string maNguoiDung, string roleName)
         {
             var user = await _context.NguoiDungs.FindAsync(maNguoiDung);
@@ -217,12 +210,6 @@ namespace MyWebApi.Service
             await _context.SaveChangesAsync();
 
             return true;
-        }
-        private string GenerateId(string prefix)
-        {
-            int randomNum = new Random().Next(1000, 9999);
-            string id = prefix + randomNum.ToString();
-            return id.Length > 5 ? id.Substring(0, 5) : id;
         }
     }
 }
