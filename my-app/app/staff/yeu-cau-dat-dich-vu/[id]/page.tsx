@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -38,7 +38,7 @@ interface DonDetail {
   khachHang: { ma: string; hoTen: string; email: string; sdtKhach: string };
   nhanVien: { ma: string; hoTen: string } | null;
   dichVus: DichVuItem[];
-  thanhToan: { MaThanhToan: string; TrangThaiThanhToan: string } | null;
+  thanhToan: { maThanhToan: string; trangThaiThanhToan: string } | null;
 }
 
 interface MaidOption {
@@ -58,20 +58,20 @@ interface MaidOption {
   tongSoDanhGia: number;
 }
 
-interface GoiYDichVu {
-  maDonDatDichVu: string;
-  maKyNang: string | null;
-  candidates: MaidOption[];
-}
+// interface GoiYDichVu {
+//   maDonDatDichVu: string;
+//   maKyNang: string | null;
+//   candidates: MaidOption[];
+// }
 
-interface GoiYNgayLamViec {
-  maNgayLamViec: string;
-  maDonDatDichVu: string;
-  tenDichVu: string;
-  ngayLam: string;
-  gioBatDau: string;
-  candidates: MaidOption[];
-}
+// interface GoiYNgayLamViec {
+//   maNgayLamViec: string;
+//   maDonDatDichVu: string;
+//   tenDichVu: string;
+//   ngayLam: string;
+//   gioBatDau: string;
+//   candidates: MaidOption[];
+// }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -118,55 +118,53 @@ function MaidCandidateOption({
 }) {
   return (
     <label
-      className={`relative flex flex-col rounded-3xl cursor-pointer transition-all min-w-[340px] w-[380px] overflow-hidden snap-center shrink-0 bg-white ${
-        checked
-          ? "border-2 border-indigo-500 shadow-xl scale-[1.02] ring-4 ring-indigo-50"
-          : "border-2 border-slate-100 shadow-md hover:border-indigo-300 hover:shadow-lg"
-      }`}
+      className={
+        "relative flex flex-col rounded-2xl cursor-pointer transition-all min-w-[280px] max-w-[320px] w-full overflow-hidden shrink-0 bg-white border-2 p-4 " +
+        (checked
+          ? "border-indigo-600 shadow-md ring-2 ring-indigo-50 bg-indigo-50/10"
+          : "border-slate-100 shadow-sm hover:border-indigo-300 hover:shadow-md hover:bg-slate-50/10")
+      }
     >
-      <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
+      <div className="absolute top-4 right-4 z-10">
         <input
           type="radio"
           name={name}
           value={m.maNguoiGiupViec}
           checked={checked}
           onChange={onChange}
-          className="w-5 h-5 accent-indigo-600 cursor-pointer"
+          className="w-4 h-4 accent-indigo-600 cursor-pointer"
         />
       </div>
 
-      {/* Large Image Top */}
-      <div className="w-full h-[280px] bg-slate-100 relative">
-        {m.anhChanDung ? (
-          <img
-            src={m.anhChanDung}
-            alt={m.hoTen}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-100">
-            <svg
-              className="w-20 h-20 opacity-50"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
-          </div>
-        )}
-      </div>
+      <div className="flex gap-3">
+        {/* Rounded Avatar Left */}
+        <div className="w-12 h-12 bg-slate-100 rounded-full overflow-hidden shrink-0 border border-slate-200 shadow-sm relative">
+          {m.anhChanDung ? (
+            <img
+              src={m.anhChanDung}
+              alt={m.hoTen}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-100">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+              </svg>
+            </div>
+          )}
+        </div>
 
-      <div className="flex flex-col flex-1">
-        {/* Basic Info Box */}
-        <div className="p-5 bg-white">
-          <h3 className="text-xl font-bold text-slate-800 truncate mb-2">
+        {/* Basic Info */}
+        <div className="flex-1 min-w-0 pr-6">
+          <h3 className="text-[14px] font-bold text-slate-800 truncate mb-1">
             {m.hoTen}
           </h3>
-          <div className="flex flex-col gap-1.5 text-[14.5px] text-slate-500">
+
+          <div className="flex flex-col gap-0.5 text-[12px] text-slate-500">
             {m.soDienThoai && (
-              <span className="font-medium text-slate-600 flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-slate-600">
                 <svg
-                  className="w-4 h-4 text-slate-400"
+                  className="w-3.5 h-3.5 text-slate-400 shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -182,9 +180,9 @@ function MaidCandidateOption({
               </span>
             )}
             {m.email && (
-              <span className="font-medium text-slate-600 flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-slate-500 truncate">
                 <svg
-                  className="w-4 h-4 text-slate-400"
+                  className="w-3.5 h-3.5 text-slate-400 shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -201,78 +199,34 @@ function MaidCandidateOption({
             )}
           </div>
         </div>
+      </div>
 
-        {/* Rating & Status Box */}
-        <div className="px-5 py-3.5 bg-slate-50 border-y border-slate-100 flex items-center justify-between">
-          {m.soSaoDanhGia != null ? (
-            <span className="flex items-center gap-1.5 text-[14.5px] font-bold text-amber-500">
-              ⭐ {m.soSaoDanhGia}{" "}
-              <span className="font-medium text-amber-600/70 text-[13px]">
-                ({m.tongSoDanhGia} đánh giá)
-              </span>
-            </span>
-          ) : (
-            <span className="text-sm text-slate-400 italic">
-              Chưa có đánh giá
-            </span>
-          )}
-
-          {m.soLichDangCo != null && (
-            <span
-              className={`px-2.5 py-1 rounded-md text-[13px] font-bold border ${
-                m.soLichDangCo > 0
-                  ? "bg-rose-50 text-rose-600 border-rose-200 shadow-sm"
-                  : "bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm"
-              }`}
-            >
-              {m.soLichDangCo > 0
-                ? `${m.soLichDangCo} lịch bận`
-                : "Rảnh toàn thời gian"}
-            </span>
-          )}
-        </div>
-
-        {/* Skills Box */}
-        <div className="p-5 bg-indigo-50/40 flex-1">
-          <p className="text-[12px] font-bold text-indigo-400 mb-3 uppercase tracking-widest">
-            Kỹ năng chuyên môn
-          </p>
-          {m.chiTietKyNang && m.chiTietKyNang.length > 0 ? (
-            <div className="grid grid-cols-1 gap-2">
-              {m.chiTietKyNang.map((k) => (
-                <div
-                  key={k.maKyNang}
-                  className="flex flex-col bg-white p-2.5 rounded-xl border border-indigo-100 shadow-sm transition-colors hover:border-indigo-300"
+      {/* Structured skills display rendering tenKyNang and kinhNghiem */}
+      {m.chiTietKyNang && m.chiTietKyNang.length > 0 && (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <div className="flex flex-wrap gap-1">
+            {m.chiTietKyNang.map((kn) => {
+              const textKinhNghiem =
+                kn.kinhNghiem && parseInt(kn.kinhNghiem) > 0
+                  ? kn.kinhNghiem + " năm"
+                  : "";
+              return (
+                <span
+                  key={kn.maKyNang}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/50"
                 >
-                  <span className="text-[13.5px] font-bold text-indigo-700">
-                    {k.tenKyNang || k.maKyNang}
-                  </span>
-                  {k.kinhNghiem && (
-                    <span className="text-[12.5px] text-slate-500 mt-0.5">
-                      {k.kinhNghiem}
+                  <span>{kn.tenKyNang || kn.maKyNang}</span>
+                  {textKinhNghiem && (
+                    <span className="text-[9.5px] opacity-75 font-semibold">
+                      • {textKinhNghiem}
                     </span>
                   )}
-                </div>
-              ))}
-            </div>
-          ) : m.danhSachKyNang && m.danhSachKyNang.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {m.danhSachKyNang.map((k) => (
-                <span
-                  key={k}
-                  className="text-[13px] font-medium text-indigo-700 bg-white border border-indigo-100 shadow-sm px-2.5 py-1.5 rounded-lg"
-                >
-                  {k}
                 </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[13px] text-slate-400 italic">
-              Chưa cập nhật kỹ năng
-            </p>
-          )}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </label>
   );
 }
@@ -344,8 +298,8 @@ function MaidCarousel({ children }: { children: React.ReactNode }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type ActionMode = "idle" | "rejecting" | "assigning";
-type AssignMode = "one" | "multi-service" | "multi-day";
+type ActionMode = "idle" | "rejecting"; //|  "assigning";
+// type AssignMode = "one" | "multi-service" | "multi-day";
 
 export default function ChiTietYeuCauPage() {
   const { id } = useParams<{ id: string }>();
@@ -357,23 +311,23 @@ export default function ChiTietYeuCauPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Maids list (1 person)
-  const [maids, setMaids] = useState<MaidOption[]>([]);
-  const [maidsLoading, setMaidsLoading] = useState(false);
-  const [selectedMaid, setSelectedMaid] = useState("");
-  const [maidSearch, setMaidSearch] = useState("");
+  // const [maids, setMaids] = useState<MaidOption[]>([]);
+  // const [maidsLoading, setMaidsLoading] = useState(false);
+  // const [selectedMaid, setSelectedMaid] = useState("");
+  // const [maidSearch, setMaidSearch] = useState("");
 
   // Multi-person assignment (multi-service & multi-day)
-  const [goiY2Nguoi, setGoiY2Nguoi] = useState<GoiYDichVu[]>([]);
-  const [goiYTheoNgayLamViec, setGoiYTheoNgayLamViec] = useState<
-    GoiYNgayLamViec[]
-  >([]);
-  const [assignMode, setAssignMode] = useState<AssignMode>("one");
+  // const [goiY2Nguoi, setGoiY2Nguoi] = useState<GoiYDichVu[]>([]);
+  // const [goiYTheoNgayLamViec, setGoiYTheoNgayLamViec] = useState<
+  //   GoiYNgayLamViec[]
+  // >([]);
+  // const [assignMode, setAssignMode] = useState<AssignMode>("one");
 
   // Selection states (shared structure: id -> maidId)
-  const [multiSelection, setMultiSelection] = useState<Record<string, string>>(
-    {},
-  );
-  const [multiSearch, setMultiSearch] = useState<Record<string, string>>({});
+  // const [multiSelection, setMultiSelection] = useState<Record<string, string>>(
+  //   {},
+  // );
+  // const [multiSearch, setMultiSearch] = useState<Record<string, string>>({});
 
   // Action state
   const [actionMode, setActionMode] = useState<ActionMode>("idle");
@@ -382,7 +336,92 @@ export default function ChiTietYeuCauPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [confirmPhanCong, setConfirmPhanCong] = useState(false);
+  // const [confirmPhanCong, setConfirmPhanCong] = useState(false);
+
+  // States for Inline Slot Assignment
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [selectedMaidForSlot, setSelectedMaidForSlot] = useState<string>("");
+  const [slotSearch, setSlotSearch] = useState<string>("");
+  const [submittingSlot, setSubmittingSlot] = useState<boolean>(false);
+  const [slotCandidates, setSlotCandidates] = useState<MaidOption[]>([]);
+  const [slotCandidatesLoading, setSlotCandidatesLoading] = useState(false);
+  const [confirmingXacNhan, setConfirmingXacNhan] = useState(false);
+
+  const handleSaveSlotAssignment = async (slotId: string) => {
+    if (!selectedMaidForSlot) {
+      alert("Vui lòng chọn người giúp việc.");
+      return;
+    }
+    setSubmittingSlot(true);
+    try {
+      await api.post("/v1/staff/doi-nguoi-slot", {
+        MaNgayLamViec: slotId,
+        MaNguoiGiupViec: selectedMaidForSlot,
+      });
+      setSuccessMsg("Đổi người giúp việc thành công!");
+      setEditingSlotId(null);
+      setSelectedMaidForSlot("");
+      setSlotSearch("");
+      setSlotCandidates([]);
+      fetchData();
+    } catch (err: any) {
+      alert(err?.message ?? "Đổi người thất bại.");
+    } finally {
+      setSubmittingSlot(false);
+    }
+  };
+
+  const handleXacNhanDon = async () => {
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      await api.post("/v1/staff/xac-nhan-don", { MaDon: id });
+      setSuccessMsg("Xác nhận đơn đặt thành công!");
+      setConfirmingXacNhan(false);
+      fetchData();
+    } catch (err: any) {
+      setActionError(err?.message ?? "Xác nhận thất bại.");
+      setConfirmingXacNhan(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openSlotEdit = async (maNgayLamViec: string, currentMaidId: string) => {
+    setEditingSlotId(maNgayLamViec);
+    setSelectedMaidForSlot(currentMaidId);
+    setSlotSearch("");
+    setSlotCandidatesLoading(true);
+    try {
+      const res = await api.get<any>(
+        `/v1/staff/danh-sach-nguoi-giup-viec?maDon=${id}`,
+      );
+      const mode3Items: any[] = res?.mode3 ?? [];
+      const slotItem = mode3Items.find(
+        (g: any) => g.maNgayLamViec === maNgayLamViec,
+      );
+      const candidates: MaidOption[] = (
+        (slotItem?.candidates ?? slotItem?.replacementCandidates) ||
+        []
+      ).map((c: any) => ({
+        maNguoiGiupViec: c.maNguoiGiupViec,
+        hoTen: c.hoTen,
+        anhChanDung: c.anhChanDung,
+        soDienThoai: c.soDienThoai,
+        email: c.email,
+        danhSachKyNang: c.danhSachKyNang || [],
+        chiTietKyNang: c.chiTietKyNang,
+        soLichDangCo: c.soLichDangCo,
+        soSaoDanhGia: c.soSaoDanhGia,
+        tongSoDanhGia: c.tongSoDanhGia || 0,
+      }));
+      setSlotCandidates(candidates);
+    } catch {
+      setSlotCandidates([]);
+    } finally {
+      setSlotCandidatesLoading(false);
+    }
+  };
 
   // ─── Fetch detail ──────────────────────────────────────────────────────────
   const fetchData = async () => {
@@ -399,175 +438,176 @@ export default function ChiTietYeuCauPage() {
   };
 
   // ─── Fetch maid list ───────────────────────────────────────────────────────
-  const fetchMaids = async () => {
-    setMaidsLoading(true);
-    try {
-      const res = await api.get<any>(
-        `/v1/staff/danh-sach-nguoi-giup-viec?maDon=${id}`,
-      );
-      const list: MaidOption[] = (res?.data ?? []).map((m: any) => ({
-        maNguoiGiupViec: m.maNguoiGiupViec,
-        hoTen: m.hoTen,
-        anhChanDung: m.anhChanDung,
-        soDienThoai: m.soDienThoai,
-        email: m.email,
-        danhSachKyNang: m.danhSachKyNang || [],
-        chiTietKyNang: m.chiTietKyNang,
-        soLichDangCo: m.soLichDangCo,
-        soSaoDanhGia: m.soSaoDanhGia,
-        tongSoDanhGia: m.tongSoDanhGia || 0,
-      }));
-      setMaids(list);
+  // const fetchMaids = async () => {
+  //   setMaidsLoading(true);
+  //   try {
+  //     const res = await api.get<any>(
+  //       `/v1/staff/danh-sach-nguoi-giup-viec?maDon=${id}`,
+  //     );
 
-      const goiY: GoiYDichVu[] = (res?.goiY2Nguoi ?? []).map((g: any) => ({
-        maDonDatDichVu: g.maDonDatDichVu,
-        maKyNang: g.maKyNang,
-        candidates: (g.candidates ?? []).map((c: any) => ({
-          maNguoiGiupViec: c.maNguoiGiupViec,
-          hoTen: c.hoTen,
-          anhChanDung: c.anhChanDung,
-          soDienThoai: c.soDienThoai,
-          email: c.email,
-          danhSachKyNang: c.danhSachKyNang || [],
-          chiTietKyNang: c.chiTietKyNang,
-          soLichDangCo: c.soLichDangCo,
-          soSaoDanhGia: c.soSaoDanhGia,
-          tongSoDanhGia: c.tongSoDanhGia || 0,
-        })),
-      }));
-      setGoiY2Nguoi(goiY);
+  //     const list: MaidOption[] = (res?.mode1?.replacementCandidates ?? []).map(
+  //       (m: any) => ({
+  //         maNguoiGiupViec: m.maNguoiGiupViec,
+  //         hoTen: m.hoTen,
+  //         anhChanDung: m.anhChanDung,
+  //         soDienThoai: m.soDienThoai,
+  //         email: m.email,
+  //         danhSachKyNang: m.danhSachKyNang || [],
+  //         chiTietKyNang: m.chiTietKyNang,
+  //         soLichDangCo: m.soLichDangCo,
+  //         soSaoDanhGia: m.soSaoDanhGia,
+  //         tongSoDanhGia: m.tongSoDanhGia || 0,
+  //       }),
+  //     );
+  //     setMaids(list);
 
-      const goiYNgay: GoiYNgayLamViec[] = (res?.goiYTheoNgayLamViec ?? []).map(
-        (g: any) => ({
-          maNgayLamViec: g.maNgayLamViec,
-          maDonDatDichVu: g.maDonDatDichVu,
-          tenDichVu: g.tenDichVu,
-          ngayLam: g.ngayLam,
-          gioBatDau: g.gioBatDau,
-          candidates: (g.candidates ?? []).map((c: any) => ({
-            maNguoiGiupViec: c.maNguoiGiupViec,
-            hoTen: c.hoTen,
-            anhChanDung: c.anhChanDung,
-            soDienThoai: c.soDienThoai,
-            email: c.email,
-            danhSachKyNang: c.danhSachKyNang || [],
-            chiTietKyNang: c.chiTietKyNang,
-            soLichDangCo: c.soLichDangCo,
-            soSaoDanhGia: c.soSaoDanhGia,
-            tongSoDanhGia: c.tongSoDanhGia || 0,
-          })),
-        }),
-      );
-      setGoiYTheoNgayLamViec(goiYNgay);
+  //     const goiY: GoiYDichVu[] = (res?.mode2 ?? []).map((g: any) => ({
+  //       maDonDatDichVu: g.maDonDatDichVu,
+  //       maKyNang: g.maKyNang ?? null,
+  //       candidates: (g.replacementCandidates ?? []).map((c: any) => ({
+  //         maNguoiGiupViec: c.maNguoiGiupViec,
+  //         hoTen: c.hoTen,
+  //         anhChanDung: c.anhChanDung,
+  //         soDienThoai: c.soDienThoai,
+  //         email: c.email,
+  //         danhSachKyNang: c.danhSachKyNang || [],
+  //         chiTietKyNang: c.chiTietKyNang,
+  //         soLichDangCo: c.soLichDangCo,
+  //         soSaoDanhGia: c.soSaoDanhGia,
+  //         tongSoDanhGia: c.tongSoDanhGia || 0,
+  //       })),
+  //     }));
+  //     setGoiY2Nguoi(goiY);
 
-      // Auto-switch mode based on available data
-      const soDichVu = don?.dichVus?.length ?? 0;
+  //     const goiYNgay: GoiYNgayLamViec[] = (res?.mode3 ?? []).map((g: any) => ({
+  //       maNgayLamViec: g.maNgayLamViec,
+  //       maDonDatDichVu: g.maDonDatDichVu,
+  //       tenDichVu: g.tenDichVu,
+  //       ngayLam: g.ngayLam,
+  //       gioBatDau: g.gioBatDau,
+  //       candidates: (g.candidates ?? []).map((c: any) => ({
+  //         maNguoiGiupViec: c.maNguoiGiupViec,
+  //         hoTen: c.hoTen,
+  //         anhChanDung: c.anhChanDung,
+  //         soDienThoai: c.soDienThoai,
+  //         email: c.email,
+  //         danhSachKyNang: c.danhSachKyNang || [],
+  //         chiTietKyNang: c.chiTietKyNang,
+  //         soLichDangCo: c.soLichDangCo,
+  //         soSaoDanhGia: c.soSaoDanhGia,
+  //         tongSoDanhGia: c.tongSoDanhGia || 0,
+  //       })),
+  //     }));
+  //     setGoiYTheoNgayLamViec(goiYNgay);
 
-      const tongNgayLamViec =
-        don?.dichVus?.reduce(
-          (total, dv) => total + dv.ngayLamViecs.length,
-          0,
-        ) ?? 0;
+  //     // Auto-switch mode based on available data
+  //     const soDichVu = don?.dichVus?.length ?? 0;
 
-      const laDonNhieuDichVu = soDichVu > 1;
-      const laDonNhieuNgay = tongNgayLamViec > 1;
+  //     const tongNgayLamViec =
+  //       don?.dichVus?.reduce(
+  //         (total, dv) => total + dv.ngayLamViecs.length,
+  //         0,
+  //       ) ?? 0;
 
-      if (list.length > 0) {
-        setAssignMode("one");
-      } else if (laDonNhieuDichVu && goiY.length > 0) {
-        setAssignMode("multi-service");
-      } else if (laDonNhieuNgay && goiYNgay.length > 0) {
-        setAssignMode("multi-day");
-      } else {
-        setAssignMode("one");
-      }
-    } catch {
-      setMaids([]);
-      setGoiY2Nguoi([]);
-      setGoiYTheoNgayLamViec([]);
-    } finally {
-      setMaidsLoading(false);
-    }
-  };
+  //     const laDonNhieuDichVu = soDichVu > 1;
+  //     const laDonNhieuNgay = tongNgayLamViec > 1;
+
+  //     if (list.length > 0) {
+  //       setAssignMode("one");
+  //     } else if (laDonNhieuDichVu && goiY.length > 0) {
+  //       setAssignMode("multi-service");
+  //     } else if (laDonNhieuNgay && goiYNgay.length > 0) {
+  //       setAssignMode("multi-day");
+  //     } else {
+  //       setAssignMode("one");
+  //     }
+  //   } catch {
+  //     setMaids([]);
+  //     setGoiY2Nguoi([]);
+  //     setGoiYTheoNgayLamViec([]);
+  //   } finally {
+  //     setMaidsLoading(false);
+  //   }
+  // };
 
   useEffect(() => {
     if (id) fetchData();
   }, [id]);
 
   // ─── Open assign ───────────────────────────────────────────────────────────
-  const handleOpenAssign = () => {
-    setActionMode("assigning");
-    setSelectedMaid("");
-    setMaidSearch("");
-    setMultiSelection({});
-    setMultiSearch({});
-    setActionError(null);
-    fetchMaids();
-  };
+  // const handleOpenAssign = () => {
+  //   setActionMode("assigning");
+  //   setSelectedMaid("");
+  //   setMaidSearch("");
+  //   setMultiSelection({});
+  //   setMultiSearch({});
+  //   setActionError(null);
+  //   fetchMaids();
+  // };
 
   // ─── Submit assign ─────────────────────────────────────────────────────────
-  const handleConfirmAssign = async () => {
-    setSubmitting(true);
-    setActionError(null);
-    try {
-      if (assignMode === "one") {
-        if (!selectedMaid) {
-          setActionError("Vui lòng chọn người giúp việc.");
-          setSubmitting(false);
-          return;
-        }
-        await api.post("/v1/staff/phan-cong-cong-viec", {
-          MaDon: id,
-          MaNguoiGiupViec: selectedMaid,
-        });
-      } else if (assignMode === "multi-service") {
-        // Multi mode
-        const entries = Object.entries(multiSelection);
-        if (entries.length === 0 || entries.some(([, v]) => !v)) {
-          setActionError("Vui lòng chọn người giúp việc cho tất cả dịch vụ.");
-          setSubmitting(false);
-          return;
-        }
-        await api.post("/v1/staff/phan-cong-cong-viec", {
-          MaDon: id,
-          PhanCongTheoDichVu: entries.map(
-            ([maDonDatDichVu, maNguoiGiupViec]) => ({
-              MaDonDatDichVu: maDonDatDichVu,
-              MaNguoiGiupViec: maNguoiGiupViec,
-            }),
-          ),
-        });
-      } else if (assignMode === "multi-day") {
-        // Multi-day mode
-        const entries = Object.entries(multiSelection);
-        if (entries.length === 0 || entries.some(([, v]) => !v)) {
-          setActionError(
-            "Vui lòng chọn người giúp việc cho tất cả ngày làm việc.",
-          );
-          setSubmitting(false);
-          return;
-        }
-        await api.post("/v1/staff/phan-cong-cong-viec", {
-          MaDon: id,
-          PhanCongTheoNgayLamViec: entries.map(
-            ([maNgayLamViec, maNguoiGiupViec]) => ({
-              MaNgayLamViec: maNgayLamViec,
-              MaNguoiGiupViec: maNguoiGiupViec,
-            }),
-          ),
-        });
-      }
-      setSuccessMsg("Phân công công việc thành công!");
-      setActionMode("idle");
-      setConfirmPhanCong(false);
-      fetchData();
-    } catch (err: any) {
-      setActionError(err?.message ?? "Phân công thất bại.");
-      setConfirmPhanCong(false);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // const handleConfirmAssign = async () => {
+  //   setSubmitting(true);
+  //   setActionError(null);
+  //   try {
+  //     if (assignMode === "one") {
+  //       if (!selectedMaid) {
+  //         setActionError("Vui lòng chọn người giúp việc.");
+  //         setSubmitting(false);
+  //         return;
+  //       }
+  //       await api.post("/v1/staff/phan-cong-cong-viec", {
+  //         MaDon: id,
+  //         MaNguoiGiupViec: selectedMaid,
+  //       });
+  //     } else if (assignMode === "multi-service") {
+  //       // Multi mode
+  //       const entries = Object.entries(multiSelection);
+  //       if (entries.length === 0 || entries.some(([, v]) => !v)) {
+  //         setActionError("Vui lòng chọn người giúp việc cho tất cả dịch vụ.");
+  //         setSubmitting(false);
+  //         return;
+  //       }
+  //       await api.post("/v1/staff/phan-cong-cong-viec", {
+  //         MaDon: id,
+  //         PhanCongTheoDichVu: entries.map(
+  //           ([maDonDatDichVu, maNguoiGiupViec]) => ({
+  //             MaDonDatDichVu: maDonDatDichVu,
+  //             MaNguoiGiupViec: maNguoiGiupViec,
+  //           }),
+  //         ),
+  //       });
+  //     } else if (assignMode === "multi-day") {
+  //       // Multi-day mode
+  //       const entries = Object.entries(multiSelection);
+  //       if (entries.length === 0 || entries.some(([, v]) => !v)) {
+  //         setActionError(
+  //           "Vui lòng chọn người giúp việc cho tất cả ngày làm việc.",
+  //         );
+  //         setSubmitting(false);
+  //         return;
+  //       }
+  //       await api.post("/v1/staff/phan-cong-cong-viec", {
+  //         MaDon: id,
+  //         PhanCongTheoNgayLamViec: entries.map(
+  //           ([maNgayLamViec, maNguoiGiupViec]) => ({
+  //             MaNgayLamViec: maNgayLamViec,
+  //             MaNguoiGiupViec: maNguoiGiupViec,
+  //           }),
+  //         ),
+  //       });
+  //     }
+  //     setSuccessMsg("Phân công công việc thành công!");
+  //     setActionMode("idle");
+  //     setConfirmPhanCong(false);
+  //     fetchData();
+  //   } catch (err: any) {
+  //     setActionError(err?.message ?? "Phân công thất bại.");
+  //     setConfirmPhanCong(false);
+  //   } finally {
+  //     setSubmitting(false);
+  //   }
+  // };
 
   // ─── Reject ────────────────────────────────────────────────────────────────
   const handleTuChoi = async () => {
@@ -596,60 +636,60 @@ export default function ChiTietYeuCauPage() {
 
   const canAct = don?.trangThaiHienTai === "Chờ xác nhận";
 
-  const filteredMaids =
-    maidSearch.trim() === ""
-      ? maids
-      : maids.filter((m) =>
-          m.hoTen.toLowerCase().includes(maidSearch.toLowerCase()),
-        );
+  // const filteredMaids =
+  //   maidSearch.trim() === ""
+  //     ? maids
+  //     : maids.filter((m) =>
+  //         m.hoTen.toLowerCase().includes(maidSearch.toLowerCase()),
+  //       );
 
   // Validation for multi mode
-  const isMultiValid =
-    assignMode === "multi-service"
-      ? (don?.dichVus?.every((dv) => !!multiSelection[dv.maDonDatDichVu]) ??
-        false)
-      : (don?.dichVus?.every((dv) =>
-          dv.ngayLamViecs.every((nlv) => !!multiSelection[nlv.maNgayLamViec]),
-        ) ?? false);
+  // const isMultiValid =
+  //   assignMode === "multi-service"
+  //     ? (don?.dichVus?.every((dv) => !!multiSelection[dv.maDonDatDichVu]) ??
+  //       false)
+  //     : (don?.dichVus?.every((dv) =>
+  //         dv.ngayLamViecs.every((nlv) => !!multiSelection[nlv.maNgayLamViec]),
+  //       ) ?? false);
 
   // Get confirm message
-  const getConfirmMessage = () => {
-    if (assignMode === "one") {
-      const name =
-        maids.find((m) => m.maNguoiGiupViec === selectedMaid)?.hoTen ??
-        selectedMaid;
-      return `Phân công đơn ${don?.maDon ?? ""} cho "${name}"?`;
-    } else if (assignMode === "multi-service") {
-      const parts =
-        don?.dichVus?.map((dv) => {
-          const maidId = multiSelection[dv.maDonDatDichVu];
-          const allCandidates =
-            goiY2Nguoi.find((g) => g.maDonDatDichVu === dv.maDonDatDichVu)
-              ?.candidates ?? [];
-          const name =
-            allCandidates.find((c) => c.maNguoiGiupViec === maidId)?.hoTen ??
-            maidId;
-          return `${dv.tenDichVu} → ${name}`;
-        }) ?? [];
-      return `Phân công đơn ${don?.maDon ?? ""}:\n${parts.join("\n")}`;
-    } else {
-      const parts: string[] = [];
-      don?.dichVus?.forEach((dv) => {
-        dv.ngayLamViecs.forEach((nlv) => {
-          const maidId = multiSelection[nlv.maNgayLamViec];
-          const allCandidates =
-            goiYTheoNgayLamViec.find(
-              (g) => g.maNgayLamViec === nlv.maNgayLamViec,
-            )?.candidates ?? [];
-          const name =
-            allCandidates.find((c) => c.maNguoiGiupViec === maidId)?.hoTen ??
-            maidId;
-          parts.push(`${dv.tenDichVu} (${formatDate(nlv.ngayLam)}) → ${name}`);
-        });
-      });
-      return `Phân công đơn ${don?.maDon ?? ""}:\n${parts.join("\n")}`;
-    }
-  };
+  // const getConfirmMessage = () => {
+  //   if (assignMode === "one") {
+  //     const name =
+  //       maids.find((m) => m.maNguoiGiupViec === selectedMaid)?.hoTen ??
+  //       selectedMaid;
+  //     return `Phân công đơn ${don?.maDon ?? ""} cho "${name}"?`;
+  //   } else if (assignMode === "multi-service") {
+  //     const parts =
+  //       don?.dichVus?.map((dv) => {
+  //         const maidId = multiSelection[dv.maDonDatDichVu];
+  //         const allCandidates =
+  //           goiY2Nguoi.find((g) => g.maDonDatDichVu === dv.maDonDatDichVu)
+  //             ?.candidates ?? [];
+  //         const name =
+  //           allCandidates.find((c) => c.maNguoiGiupViec === maidId)?.hoTen ??
+  //           maidId;
+  //         return `${dv.tenDichVu} → ${name}`;
+  //       }) ?? [];
+  //     return `Phân công đơn ${don?.maDon ?? ""}:\n${parts.join("\n")}`;
+  //   } else {
+  //     const parts: string[] = [];
+  //     don?.dichVus?.forEach((dv) => {
+  //       dv.ngayLamViecs.forEach((nlv) => {
+  //         const maidId = multiSelection[nlv.maNgayLamViec];
+  //         const allCandidates =
+  //           goiYTheoNgayLamViec.find(
+  //             (g) => g.maNgayLamViec === nlv.maNgayLamViec,
+  //           )?.candidates ?? [];
+  //         const name =
+  //           allCandidates.find((c) => c.maNguoiGiupViec === maidId)?.hoTen ??
+  //           maidId;
+  //         parts.push(`${dv.tenDichVu} (${formatDate(nlv.ngayLam)}) → ${name}`);
+  //       });
+  //     });
+  //     return `Phân công đơn ${don?.maDon ?? ""}:\n${parts.join("\n")}`;
+  //   }
+  // };
 
   const soDichVu = don?.dichVus?.length ?? 0;
 
@@ -663,10 +703,10 @@ export default function ChiTietYeuCauPage() {
   const laDonNhieuNgay = tongNgayLamViec > 1;
 
   // Hiển thị tab "Theo dịch vụ"
-  const hienThiTheoDichVu = laDonNhieuDichVu && goiY2Nguoi.length > 0;
+  // const hienThiTheoDichVu = laDonNhieuDichVu && goiY2Nguoi.length > 0;
 
   // Hiển thị tab "Theo từng ngày"
-  const hienThiTheoNgay = laDonNhieuNgay && goiYTheoNgayLamViec.length > 0;
+  // const hienThiTheoNgay = laDonNhieuNgay && goiYTheoNgayLamViec.length > 0;
   return (
     <div className="p-8 max-w-7xl mx-auto">
       {/* Back */}
@@ -765,13 +805,26 @@ export default function ChiTietYeuCauPage() {
                   </span>
                 }
               />
-              <InfoRow label="Ghi chú" value={don.ghiChu} />
-              {don.thanhToan && (
-                <InfoRow
-                  label="Thanh toán"
-                  value={don.thanhToan.TrangThaiThanhToan}
-                />
-              )}
+              <InfoRow
+                label="Thanh toán"
+                value={
+                  don.thanhToan ? (
+                    don.thanhToan.trangThaiThanhToan === "Đã thanh toán" ? (
+                      <span className="text-emerald-600 font-bold">
+                        Đã thanh toán ({formatMoney(don.tongTien)})
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 font-bold">
+                        {don.thanhToan.trangThaiThanhToan} (0 ₫)
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-slate-400">
+                      Chưa thanh toán (0 ₫)
+                    </span>
+                  )
+                }
+              />
               {don.nhanVien && (
                 <InfoRow
                   label="Nhân viên phụ trách"
@@ -797,57 +850,212 @@ export default function ChiTietYeuCauPage() {
                       <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-sm font-bold">
                         {dv.tenDichVu}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">
-                        {dv.maDonDatDichVu}
-                      </span>
                     </div>
                     {dv.ngayLamViecs.length > 0 && (
-                      <div className="space-y-3 pl-2 border-l-2 border-indigo-100">
-                        {dv.ngayLamViecs.map((nlv) => (
-                          <div
-                            key={nlv.maNgayLamViec}
-                            className="flex flex-wrap items-center gap-y-2 gap-x-3 text-sm text-slate-600"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0 -ml-[5px]" />
-                              <span className="font-bold text-slate-700">
-                                {formatDate(nlv.ngayLam)}
-                              </span>
-                              <span className="text-slate-500 font-medium">
-                                {nlv.gioBatDau}
-                              </span>
-                            </div>
-
-                            {nlv.tenNguoiGiupViec && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-bold border border-slate-200">
-                                <svg
-                                  className="w-4 h-4 text-slate-400"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                  />
-                                </svg>
-                                {nlv.tenNguoiGiupViec}
-                              </span>
-                            )}
-
-                            <span
-                              className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${
-                                nlv.trangThai === "Đã phân công"
-                                  ? "bg-emerald-50 text-emerald-600"
-                                  : "bg-amber-50 text-amber-600"
-                              }`}
+                      <div className="space-y-4 pl-2 border-l-2 border-indigo-100">
+                        {dv.ngayLamViecs.map((nlv) => {
+                          // const nlvInfo = goiYTheoNgayLamViec.find(
+                          //   (g) => g.maNgayLamViec === nlv.maNgayLamViec,
+                          // );
+                          const isEditing = editingSlotId === nlv.maNgayLamViec;
+                          return (
+                            <div
+                              key={nlv.maNgayLamViec}
+                              className="py-2 first:pt-0 last:pb-0"
                             >
-                              {nlv.trangThai ?? "Chờ phân công"}
-                            </span>
-                          </div>
-                        ))}
+                              <div className="flex flex-wrap items-center gap-y-2 gap-x-3 text-sm text-slate-600">
+                                <div className="flex items-center gap-3">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                  <span className="font-bold text-slate-700">
+                                    {formatDate(nlv.ngayLam)}
+                                  </span>
+                                  <span className="text-slate-500 font-medium">
+                                    {nlv.gioBatDau}
+                                  </span>
+                                </div>
+
+                                {nlv.tenNguoiGiupViec && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                                    <svg
+                                      className="w-4 h-4 text-slate-400"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                      />
+                                    </svg>
+                                    {nlv.tenNguoiGiupViec}
+                                  </span>
+                                )}
+
+                                <span
+                                  className={
+                                    "text-xs font-bold px-2.5 py-1 rounded-full " +
+                                    (nlv.trangThai === "Đã phân công"
+                                      ? "bg-emerald-50 text-emerald-600"
+                                      : "bg-amber-50 text-amber-600")
+                                  }
+                                >
+                                  {nlv.trangThai ?? "Chờ phân công"}
+                                </span>
+
+                                {canAct && (
+                                  <button
+                                    onClick={() => {
+                                      if (isEditing) {
+                                        setEditingSlotId(null);
+                                        setSelectedMaidForSlot("");
+                                        setSlotCandidates([]);
+                                      } else {
+                                        openSlotEdit(
+                                          nlv.maNgayLamViec,
+                                          nlv.maNguoiGiupViec || "",
+                                        );
+                                      }
+                                    }}
+                                    className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs font-bold transition-all cursor-pointer"
+                                  >
+                                    {isEditing
+                                      ? "Hủy"
+                                      : nlv.tenNguoiGiupViec
+                                        ? "Thay đổi"
+                                        : "Phân công"}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Inline Edit Panel */}
+                              {isEditing && (
+                                <div className="mt-3 bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-[13px] font-bold text-slate-700">
+                                      Đổi người giúp việc —{" "}
+                                      {formatDate(nlv.ngayLam)}
+                                    </h4>
+                                  </div>
+
+                                  <input
+                                    type="text"
+                                    placeholder="Tìm ứng viên theo tên..."
+                                    value={slotSearch}
+                                    onChange={(e) =>
+                                      setSlotSearch(e.target.value)
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") e.preventDefault();
+                                    }}
+                                    className="w-full px-3 py-2 text-[13px] rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-colors"
+                                  />
+
+                                  {slotCandidatesLoading ? (
+                                    <p className="text-[12px] text-slate-400 text-center py-4 bg-white rounded-lg border">
+                                      Đang tải ứng viên...
+                                    </p>
+                                  ) : (
+                                    (() => {
+                                      const filtered =
+                                        slotSearch.trim() === ""
+                                          ? slotCandidates
+                                          : slotCandidates.filter((c) =>
+                                              c.hoTen
+                                                .toLowerCase()
+                                                .includes(
+                                                  slotSearch.toLowerCase(),
+                                                ),
+                                            );
+
+                                      if (filtered.length === 0) {
+                                        return (
+                                          <p className="text-[12px] text-slate-400 text-center py-4 bg-white rounded-lg border">
+                                            Không có ứng viên phù hợp.
+                                          </p>
+                                        );
+                                      }
+
+                                      return (
+                                        <MaidCarousel>
+                                          {filtered.map((c) => (
+                                            <MaidCandidateOption
+                                              key={c.maNguoiGiupViec}
+                                              m={c}
+                                              name={
+                                                "inline-maid-" +
+                                                nlv.maNgayLamViec
+                                              }
+                                              checked={
+                                                selectedMaidForSlot ===
+                                                c.maNguoiGiupViec
+                                              }
+                                              onChange={() =>
+                                                setSelectedMaidForSlot(
+                                                  c.maNguoiGiupViec,
+                                                )
+                                              }
+                                            />
+                                          ))}
+                                        </MaidCarousel>
+                                      );
+                                    })()
+                                  )}
+
+                                  <div className="flex gap-2 justify-end pt-1">
+                                    <button
+                                      onClick={() => {
+                                        setEditingSlotId(null);
+                                        setSelectedMaidForSlot("");
+                                        setSlotSearch("");
+                                        setSlotCandidates([]);
+                                      }}
+                                      disabled={submittingSlot}
+                                      className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
+                                    >
+                                      Hủy
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleSaveSlotAssignment(
+                                          nlv.maNgayLamViec,
+                                        )
+                                      }
+                                      disabled={
+                                        submittingSlot || !selectedMaidForSlot
+                                      }
+                                      className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                                    >
+                                      {submittingSlot && (
+                                        <svg
+                                          className="animate-spin w-3.5 h-3.5"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                          />
+                                          <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8v8H4z"
+                                          />
+                                        </svg>
+                                      )}
+                                      Lưu thay đổi
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -855,7 +1063,6 @@ export default function ChiTietYeuCauPage() {
               </div>
             </div>
           )}
-
           {/* Lịch sử trạng thái */}
           {don.lichSuTrangThai.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
@@ -887,10 +1094,10 @@ export default function ChiTietYeuCauPage() {
           {/* Action area */}
           {canAct && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="w-1.5 h-5 rounded-full bg-indigo-500" />
-                <h2 className="text-lg font-bold text-slate-800">
-                  Xử lý yêu cầu / Phân công
+                <h2 className="text-base font-bold text-slate-800">
+                  Xử lý yêu cầu
                 </h2>
               </div>
 
@@ -913,375 +1120,23 @@ export default function ChiTietYeuCauPage() {
                 </div>
               )}
 
-              {/* Idle: 2 buttons */}
-              {actionMode === "idle" && (
+              {actionMode === "idle" ? (
                 <div className="flex gap-3">
                   <button
-                    onClick={handleOpenAssign}
-                    className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[14px] font-bold transition-all duration-150 cursor-pointer shadow-sm hover:shadow-md"
+                    onClick={() => setConfirmingXacNhan(true)}
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 text-[14px] font-bold transition-all duration-150 cursor-pointer text-center border border-emerald-200 disabled:opacity-50"
                   >
-                    📋 Phân công công việc
+                    ✓ Xác nhận đặt lịch
                   </button>
                   <button
                     onClick={() => setActionMode("rejecting")}
-                    className="flex-1 py-3 rounded-xl border-2 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 text-[14px] font-bold transition-all duration-150 cursor-pointer"
+                    className="flex-1 py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 text-[14px] font-bold transition-all duration-150 cursor-pointer text-center border border-red-200"
                   >
                     ✗ Từ chối yêu cầu
                   </button>
                 </div>
-              )}
-
-              {/* Assigning mode */}
-              {actionMode === "assigning" && (
-                <div className="space-y-4">
-                  {/* Toggle: 1 person / multi */}
-                  {(hienThiTheoDichVu || hienThiTheoNgay) && (
-                    <div>
-                      <div className="flex rounded-xl border border-slate-200 overflow-hidden mb-2">
-                        <button
-                          onClick={() => setAssignMode("one")}
-                          className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer ${
-                            assignMode === "one"
-                              ? "bg-indigo-600 text-white"
-                              : "bg-white text-slate-600 hover:bg-slate-50"
-                          }`}
-                        >
-                          👤 1 người/Toàn bộ
-                        </button>
-                        {hienThiTheoDichVu && (
-                          <button
-                            onClick={() => setAssignMode("multi-service")}
-                            className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-l border-slate-200 ${
-                              assignMode === "multi-service"
-                                ? "bg-indigo-600 text-white border-l-transparent"
-                                : "bg-white text-slate-600 hover:bg-slate-50"
-                            }`}
-                          >
-                            👥 Theo dịch vụ
-                          </button>
-                        )}
-                        {hienThiTheoNgay && (
-                          <button
-                            onClick={() => setAssignMode("multi-day")}
-                            className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer border-l border-slate-200 ${
-                              assignMode === "multi-day"
-                                ? "bg-indigo-600 text-white border-l-transparent"
-                                : "bg-white text-slate-600 hover:bg-slate-50"
-                            }`}
-                          >
-                            📅 Theo từng ngày
-                          </button>
-                        )}
-                      </div>
-                      {maids.length === 0 &&
-                        goiY2Nguoi.length > 0 &&
-                        assignMode === "one" && (
-                          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[12.5px] flex items-center gap-2">
-                            <svg
-                              className="w-4 h-4 shrink-0"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                              />
-                            </svg>
-                            Không có người đủ tất cả kỹ năng. Hãy chuyển sang
-                            phân công theo từng dịch vụ.
-                          </div>
-                        )}
-                    </div>
-                  )}
-
-                  {/* ─── Mode 1: Single person ─── */}
-                  {assignMode === "one" && (
-                    <div>
-                      <label className="block text-[13px] font-bold text-slate-700 mb-2">
-                        Chọn người giúp việc{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Tìm theo tên..."
-                        value={maidSearch}
-                        onChange={(e) => setMaidSearch(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") e.preventDefault();
-                        }}
-                        className="w-full mb-2 px-3.5 py-2.5 text-[13.5px] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 hover:border-slate-300 transition-colors"
-                      />
-                      {maidsLoading ? (
-                        <p className="text-[13px] text-slate-400 text-center py-5">
-                          Đang tải danh sách...
-                        </p>
-                      ) : filteredMaids.length === 0 ? (
-                        <p className="text-[13px] text-slate-400 text-center py-5">
-                          Không tìm thấy người giúp việc phù hợp.
-                        </p>
-                      ) : (
-                        <MaidCarousel>
-                          {filteredMaids.map((m) => (
-                            <MaidCandidateOption
-                              key={m.maNguoiGiupViec}
-                              m={m}
-                              name="maid"
-                              checked={selectedMaid === m.maNguoiGiupViec}
-                              onChange={() =>
-                                setSelectedMaid(m.maNguoiGiupViec)
-                              }
-                            />
-                          ))}
-                        </MaidCarousel>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ─── Mode 2: Multi person (per service) ─── */}
-                  {assignMode === "multi-service" && (
-                    <div className="space-y-4">
-                      {maidsLoading ? (
-                        <p className="text-[13px] text-slate-400 text-center py-5">
-                          Đang tải danh sách...
-                        </p>
-                      ) : (
-                        don.dichVus.map((dv) => {
-                          const goiY = goiY2Nguoi.find(
-                            (g) => g.maDonDatDichVu === dv.maDonDatDichVu,
-                          );
-                          const candidates = goiY?.candidates ?? [];
-                          const searchVal =
-                            multiSearch[dv.maDonDatDichVu] ?? "";
-                          const filtered =
-                            searchVal.trim() === ""
-                              ? candidates
-                              : candidates.filter((c) =>
-                                  c.hoTen
-                                    .toLowerCase()
-                                    .includes(searchVal.toLowerCase()),
-                                );
-                          const selected =
-                            multiSelection[dv.maDonDatDichVu] ?? "";
-
-                          return (
-                            <div
-                              key={dv.maDonDatDichVu}
-                              className="border border-slate-200 rounded-xl p-4 bg-slate-50/30"
-                            >
-                              <div className="flex items-center gap-3 mb-4">
-                                <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-700 text-sm font-bold">
-                                  {dv.tenDichVu}
-                                </span>
-                                {selected && (
-                                  <span className="ml-auto text-sm text-emerald-600 font-bold flex items-center gap-1">
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                      />
-                                    </svg>
-                                    Đã chọn
-                                  </span>
-                                )}
-                              </div>
-
-                              <input
-                                type="text"
-                                placeholder="Tìm theo tên..."
-                                value={searchVal}
-                                onChange={(e) =>
-                                  setMultiSearch((prev) => ({
-                                    ...prev,
-                                    [dv.maDonDatDichVu]: e.target.value,
-                                  }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") e.preventDefault();
-                                }}
-                                className="w-full mb-2 px-3 py-2 text-[13px] rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-colors"
-                              />
-
-                              {candidates.length === 0 ? (
-                                <p className="text-sm text-slate-500 text-center py-4 bg-white rounded-lg border border-slate-100">
-                                  Không có ứng viên phù hợp cho dịch vụ này.
-                                </p>
-                              ) : (
-                                <MaidCarousel>
-                                  {filtered.map((c) => (
-                                    <MaidCandidateOption
-                                      key={c.maNguoiGiupViec}
-                                      m={c}
-                                      name={`maid-${dv.maDonDatDichVu}`}
-                                      checked={selected === c.maNguoiGiupViec}
-                                      onChange={() =>
-                                        setMultiSelection((prev) => ({
-                                          ...prev,
-                                          [dv.maDonDatDichVu]:
-                                            c.maNguoiGiupViec,
-                                        }))
-                                      }
-                                    />
-                                  ))}
-                                </MaidCarousel>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-
-                  {/* ─── Mode 3: Multi person (per day) ─── */}
-                  {assignMode === "multi-day" && (
-                    <div className="space-y-4">
-                      {maidsLoading ? (
-                        <p className="text-[13px] text-slate-400 text-center py-5">
-                          Đang tải danh sách...
-                        </p>
-                      ) : (
-                        goiYTheoNgayLamViec.map((nlvInfo) => {
-                          const candidates = nlvInfo.candidates ?? [];
-                          const selected =
-                            multiSelection[nlvInfo.maNgayLamViec] ?? "";
-
-                          return (
-                            <div
-                              key={nlvInfo.maNgayLamViec}
-                              className="border border-slate-200 rounded-xl p-4 bg-slate-50/30"
-                            >
-                              <div className="flex flex-wrap items-center gap-y-2 gap-x-3 mb-4">
-                                <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-700 text-sm font-bold">
-                                  {nlvInfo.tenDichVu}
-                                </span>
-                                <span className="text-sm font-bold text-slate-800">
-                                  {formatDate(nlvInfo.ngayLam)}
-                                </span>
-                                <span className="text-sm font-medium text-slate-500">
-                                  ({nlvInfo.gioBatDau})
-                                </span>
-                                {selected && (
-                                  <span className="ml-auto text-sm text-emerald-600 font-bold flex items-center gap-1">
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                      />
-                                    </svg>
-                                    Đã chọn
-                                  </span>
-                                )}
-                              </div>
-
-                              {candidates.length === 0 ? (
-                                <p className="text-sm text-slate-500 text-center py-4 bg-white rounded-lg border border-slate-100">
-                                  Không có ứng viên phù hợp cho ngày này.
-                                </p>
-                              ) : (
-                                <MaidCarousel>
-                                  {candidates.map((c) => (
-                                    <MaidCandidateOption
-                                      key={c.maNguoiGiupViec}
-                                      m={c}
-                                      name={`maid-${nlvInfo.maNgayLamViec}`}
-                                      checked={selected === c.maNguoiGiupViec}
-                                      onChange={() =>
-                                        setMultiSelection((prev) => ({
-                                          ...prev,
-                                          [nlvInfo.maNgayLamViec]:
-                                            c.maNguoiGiupViec,
-                                        }))
-                                      }
-                                    />
-                                  ))}
-                                </MaidCarousel>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-
-                  {/* Action buttons */}
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={() => {
-                        setActionMode("idle");
-                        setSelectedMaid("");
-                        setMultiSelection({});
-                        setActionError(null);
-                      }}
-                      disabled={submitting}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-[14px] font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (assignMode === "one" && !selectedMaid) {
-                          setActionError("Vui lòng chọn người giúp việc.");
-                          return;
-                        }
-                        if (assignMode !== "one" && !isMultiValid) {
-                          setActionError("Vui lòng chọn đủ người giúp việc.");
-                          return;
-                        }
-                        setActionError(null);
-                        setConfirmPhanCong(true);
-                      }}
-                      disabled={
-                        submitting ||
-                        (assignMode === "one" && !selectedMaid) ||
-                        (assignMode !== "one" && !isMultiValid)
-                      }
-                      className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[14px] font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-2"
-                    >
-                      {submitting && (
-                        <svg
-                          className="animate-spin w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8H4z"
-                          />
-                        </svg>
-                      )}
-                      {submitting ? "Đang xử lý..." : "Xác nhận phân công"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Rejecting */}
-              {actionMode === "rejecting" && (
+              ) : (
                 <div className="space-y-4">
                   <ReasonTextarea
                     value={lyDo}
@@ -1347,9 +1202,7 @@ export default function ChiTietYeuCauPage() {
           )}
         </>
       )}
-
-      {/* Confirm modal */}
-      <ConfirmModal
+      {/* <ConfirmModal
         isOpen={confirmPhanCong}
         title="Xác nhận phân công"
         message={getConfirmMessage()}
@@ -1358,6 +1211,16 @@ export default function ChiTietYeuCauPage() {
         isLoading={submitting}
         onConfirm={handleConfirmAssign}
         onCancel={() => setConfirmPhanCong(false)}
+      /> */}
+      <ConfirmModal
+        isOpen={confirmingXacNhan}
+        title="Xác nhận đặt lịch"
+        message={`Bạn có chắc chắn muốn xác nhận đơn ${don?.maDon ?? ""}? Trạng thái sẽ chuyển sang "Đã xác nhận".`}
+        confirmText="Xác nhận"
+        confirmClass="bg-emerald-600 hover:bg-emerald-700 text-white"
+        isLoading={submitting}
+        onConfirm={handleXacNhanDon}
+        onCancel={() => setConfirmingXacNhan(false)}
       />
     </div>
   );
