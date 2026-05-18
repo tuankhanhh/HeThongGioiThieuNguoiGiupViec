@@ -22,9 +22,10 @@ interface FormData {
   giaTheoGio: number;
   hinhAnh: string;
   phoBien: boolean;
+  thanhPhans: string[];
 }
 
-const emptyForm: FormData = { tenDichVu: "", moTa: "", giaTheoGio: 0, hinhAnh: "", phoBien: false };
+const emptyForm: FormData = { tenDichVu: "", moTa: "", giaTheoGio: 0, hinhAnh: "", phoBien: false, thanhPhans: [] };
 
 export default function ServicesManagement() {
   const router = useRouter();
@@ -34,6 +35,28 @@ export default function ServicesManagement() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [viewingService, setViewingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
+  const [newSubService, setNewSubService] = useState("");
+
+  const handleAddSubService = () => {
+    const trimmed = newSubService.trim();
+    if (!trimmed) return;
+    if (formData.thanhPhans.includes(trimmed)) {
+      showAlert("Dịch vụ thành phần này đã tồn tại!", "Cảnh báo", "error");
+      return;
+    }
+    setFormData({
+      ...formData,
+      thanhPhans: [...formData.thanhPhans, trimmed]
+    });
+    setNewSubService("");
+  };
+
+  const handleRemoveSubService = (tpName: string) => {
+    setFormData({
+      ...formData,
+      thanhPhans: formData.thanhPhans.filter(tp => tp !== tpName)
+    });
+  };
 
   // Custom premium Dialog Modal state (Confirm & Alert)
   const [dialog, setDialog] = useState<{
@@ -107,7 +130,14 @@ export default function ServicesManagement() {
 
   const handleEdit = (s: Service) => {
     setEditingService(s);
-    setFormData({ tenDichVu: s.tenDichVu, moTa: s.moTa, giaTheoGio: s.giaTheoGio, hinhAnh: s.hinhAnh, phoBien: s.phoBien });
+    setFormData({ 
+      tenDichVu: s.tenDichVu, 
+      moTa: s.moTa, 
+      giaTheoGio: s.giaTheoGio, 
+      hinhAnh: s.hinhAnh, 
+      phoBien: s.phoBien,
+      thanhPhans: s.thanhPhans || []
+    });
     setShowModal(true);
   };
 
@@ -142,18 +172,69 @@ export default function ServicesManagement() {
   return (
     <AdminLayout>
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .svc-card { 
-          will-change: transform, opacity; 
-          transform: translateZ(0); 
-          backface-visibility: hidden;
+          will-change: transform, box-shadow;
+          transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+          background: #ffffff;
         }
         .svc-card:hover { 
-          transform: translateY(-4px) translateZ(0) !important; 
-          box-shadow: 0 12px 24px -8px rgba(0,0,0,0.12) !important; 
-          border-color: #3b82f6 !important; 
+          transform: translateY(-6px) !important; 
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important; 
+          border-color: #6366f1 !important; 
         }
-        .btn-action:hover { background: #f1f5f9 !important; color: #0f172a !important; }
+        .btn-primary-premium {
+          background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%) !important;
+          color: #fff !important;
+          border: none !important;
+          transition: all 0.2s ease !important;
+        }
+        .btn-primary-premium:hover {
+          background: linear-gradient(135deg, #4338ca 0%, #312e81 100%) !important;
+          transform: translateY(-1px) !important;
+          box-shadow: 0 4px 12px rgba(49, 46, 129, 0.2) !important;
+        }
+        .btn-secondary-premium {
+          background: #f8fafc !important;
+          color: #475569 !important;
+          border: 1px solid #e2e8f0 !important;
+          transition: all 0.2s ease !important;
+        }
+        .btn-secondary-premium:hover {
+          background: #f1f5f9 !important;
+          color: #0f172a !important;
+          border-color: #cbd5e1 !important;
+        }
+        .btn-danger-premium {
+          background: #fef2f2 !important;
+          color: #ef4444 !important;
+          border: 1px solid #fee2e2 !important;
+          transition: all 0.2s ease !important;
+        }
+        .btn-danger-premium:hover {
+          background: #fee2e2 !important;
+          color: #b91c1c !important;
+          border-color: #fca5a5 !important;
+        }
+        .sub-service-tag {
+          background: #eff6ff !important;
+          color: #1d4ed8 !important;
+          border: 1px solid #bfdbfe !important;
+          font-weight: 600 !important;
+          font-size: 11px !important;
+          padding: 4px 10px !important;
+          border-radius: 8px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 4px !important;
+          transition: all 0.15s ease !important;
+        }
+        .sub-service-tag:hover {
+          background: #dbeafe !important;
+          transform: scale(1.03) !important;
+        }
       `}</style>
 
       <div className="gpu-accelerated">
@@ -175,8 +256,11 @@ export default function ServicesManagement() {
               padding: "12px 24px", borderRadius: "14px", border: "none", 
               background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)", 
               color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer", 
-              display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 12px rgba(30, 27, 75, 0.25)"
+              display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 12px rgba(30, 27, 75, 0.25)",
+              transition: "transform 0.15s, box-shadow 0.15s"
             }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
           >
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -188,58 +272,151 @@ export default function ServicesManagement() {
         {/* ── Cards Grid ── */}
         <div style={{ 
           display: "grid", 
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", 
-          gap: "24px",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", 
+          gap: "28px",
           animation: "fadeIn 0.4s ease-out both" 
         }}>
           {services.map((service) => (
             <div key={service.maDichVu} className="svc-card" style={{
               background: "#fff", borderRadius: "24px", border: "1px solid #e2e8f0", 
-              overflow: "hidden", transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)", display: "flex", flexDirection: "column"
+              overflow: "hidden", display: "flex", flexDirection: "column"
             }}>
-              <div style={{ position: "relative", height: "180px", background: "#f1f5f9", overflow: "hidden" }}>
+              <div style={{ position: "relative", height: "190px", background: "#f1f5f9", overflow: "hidden" }}>
                 <img 
                   src={service.hinhAnh || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"} 
                   alt={service.tenDichVu} 
                   loading="lazy"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.3s" }} 
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }} 
                 />
-              <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "8px" }}>
-                <span style={{ 
-                  padding: "4px 12px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, 
-                  background: service.trangThai === "Đang hoạt động" ? "#ecfdf5" : "#fef2f2",
-                  color: service.trangThai === "Đang hoạt động" ? "#10b981" : "#ef4444",
-                  backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.5)"
-                }}>
-                  {service.trangThai}
-                </span>
-                {service.phoBien && (
-                  <span style={{ padding: "4px 12px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, background: "#fff7ed", color: "#ea580c", border: "1px solid rgba(255,255,255,0.5)" }}>
-                    Phổ biến ★
+                {/* Image dark overlay */}
+                <div style={{
+                  position: "absolute", inset: 0, 
+                  background: "linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.3) 100%)",
+                  pointerEvents: "none"
+                }} />
+                
+                <div style={{ position: "absolute", top: "16px", left: "16px", display: "flex", gap: "8px", zIndex: 1 }}>
+                  <span style={{ 
+                    padding: "6px 14px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, 
+                    background: service.trangThai === "Đang hoạt động" ? "rgba(236, 253, 245, 0.9)" : "rgba(254, 242, 242, 0.9)",
+                    color: service.trangThai === "Đang hoạt động" ? "#10b981" : "#ef4444",
+                    backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.6)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+                  }}>
+                    {service.trangThai}
                   </span>
-                )}
+                  {service.phoBien && (
+                    <span style={{ 
+                      padding: "6px 14px", borderRadius: "10px", fontSize: "11px", fontWeight: 800, 
+                      background: "rgba(255, 247, 237, 0.9)", color: "#ea580c", 
+                      backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.6)",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+                    }}>
+                      Phổ biến ★
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ padding: "24px", flex: 1, display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  {service.maDichVu}
+                </span>
+                
+                <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#0f172a", margin: "6px 0 10px", letterSpacing: "-0.01em" }}>
+                  {service.tenDichVu}
+                </h3>
+                
+                <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 18px", lineHeight: 1.6, flex: 1 }}>
+                  {service.moTa}
+                </p>
+
+                {/* Dịch vụ thành phần */}
+                <div style={{ marginBottom: "20px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 10px" }}>
+                    Dịch vụ thành phần:
+                  </p>
+                  {service.thanhPhans && service.thanhPhans.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {service.thanhPhans.slice(0, 3).map((tp, idx) => (
+                        <span key={idx} className="sub-service-tag">
+                          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          {tp}
+                        </span>
+                      ))}
+                      {service.thanhPhans.length > 3 && (
+                        <span className="sub-service-tag" style={{ background: "#f1f5f9 !important", color: "#475569 !important", border: "1px solid #e2e8f0 !important" }}>
+                          +{service.thanhPhans.length - 3} khác
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: "13px", color: "#cbd5e1", fontStyle: "italic" }}>
+                      Chưa cấu hình dịch vụ thành phần
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "20px", borderTop: "1px solid #f1f5f9", paddingTop: "16px" }}>
+                  <span style={{ fontSize: "26px", fontWeight: 800, color: "#1e1b4b", letterSpacing: "-0.02em" }}>
+                    {service.giaTheoGio.toLocaleString()}đ
+                  </span>
+                  <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 700 }}>/ giờ</span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <button 
+                    onClick={() => handleViewDetail(service)} 
+                    className="btn-primary-premium"
+                    style={{ 
+                      width: "100%", padding: "12px", borderRadius: "14px", 
+                      fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                    }}
+                  >
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Xem chi tiết
+                  </button>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button 
+                      onClick={() => handleEdit(service)} 
+                      className="btn-secondary-premium"
+                      style={{ 
+                        flex: 1, padding: "10px", borderRadius: "12px", 
+                        fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "4px"
+                      }}
+                    >
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      Sửa
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(service.maDichVu)} 
+                      className="btn-danger-premium"
+                      style={{ 
+                        flex: 1, padding: "10px", borderRadius: "12px", 
+                        fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "4px"
+                      }}
+                    >
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Xóa
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: "10px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>{service.maDichVu}</span>
-              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: "6px 0 8px" }}>{service.tenDichVu}</h3>
-              <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 16px", lineHeight: 1.6, flex: 1 }}>{service.moTa}</p>
-              
-              <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "20px" }}>
-                <span style={{ fontSize: "24px", fontWeight: 800, color: "#312e81" }}>{service.giaTheoGio.toLocaleString()}đ</span>
-                <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 600 }}>/ giờ</span>
-              </div>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                <button onClick={() => handleViewDetail(service)} style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", fontSize: "13px", fontWeight: 700, cursor: "pointer", marginBottom: "4px" }} className="btn-action">Xem chi tiết</button>
-                <button onClick={() => handleEdit(service)} style={{ flex: 1, padding: "10px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#fff", color: "#475569", fontSize: "13px", fontWeight: 700, cursor: "pointer" }} className="btn-action">Sửa</button>
-                <button onClick={() => handleDelete(service.maDichVu)} style={{ flex: 1, padding: "10px", borderRadius: "12px", border: "1px solid #fee2e2", background: "#fef2f2", color: "#ef4444", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>Xóa</button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
       {/* ── Detail Modal ── */}
       {viewingService && (
@@ -265,6 +442,41 @@ export default function ServicesManagement() {
                   {viewingService.phoBien && <span style={{ padding: "6px 14px", borderRadius: "10px", fontSize: "13px", fontWeight: 700, background: "#fff7ed", color: "#ea580c" }}>Dịch vụ phổ biến</span>}
                 </div>
               </div>
+            </div>
+
+            {/* Dịch vụ thành phần */}
+            <div style={{ marginTop: "28px", borderTop: "1px solid #f1f5f9", paddingTop: "24px" }}>
+              <h4 style={{ fontSize: "13px", fontWeight: 800, color: "#475569", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Danh mục dịch vụ thành phần ({viewingService.thanhPhans ? viewingService.thanhPhans.length : 0})
+              </h4>
+              {viewingService.thanhPhans && viewingService.thanhPhans.length > 0 ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                  {viewingService.thanhPhans.map((tp, idx) => (
+                    <div key={idx} style={{ 
+                      display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", 
+                      background: "#f8fafc", borderRadius: "14px", border: "1px solid #e2e8f0",
+                      transition: "transform 0.15s ease"
+                    }}>
+                      <div style={{ 
+                        width: "20px", height: "20px", borderRadius: "50%", background: "#eff6ff", 
+                        color: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                        border: "1px solid #bfdbfe"
+                      }}>
+                        <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#334155" }}>{tp}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: "16px", background: "#f8fafc", borderRadius: "14px", border: "1px dashed #cbd5e1", textAlign: "center" }}>
+                  <p style={{ fontSize: "13px", color: "#94a3b8", fontStyle: "italic", margin: 0 }}>
+                    Chưa có cấu hình dịch vụ thành phần nào cho dịch vụ này.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div style={{ marginTop: "32px", borderTop: "1px solid #f1f5f9", paddingTop: "32px", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
@@ -297,6 +509,53 @@ export default function ServicesManagement() {
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>Mô tả dịch vụ</label>
                 <textarea value={formData.moTa} required rows={3} onChange={e => setFormData({ ...formData, moTa: e.target.value })} style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px", resize: "none" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>Dịch vụ thành phần</label>
+                <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+                  <input 
+                    type="text" 
+                    placeholder="Nhập dịch vụ thành phần mới..." 
+                    value={newSubService}
+                    onChange={e => setNewSubService(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSubService();
+                      }
+                    }}
+                    style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px" }} 
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddSubService}
+                    style={{ padding: "12px 20px", borderRadius: "12px", border: "none", background: "#f1f5f9", color: "#1e293b", fontWeight: 700, fontSize: "13px", cursor: "pointer" }}
+                  >
+                    Thêm
+                  </button>
+                </div>
+
+                {/* Danh sách các tag dịch vụ thành phần đã thêm */}
+                {formData.thanhPhans && formData.thanhPhans.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "12px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                    {formData.thanhPhans.map((tp, idx) => (
+                      <span key={idx} style={{ 
+                        display: "inline-flex", alignItems: "center", gap: "6px",
+                        background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe",
+                        padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600
+                      }}>
+                        {tp}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSubService(tp)}
+                          style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
                 <input type="checkbox" checked={formData.phoBien} onChange={e => setFormData({ ...formData, phoBien: e.target.checked })} style={{ width: "18px", height: "18px" }} />
