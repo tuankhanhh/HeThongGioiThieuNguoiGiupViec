@@ -498,8 +498,22 @@ SELECT * FROM NgayLamViec;
 SELECT * FROM ThuNhapNguoiGiupViec;
 SELECT * FROM ThanhToan;
 SELECT * FROM LichSuTrangThaiDon;
+SELECT * FROM KhieuNai;
 GO
 /*
 Insert into LichSuTrangThaiDon
 values ('LS015','DD014',GETDATE(),N'Đã xác nhận')
+
+-- Thay 'NL012' bằng Mã Ngày Làm Việc bạn đang muốn test
+UPDATE NgayLamViec
+SET 
+    -- 1. Cập nhật ngày làm việc thành ngày hôm nay
+    NgayLam = CAST(GETDATE() AS DATE),
+    
+    -- 2. Cập nhật giờ bắt đầu lùi lại 30 phút so với lúc bạn chạy lệnh này
+    GioBatDau = CAST(DATEADD(MINUTE, -30, GETDATE()) AS TIME),
+    
+    -- 3. Đảm bảo trạng thái đang là "Đã phân công" để Frontend hiện nút
+    TrangThai = N'Đã phân công'
+WHERE MaNgayLamViec = 'NL012';
 */

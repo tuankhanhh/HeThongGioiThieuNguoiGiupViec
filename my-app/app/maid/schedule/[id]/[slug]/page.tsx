@@ -194,7 +194,7 @@ export default function JobDetailPage({
 
     try {
       setIsUpdating(true);
-      await api.put(`/v1/maid/job/${job.maNgayLamViec}/status`, {
+      await api.put(`/job/${job.maNgayLamViec}/status`, {
         trangThai: pendingStatus,
       });
 
@@ -303,7 +303,7 @@ export default function JobDetailPage({
                 </div>
                 <div>
                   <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">
-                    Mã đơn
+                    Mã đơn đặt
                   </p>
                   <p className="text-sm font-mono font-bold text-slate-900">
                     {job.maDon}

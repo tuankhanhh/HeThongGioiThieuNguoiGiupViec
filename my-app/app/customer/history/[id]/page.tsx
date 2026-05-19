@@ -81,6 +81,13 @@ export default function OrderDetailPage() {
     isSubmitting: boolean;
   }>({ isOpen: false, maThuNhap: null, isSubmitting: false });
 
+  // THÊM MỚI: STATE CHO MODAL BÁO CÁO KHÔNG ĐẾN LÀM
+  const [absenceModal, setAbsenceModal] = useState<{
+    isOpen: boolean;
+    maNgayLamViec: string | null;
+    isSubmitting: boolean;
+  }>({ isOpen: false, maNgayLamViec: null, isSubmitting: false });
+
   const [toast, setToast] = useState<{
     show: boolean;
     message: string;
@@ -99,39 +106,32 @@ export default function OrderDetailPage() {
   };
 
   useEffect(() => {
+    if (!orderId) return;
+
     const fetchOrderDetail = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response: any = await api.get(
-          `/Booking/GetOrderDetail/${orderId}`,
-        );
+        const data = await api.get<any>(`/Booking/GetOrderDetail/${orderId}`);
 
-        if (response?.data?.success || response?.success) {
-          const orderData = response?.data?.data || response?.data;
-          setOrder(orderData);
-        } else {
-          setError("Không thể tải chi tiết đơn hàng.");
-        }
+        // Nếu backend trả về { success, data }
+        setOrder(data?.data ?? data);
       } catch (err: any) {
         console.error("Lỗi fetch chi tiết đơn:", err);
-        if (err?.response?.status === 401) {
-          setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        } else {
-          setError("Đã xảy ra lỗi hệ thống khi tải dữ liệu.");
-        }
+
+        setError(err?.message || "Đã xảy ra lỗi khi tải chi tiết đơn hàng.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (orderId) {
-      fetchOrderDetail();
-    }
+    fetchOrderDetail();
   }, [orderId]);
 
-  // Hàm mở Modal Xác nhận
+  // ==========================================
+  // HÀM XỬ LÝ: XÁC NHẬN HOÀN THÀNH
+  // ==========================================
   const handleOpenConfirm = (maThuNhap: string) => {
     if (!maThuNhap) {
       showToast("Không tìm thấy mã thu nhập để xác nhận!", "error");
@@ -140,7 +140,6 @@ export default function OrderDetailPage() {
     setConfirmModal({ isOpen: true, maThuNhap, isSubmitting: false });
   };
 
-  // Hàm thực thi gọi API xác nhận
   const executeConfirmCompletion = async () => {
     if (!confirmModal.maThuNhap) return;
     setConfirmModal((prev) => ({ ...prev, isSubmitting: true }));
@@ -151,10 +150,6 @@ export default function OrderDetailPage() {
         { TrangThai: "Đã xác nhận" },
       );
 
-      // BỎ QUA ĐIỀU KIỆN IF KHẮT KHE:
-      // Vì nếu Axios không throw error (không nhảy xuống catch),
-      // tức là API đã gọi thành công (HTTP 200).
-      // Ta đóng modal và hiện thông báo luôn.
       setConfirmModal({ isOpen: false, maThuNhap: null, isSubmitting: false });
       showToast("Xác nhận hoàn thành thành công!", "success");
 
@@ -163,10 +158,7 @@ export default function OrderDetailPage() {
       }, 1500);
     } catch (error: any) {
       console.error("Lỗi khi xác nhận hoàn thành:", error);
-
-      // Tắt vòng xoay loading khi có lỗi
       setConfirmModal((prev) => ({ ...prev, isSubmitting: false }));
-
       showToast(
         error?.response?.data?.message ||
           error?.message ||
@@ -176,6 +168,51 @@ export default function OrderDetailPage() {
     }
   };
 
+  // ==========================================
+  // HÀM XỬ LÝ: BÁO CÁO KHÔNG ĐẾN LÀM
+  // ==========================================
+  const handleReportAbsence = (maNgayLamViec: string) => {
+    if (!maNgayLamViec) {
+      showToast("Không tìm thấy mã ca làm việc!", "error");
+      return;
+    }
+    setAbsenceModal({ isOpen: true, maNgayLamViec, isSubmitting: false });
+  };
+
+  const executeReportAbsence = async () => {
+    if (!absenceModal.maNgayLamViec) return;
+    setAbsenceModal((prev) => ({ ...prev, isSubmitting: true }));
+
+    try {
+      await api.put(`/job/${absenceModal.maNgayLamViec}/status`, {
+        TrangThai: "Không đến làm",
+      });
+
+      setAbsenceModal({
+        isOpen: false,
+        maNgayLamViec: null,
+        isSubmitting: false,
+      });
+      showToast("Báo cáo thành công! Hệ thống sẽ xử lý sự cố.", "success");
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      console.error("Lỗi khi báo cáo:", error);
+      setAbsenceModal((prev) => ({ ...prev, isSubmitting: false }));
+      showToast(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Đã xảy ra lỗi khi báo cáo.",
+        "error",
+      );
+    }
+  };
+
+  // ==========================================
+  // HÀM XỬ LÝ: ĐÁNH GIÁ
+  // ==========================================
   const handleSubmitReview = async () => {
     try {
       const response: any = await api.post("/Review/Submit", {
@@ -316,7 +353,7 @@ export default function OrderDetailPage() {
                   </div>
                   <div>
                     <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">
-                      Mã đơn hàng
+                      Mã đơn đặt
                     </p>
                     <p className="text-sm font-mono font-bold text-slate-900">
                       {order.maDon}
@@ -431,6 +468,32 @@ export default function OrderDetailPage() {
 
                         const statusColors = getShiftStatusColor(displayStatus);
 
+                        // ==========================================
+                        // LOGIC KIỂM TRA TRỄ 15 PHÚT
+                        // ==========================================
+                        let isLate15Min = false;
+                        if (
+                          dayGroup.ngay &&
+                          ca.gioBatDau &&
+                          ca.trangThai === "Đã phân công"
+                        ) {
+                          // Kết hợp Ngày và Giờ để tạo đối tượng Date hợp lệ
+                          const shiftStartStr = `${dayGroup.ngay}T${ca.gioBatDau}:00`;
+                          const shiftStartTime = new Date(shiftStartStr);
+
+                          if (!isNaN(shiftStartTime.getTime())) {
+                            const now = new Date();
+                            // Tính chênh lệch phút
+                            const diffInMinutes =
+                              (now.getTime() - shiftStartTime.getTime()) /
+                              60000;
+                            // Nếu đã qua 15 phút thì cho phép báo cáo
+                            if (diffInMinutes >= 15) {
+                              isLate15Min = true;
+                            }
+                          }
+                        }
+
                         return (
                           <div
                             key={idx}
@@ -490,18 +553,33 @@ export default function OrderDetailPage() {
                                   </div>
                                 </div>
 
-                                {/* Nút xác nhận */}
-                                {ca.trangThai === "Hoàn thành" &&
-                                  ca.trangThaiThuNhap !== "Đã xác nhận" && (
+                                <div className="flex gap-2">
+                                  {/* BỔ SUNG: Nút báo Không đến làm (Chỉ hiện khi Đã phân công + trễ 15p) */}
+                                  {isLate15Min && (
                                     <button
+                                      type="button"
                                       onClick={() =>
-                                        handleOpenConfirm(ca.maThuNhap)
+                                        handleReportAbsence(ca.maNgayLamViec)
                                       }
-                                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
+                                      className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
                                     >
-                                      Xác nhận hoàn thành
+                                      Báo không đến làm
                                     </button>
                                   )}
+
+                                  {/* Nút xác nhận hoàn thành */}
+                                  {ca.trangThai === "Hoàn thành" &&
+                                    ca.trangThaiThuNhap !== "Đã xác nhận" && (
+                                      <button
+                                        onClick={() =>
+                                          handleOpenConfirm(ca.maThuNhap)
+                                        }
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
+                                      >
+                                        Xác nhận hoàn thành
+                                      </button>
+                                    )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -652,7 +730,7 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {/* --- MODAL XÁC NHẬN --- */}
+      {/* --- MODAL XÁC NHẬN HOÀN THÀNH --- */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -692,6 +770,53 @@ export default function OrderDetailPage() {
                     <CircularProgress size={20} color="inherit" />
                   ) : (
                     "Đồng ý"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL BÁO CÁO KHÔNG ĐẾN LÀM --- */}
+      {absenceModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <HelpOutline sx={{ fontSize: 32 }} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                Báo cáo vắng mặt
+              </h3>
+              <p className="text-sm text-slate-500 mb-6">
+                Xác nhận người giúp việc không đến làm? Hệ thống sẽ ghi nhận đây
+                là sự cố cho đơn hàng này và có biện pháp xử lý.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() =>
+                    setAbsenceModal({
+                      isOpen: false,
+                      maNgayLamViec: null,
+                      isSubmitting: false,
+                    })
+                  }
+                  disabled={absenceModal.isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={executeReportAbsence}
+                  disabled={absenceModal.isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px] cursor-pointer"
+                >
+                  {absenceModal.isSubmitting ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    "Xác nhận báo"
                   )}
                 </button>
               </div>

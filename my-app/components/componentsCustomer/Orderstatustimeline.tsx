@@ -8,6 +8,7 @@ import {
   Done,
   Close,
   Update,
+  ReportProblem, // BỔ SUNG: Import icon cho "Có sự cố"
 } from "@mui/icons-material";
 
 interface StatusStep {
@@ -43,6 +44,15 @@ const STATUS_TIMELINE: Record<string, StatusStep> = {
     color: "text-purple-700",
     bgColor: "bg-purple-50",
     dotColor: "bg-purple-500",
+  },
+  // BỔ SUNG: Cấu hình trạng thái "Có sự cố"
+  "Có sự cố": {
+    key: "issue",
+    label: "Có sự cố",
+    icon: ReportProblem,
+    color: "text-orange-700",
+    bgColor: "bg-orange-50",
+    dotColor: "bg-orange-500",
   },
   "Hoàn thành": {
     key: "completed",
@@ -104,12 +114,12 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     ];
 
     let statusSequence = normalSequence;
-    if (currentStatus === "Hủy đơn") {
-      const cancelIndex =
-        normalSequence.indexOf(currentStatus) === -1
-          ? 1
-          : normalSequence.indexOf(currentStatus);
-      statusSequence = [...normalSequence.slice(0, cancelIndex), "Hủy đơn"];
+
+    // BỔ SUNG: Xử lý fallback cho cả "Hủy đơn" và "Có sự cố"
+    if (currentStatus === "Hủy đơn" || currentStatus === "Có sự cố") {
+      // Thông thường "Hủy đơn" hoặc "Có sự cố" diễn ra sau khi đã đặt đơn (có thể sau "Đã xác nhận" hoặc "Đang thực hiện")
+      // Nếu không có lịch sử cụ thể, ta cắt chuỗi ở bước 2 (Đã xác nhận) và gắn trạng thái hiện tại vào cuối
+      statusSequence = [...normalSequence.slice(0, 2), currentStatus];
     }
 
     currentIndex = statusSequence.indexOf(currentStatus);
@@ -125,7 +135,6 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
         Lịch sử trạng thái
       </h2>
 
-      {/* SỬA LAYOUT: justify-between giúp dàn đều khung nếu không dùng flex-1 */}
       <div className="flex flex-row items-start justify-between w-full overflow-x-auto pt-2 pb-2 scrollbar-thin">
         {renderItems.map((item, index) => {
           const stepConfig = STATUS_TIMELINE[item.status] || {
@@ -145,7 +154,6 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
           return (
             <div
               key={`${item.status}-${index}`}
-              // SỬA TẠI ĐÂY: Thay w-[140px] flex-shrink-0 bằng flex-1 min-w-[90px]
               className="relative flex flex-col items-center flex-1 min-w-[90px] text-center"
             >
               {/* Connector Line */}

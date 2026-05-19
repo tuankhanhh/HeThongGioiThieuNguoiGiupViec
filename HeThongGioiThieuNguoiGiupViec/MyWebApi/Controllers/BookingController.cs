@@ -428,6 +428,9 @@ namespace MyWebApi.Controllers
 
                         return new
                         {
+                            // BỔ SUNG: Lấy mã ngày làm việc (Trim để cắt khoảng trắng nếu có)
+                            maNgayLamViec = nl.MaNgayLamViec?.Trim(),
+
                             ngay = nl.NgayLam.HasValue ? nl.NgayLam.Value.ToString("yyyy-MM-dd") : "Chưa xác định",
                             tenDichVu = dd.MaDichVuNavigation?.TenDichVu ?? "Chưa xác định",
                             gioBatDau = nl.GioBatDau.HasValue ? nl.GioBatDau.Value.ToString("HH:mm") : "00:00",
@@ -436,7 +439,7 @@ namespace MyWebApi.Controllers
                             tenNhanVien = nguoiGiupViec?.HoTen,
                             sdtNhanVien = nguoiGiupViec?.SoDienThoai,
 
-                            // THÊM: Truyền dữ liệu Thu Nhập vào DTO
+                            // Truyền dữ liệu Thu Nhập vào DTO
                             maThuNhap = thuNhap?.MaThuNhap?.Trim(),
                             trangThaiThuNhap = thuNhap?.TrangThai
                         };
@@ -447,14 +450,15 @@ namespace MyWebApi.Controllers
                         ngay = g.Key,
                         danhSachCa = g.OrderBy(c => c.gioBatDau).Select(c => new
                         {
+                            
+                            maNgayLamViec = c.maNgayLamViec,
+
                             tenDichVu = c.tenDichVu,
                             gioBatDau = c.gioBatDau,
                             gioKetThuc = c.gioKetThuc,
                             trangThai = c.trangThai,
                             tenNhanVien = c.tenNhanVien,
                             sdtNhanVien = c.sdtNhanVien,
-
-                            // MAP: Chuyển dữ liệu ra kết quả trả về cho client
                             maThuNhap = c.maThuNhap,
                             trangThaiThuNhap = c.trangThaiThuNhap
                         }).ToList()

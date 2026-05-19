@@ -197,7 +197,7 @@ export default function JobDetailPage({
 
     try {
       setIsUpdating(true);
-      await api.put(`/v1/maid/job/${job.maNgayLamViec}/status`, {
+      await api.put(`/job/${job.maNgayLamViec}/status`, {
         trangThai: pendingStatus,
       });
 
