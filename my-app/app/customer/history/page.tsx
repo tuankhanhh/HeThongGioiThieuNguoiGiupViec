@@ -92,7 +92,7 @@ export default function OrderHistoryPage() {
       if (isSuccess) {
         setOrders((prev) =>
           prev.map((order) =>
-            order.maDon === maDon ? { ...order, trangThai: "Đã hủy" } : order,
+            order.maDon === maDon ? { ...order, trangThai: "Hủy đơn" } : order,
           ),
         );
 
@@ -229,7 +229,7 @@ export default function OrderHistoryPage() {
             "Chờ xác nhận",
             "Đã xác nhận",
             "Đang thực hiện",
-            "Đã hủy",
+            "Hủy đơn",
           ].map((status) => {
             const count = orders.filter((o) => o.trangThai === status).length;
             return (

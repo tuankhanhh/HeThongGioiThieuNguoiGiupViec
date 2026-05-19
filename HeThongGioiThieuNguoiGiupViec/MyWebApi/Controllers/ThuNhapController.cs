@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyWebApi.Models; // Thay đổi theo Namespace dự án của bạn
-using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace MyWebApi.Controllers
 {
@@ -60,6 +63,69 @@ namespace MyWebApi.Controllers
                 maThuNhap = income.MaThuNhap.Trim(),
                 trangThaiMoi = income.TrangThai
             });
+        }
+
+        [Authorize]
+        [HttpGet("my-income")]
+        public async Task<IActionResult> GetMyIncome()
+        {
+            try
+            {
+                var maidId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(maidId))
+                {
+                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập." });
+                }
+
+                var incomeList = await _context.ThuNhapNguoiGiupViecs
+                    .Include(t => t.MaNgayLamViecNavigation)
+                        .ThenInclude(n => n.MaDonDatDichVuNavigation)
+                            .ThenInclude(d => d.MaDichVuNavigation)
+                    .Where(t => t.MaNgayLamViecNavigation.MaNguoiGiupViec == maidId)
+                    .OrderByDescending(t => t.ThoiGianTao)
+                    .Select(t => new
+                    {
+                        maThuNhap = t.MaThuNhap.Trim(),
+                        soTien = t.SoTien ?? 0,
+                        trangThai = t.TrangThai ?? "Chưa xác định",
+                        thoiGianTao = t.ThoiGianTao,
+                        ngayLam = t.MaNgayLamViecNavigation.NgayLam,
+                        tenDichVu = t.MaNgayLamViecNavigation.MaDonDatDichVuNavigation.MaDichVuNavigation.TenDichVu ?? "Dịch vụ"
+                    })
+                    .ToListAsync();
+
+                // CẬP NHẬT THEO 3 TRẠNG THÁI MỚI
+                var daXacNhan = incomeList
+                    .Where(i => i.trangThai == "Đã xác nhận")
+                    .Sum(i => i.soTien);
+
+                var choXacNhan = incomeList
+                    .Where(i => i.trangThai == "Chờ xác nhận")
+                    .Sum(i => i.soTien);
+
+                var daHuy = incomeList
+                    .Where(i => i.trangThai == "Đã hủy")
+                    .Sum(i => i.soTien);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        thongKe = new
+                        {
+                            daXacNhan = daXacNhan, // Tiền chắc chắn nhận được
+                            choXacNhan = choXacNhan, // Tiền đang đợi chốt
+                            daHuy = daHuy // Tiền bị mất do hủy ca
+                        },
+                        danhSach = incomeList
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi tải dữ liệu thu nhập.", detail = ex.Message });
+            }
         }
     }
     public class CapNhatTrangThai

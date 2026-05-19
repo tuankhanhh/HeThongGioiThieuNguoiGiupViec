@@ -150,7 +150,7 @@ namespace MyWebApi.Controllers
                             && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
                                 .OrderByDescending(ls => ls.ThoiGianCapNhat)
                                 .Select(ls => ls.TrangThai)
-                                .FirstOrDefault() == "Đã xác nhận")
+                                .FirstOrDefault() != "Chờ xác nhận")
                 .FirstOrDefaultAsync();
 
             if (rawJob == null) return NotFound(new { message = "Không tìm thấy công việc này." });
@@ -206,7 +206,7 @@ namespace MyWebApi.Controllers
                             && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
                                 .OrderByDescending(ls => ls.ThoiGianCapNhat)
                                 .Select(ls => ls.TrangThai)
-                                .FirstOrDefault() == "Đã xác nhận")
+                                .FirstOrDefault() != "Chờ xác nhận")
                 .OrderByDescending(n => n.NgayLam)
                 .ThenByDescending(n => n.GioBatDau)
                 .ToListAsync();

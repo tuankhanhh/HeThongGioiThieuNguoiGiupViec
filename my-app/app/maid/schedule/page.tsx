@@ -8,7 +8,6 @@ import {
   Business,
   AccessTime,
   CheckCircle,
-  WarningAmber,
 } from "@mui/icons-material";
 
 // Import apiService mà bạn đã định nghĩa
@@ -29,7 +28,6 @@ interface DayStats {
   totalJobs: number;
   inProgress: number;
   assigned: number;
-  cancelled: number;
 }
 
 export default function DashboardPage() {
@@ -67,7 +65,6 @@ export default function DashboardPage() {
       totalJobs: jobs.length,
       inProgress: jobs.filter((j) => j.trangThai === "Đang làm việc").length,
       assigned: jobs.filter((j) => j.trangThai === "Đã phân công").length,
-      cancelled: jobs.filter((j) => j.trangThai === "Hủy lịch").length,
     };
   }, [jobs]);
 
@@ -155,7 +152,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Cập nhật nhãn thống kê để khớp với dữ liệu API nhưng giữ nguyên Layout & Icon */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <StatsCard
             icon={<Business sx={{ width: 24, height: 24 }} />}
             label="Tổng Công Việc"
@@ -173,12 +170,6 @@ export default function DashboardPage() {
             label="Đã Phân Công"
             value={stats.assigned}
             color="green"
-          />
-          <StatsCard
-            icon={<WarningAmber sx={{ width: 24, height: 24 }} />}
-            label="Hủy Lịch"
-            value={stats.cancelled}
-            color="orange"
           />
         </div>
 
