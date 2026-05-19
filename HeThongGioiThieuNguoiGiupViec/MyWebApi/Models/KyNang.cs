@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -26,4 +26,7 @@ public partial class KyNang
 
     [InverseProperty("MaKyNangNavigation")]
     public virtual ICollection<KyNangNguoiGiupViec> KyNangNguoiGiupViecs { get; set; } = new List<KyNangNguoiGiupViec>();
+
+    [InverseProperty("MaKyNangNavigation")]
+    public virtual ICollection<DichVuKyNang> DichVuKyNangs { get; set; } = new List<DichVuKyNang>();
 }

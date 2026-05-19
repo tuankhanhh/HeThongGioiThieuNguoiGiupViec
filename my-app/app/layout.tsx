@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HomeCare - Hệ thống giới thiệu người giúp việc",
+  title: "Homezy - Hệ thống giới thiệu người giúp việc",
   description: "Dịch vụ giúp việc chuyên nghiệp, tận tâm",
 };
 

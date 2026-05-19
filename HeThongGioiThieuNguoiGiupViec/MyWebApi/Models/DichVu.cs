@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -32,9 +32,16 @@ public partial class DichVu
     [StringLength(30)]
     public string? TrangThai { get; set; }
 
+    [StringLength(5)]
+    [Unicode(false)]
+    public string? MaKyNang { get; set; }
+
     [InverseProperty("MaDichVuNavigation")]
     public virtual ICollection<DichVuThanhPhan> DichVuThanhPhans { get; set; } = new List<DichVuThanhPhan>();
 
     [InverseProperty("MaDichVuNavigation")]
     public virtual ICollection<DonDatDichVu> DonDatDichVus { get; set; } = new List<DonDatDichVu>();
+
+    [InverseProperty("MaDichVuNavigation")]
+    public virtual ICollection<DichVuKyNang> DichVuKyNangs { get; set; } = new List<DichVuKyNang>();
 }

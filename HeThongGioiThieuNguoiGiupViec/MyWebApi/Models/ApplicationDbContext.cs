@@ -22,6 +22,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<DichVu> DichVus { get; set; }
 
     public virtual DbSet<DichVuThanhPhan> DichVuThanhPhans { get; set; }
+    
+    public virtual DbSet<DichVuKyNang> DichVuKyNangs { get; set; }
 
     public virtual DbSet<DonDat> DonDats { get; set; }
 
@@ -87,6 +89,7 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.MaDichVu).HasName("PK__DichVu__C0E6DE8F0C617C48");
 
             entity.Property(e => e.MaDichVu).IsFixedLength();
+            entity.Property(e => e.MaKyNang).IsFixedLength().IsUnicode(false);
             entity.Property(e => e.PhoBien).HasDefaultValue(false);
             entity.Property(e => e.TrangThai).HasDefaultValue("Đang hoạt động");
         });
@@ -99,12 +102,32 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.MaThanhPhan).IsFixedLength();
 
             entity.HasOne(d => d.MaDichVuNavigation).WithMany(p => p.DichVuThanhPhans)
+                .HasForeignKey(d => d.MaDichVu)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__DichVuTha__MaDic__5AEE82B9");
 
             entity.HasOne(d => d.MaThanhPhanNavigation).WithMany(p => p.DichVuThanhPhans)
+                .HasForeignKey(d => d.MaThanhPhan)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__DichVuTha__MaTha__5BE2A6F2");
+        });
+
+        modelBuilder.Entity<DichVuKyNang>(entity =>
+        {
+            entity.HasKey(e => new { e.MaDichVu, e.MaKyNang }).HasName("PK_DichVuKyNang");
+
+            entity.Property(e => e.MaDichVu).IsFixedLength();
+            entity.Property(e => e.MaKyNang).IsFixedLength();
+
+            entity.HasOne(d => d.MaDichVuNavigation).WithMany(p => p.DichVuKyNangs)
+                .HasForeignKey(d => d.MaDichVu)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DichVuKyNang_DichVu");
+
+            entity.HasOne(d => d.MaKyNangNavigation).WithMany(p => p.DichVuKyNangs)
+                .HasForeignKey(d => d.MaKyNang)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DichVuKyNang_KyNang");
         });
 
         modelBuilder.Entity<DonDat>(entity =>

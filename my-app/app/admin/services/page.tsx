@@ -14,6 +14,7 @@ interface Service {
   trangThai: string;
   phoBien: boolean;
   thanhPhans: string[];
+  kyNangs: string[];
 }
 
 interface FormData {
@@ -23,9 +24,10 @@ interface FormData {
   hinhAnh: string;
   phoBien: boolean;
   thanhPhans: string[];
+  kyNangs: string[];
 }
 
-const emptyForm: FormData = { tenDichVu: "", moTa: "", giaTheoGio: 0, hinhAnh: "", phoBien: false, thanhPhans: [] };
+const emptyForm: FormData = { tenDichVu: "", moTa: "", giaTheoGio: 0, hinhAnh: "", phoBien: false, thanhPhans: [], kyNangs: [] };
 
 export default function ServicesManagement() {
   const router = useRouter();
@@ -36,27 +38,9 @@ export default function ServicesManagement() {
   const [viewingService, setViewingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [newSubService, setNewSubService] = useState("");
-
-  const handleAddSubService = () => {
-    const trimmed = newSubService.trim();
-    if (!trimmed) return;
-    if (formData.thanhPhans.includes(trimmed)) {
-      showAlert("Dịch vụ thành phần này đã tồn tại!", "Cảnh báo", "error");
-      return;
-    }
-    setFormData({
-      ...formData,
-      thanhPhans: [...formData.thanhPhans, trimmed]
-    });
-    setNewSubService("");
-  };
-
-  const handleRemoveSubService = (tpName: string) => {
-    setFormData({
-      ...formData,
-      thanhPhans: formData.thanhPhans.filter(tp => tp !== tpName)
-    });
-  };
+  const [newSkill, setNewSkill] = useState("");
+  const [availableThanhPhans, setAvailableThanhPhans] = useState<{maThanhPhan: string, tenThanhPhan: string}[]>([]);
+  const [availableKyNangs, setAvailableKyNangs] = useState<{maKyNang: string, tenKyNang: string}[]>([]);
 
   // Custom premium Dialog Modal state (Confirm & Alert)
   const [dialog, setDialog] = useState<{
@@ -95,7 +79,19 @@ export default function ServicesManagement() {
     const token = localStorage.getItem("accessToken");
     if (!token) { router.push("/admin/sign-in"); return; }
     fetchServices();
+    fetchExtras();
   }, []);
+
+  const fetchExtras = async () => {
+    try {
+      const resTp = await api.get<{ success: boolean; data: any[] }>("/admin/service-components");
+      if (resTp.success) setAvailableThanhPhans(resTp.data);
+      const resKn = await api.get<{ success: boolean; data: any[] }>("/admin/skills");
+      if (resKn.success) setAvailableKyNangs(resKn.data);
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu phụ trợ:", error);
+    }
+  };
 
   const fetchServices = async () => {
     try {
@@ -136,7 +132,8 @@ export default function ServicesManagement() {
       giaTheoGio: s.giaTheoGio, 
       hinhAnh: s.hinhAnh, 
       phoBien: s.phoBien,
-      thanhPhans: s.thanhPhans || []
+      thanhPhans: s.thanhPhans || [],
+      kyNangs: s.kyNangs || []
     });
     setShowModal(true);
   };
@@ -332,7 +329,7 @@ export default function ServicesManagement() {
                 </p>
 
                 {/* Dịch vụ thành phần */}
-                <div style={{ marginBottom: "20px" }}>
+                <div style={{ marginBottom: "16px" }}>
                   <p style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 10px" }}>
                     Dịch vụ thành phần:
                   </p>
@@ -355,6 +352,34 @@ export default function ServicesManagement() {
                   ) : (
                     <span style={{ fontSize: "13px", color: "#cbd5e1", fontStyle: "italic" }}>
                       Chưa cấu hình dịch vụ thành phần
+                    </span>
+                  )}
+                </div>
+
+                {/* Yêu cầu kỹ năng */}
+                <div style={{ marginBottom: "20px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 10px" }}>
+                    Yêu cầu kỹ năng:
+                  </p>
+                  {service.kyNangs && service.kyNangs.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {service.kyNangs.slice(0, 3).map((kn, idx) => (
+                        <span key={idx} className="sub-service-tag" style={{ background: "#fff7ed", color: "#ea580c", borderColor: "#ffedd5" }}>
+                          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          {kn}
+                        </span>
+                      ))}
+                      {service.kyNangs.length > 3 && (
+                        <span className="sub-service-tag" style={{ background: "#f1f5f9 !important", color: "#475569 !important", border: "1px solid #e2e8f0 !important" }}>
+                          +{service.kyNangs.length - 3} khác
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: "13px", color: "#cbd5e1", fontStyle: "italic" }}>
+                      Chưa cấu hình yêu cầu kỹ năng
                     </span>
                   )}
                 </div>
@@ -421,14 +446,14 @@ export default function ServicesManagement() {
       {/* ── Detail Modal ── */}
       {viewingService && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "24px" }}>
-          <div style={{ background: "#fff", borderRadius: "32px", width: "100%", maxWidth: "700px", padding: "40px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", animation: "fadeIn 0.3s ease-out", position: "relative" }}>
+          <div style={{ background: "#fff", borderRadius: "32px", width: "100%", maxWidth: "700px", padding: "40px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", animation: "fadeIn 0.3s ease-out", position: "relative", maxHeight: "90vh", overflowY: "auto" }}>
             <button onClick={() => setViewingService(null)} style={{ position: "absolute", top: "24px", right: "24px", background: "#f1f5f9", border: "none", borderRadius: "50%", width: "40px", height: "40px", cursor: "pointer", color: "#64748b" }}>✕</button>
             
-            <div style={{ display: "flex", gap: "32px", alignItems: "flex-start" }}>
-              <div style={{ width: "240px", height: "240px", borderRadius: "24px", overflow: "hidden", flexShrink: 0, border: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", gap: "32px", alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div style={{ width: "200px", height: "200px", borderRadius: "24px", overflow: "hidden", flexShrink: 0, border: "1px solid #e2e8f0", margin: "0 auto" }}>
                 <img src={viewingService.hinhAnh} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: "250px" }}>
                 <span style={{ fontSize: "12px", fontWeight: 800, color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.1em" }}>{viewingService.maDichVu}</span>
                 <h3 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "8px 0 12px" }}>{viewingService.tenDichVu}</h3>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "20px" }}>
@@ -454,8 +479,7 @@ export default function ServicesManagement() {
                   {viewingService.thanhPhans.map((tp, idx) => (
                     <div key={idx} style={{ 
                       display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", 
-                      background: "#f8fafc", borderRadius: "14px", border: "1px solid #e2e8f0",
-                      transition: "transform 0.15s ease"
+                      background: "#f8fafc", borderRadius: "14px", border: "1px solid #e2e8f0"
                     }}>
                       <div style={{ 
                         width: "20px", height: "20px", borderRadius: "50%", background: "#eff6ff", 
@@ -474,6 +498,40 @@ export default function ServicesManagement() {
                 <div style={{ padding: "16px", background: "#f8fafc", borderRadius: "14px", border: "1px dashed #cbd5e1", textAlign: "center" }}>
                   <p style={{ fontSize: "13px", color: "#94a3b8", fontStyle: "italic", margin: 0 }}>
                     Chưa có cấu hình dịch vụ thành phần nào cho dịch vụ này.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Yêu cầu kỹ năng */}
+            <div style={{ marginTop: "24px", borderTop: "1px solid #f1f5f9", paddingTop: "24px" }}>
+              <h4 style={{ fontSize: "13px", fontWeight: 800, color: "#475569", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Yêu cầu kỹ năng ({viewingService.kyNangs ? viewingService.kyNangs.length : 0})
+              </h4>
+              {viewingService.kyNangs && viewingService.kyNangs.length > 0 ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                  {viewingService.kyNangs.map((kn, idx) => (
+                    <div key={idx} style={{ 
+                      display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", 
+                      background: "#fff7ed", borderRadius: "14px", border: "1px solid #ffedd5"
+                    }}>
+                      <div style={{ 
+                        width: "20px", height: "20px", borderRadius: "50%", background: "#ffedd5", 
+                        color: "#ea580c", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                        border: "1px solid #fed7aa"
+                      }}>
+                        <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#c2410c" }}>{kn}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: "16px", background: "#f8fafc", borderRadius: "14px", border: "1px dashed #cbd5e1", textAlign: "center" }}>
+                  <p style={{ fontSize: "13px", color: "#94a3b8", fontStyle: "italic", margin: 0 }}>
+                    Chưa có cấu hình kỹ năng nào cho dịch vụ này.
                   </p>
                 </div>
               )}
@@ -513,22 +571,25 @@ export default function ServicesManagement() {
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>Dịch vụ thành phần</label>
                 <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
-                  <input 
-                    type="text" 
-                    placeholder="Nhập dịch vụ thành phần mới..." 
+                  <select
                     value={newSubService}
                     onChange={e => setNewSubService(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddSubService();
-                      }
-                    }}
-                    style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px" }} 
-                  />
+                    style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px", backgroundColor: "#fff" }}
+                  >
+                    <option value="">-- Chọn thành phần dịch vụ --</option>
+                    {availableThanhPhans.filter(tp => !formData.thanhPhans.includes(tp.tenThanhPhan)).map(tp => (
+                      <option key={tp.maThanhPhan} value={tp.tenThanhPhan}>{tp.tenThanhPhan}</option>
+                    ))}
+                  </select>
                   <button
                     type="button"
-                    onClick={handleAddSubService}
+                    onClick={() => {
+                      if (!newSubService) return;
+                      if (!formData.thanhPhans.includes(newSubService)) {
+                        setFormData({...formData, thanhPhans: [...formData.thanhPhans, newSubService]});
+                      }
+                      setNewSubService("");
+                    }}
                     style={{ padding: "12px 20px", borderRadius: "12px", border: "none", background: "#f1f5f9", color: "#1e293b", fontWeight: 700, fontSize: "13px", cursor: "pointer" }}
                   >
                     Thêm
@@ -547,7 +608,7 @@ export default function ServicesManagement() {
                         {tp}
                         <button
                           type="button"
-                          onClick={() => handleRemoveSubService(tp)}
+                          onClick={() => setFormData({...formData, thanhPhans: formData.thanhPhans.filter(t => t !== tp)})}
                           style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                         >
                           ✕
@@ -557,6 +618,57 @@ export default function ServicesManagement() {
                   </div>
                 )}
               </div>
+              
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>Yêu cầu Kỹ năng</label>
+                <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+                  <select
+                    value={newSkill}
+                    onChange={e => setNewSkill(e.target.value)}
+                    style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px", backgroundColor: "#fff" }}
+                  >
+                    <option value="">-- Chọn kỹ năng --</option>
+                    {availableKyNangs.filter(kn => !formData.kyNangs.includes(kn.tenKyNang)).map(kn => (
+                      <option key={kn.maKyNang} value={kn.tenKyNang}>{kn.tenKyNang}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newSkill) return;
+                      if (!formData.kyNangs.includes(newSkill)) {
+                        setFormData({...formData, kyNangs: [...formData.kyNangs, newSkill]});
+                      }
+                      setNewSkill("");
+                    }}
+                    style={{ padding: "12px 20px", borderRadius: "12px", border: "none", background: "#f1f5f9", color: "#1e293b", fontWeight: 700, fontSize: "13px", cursor: "pointer" }}
+                  >
+                    Thêm
+                  </button>
+                </div>
+
+                {formData.kyNangs && formData.kyNangs.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "12px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                    {formData.kyNangs.map((kn, idx) => (
+                      <span key={idx} style={{ 
+                        display: "inline-flex", alignItems: "center", gap: "6px",
+                        background: "#fff7ed", color: "#ea580c", border: "1px solid #ffedd5",
+                        padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600
+                      }}>
+                        {kn}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({...formData, kyNangs: formData.kyNangs.filter(k => k !== kn)})}
+                          style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
                 <input type="checkbox" checked={formData.phoBien} onChange={e => setFormData({ ...formData, phoBien: e.target.checked })} style={{ width: "18px", height: "18px" }} />
                 <span style={{ fontSize: "14px", fontWeight: 600, color: "#475569" }}>Dịch vụ phổ biến</span>
