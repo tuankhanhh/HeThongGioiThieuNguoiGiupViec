@@ -12,7 +12,7 @@ namespace MyWebApi.Controllers
     [ApiController]
     public class BookingController : ControllerBase
     {
-        private readonly ApplicationDbContext _context; // Đổi thành DbContext thực tế của bạn
+        private readonly ApplicationDbContext _context;
 
         public BookingController(ApplicationDbContext context)
         {
@@ -45,12 +45,12 @@ namespace MyWebApi.Controllers
                     }
                 }
             }
-            using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            // TỐI ƯU 1: Bỏ Serializable để tránh lock toàn bộ bảng, dùng mức mặc định (ReadCommitted)
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // =========================================================
-                // BƯỚC 1: TẠO ĐƠN ĐẶT & LỊCH SỬ (Lưu cuốn chiếu để cập nhật mã)
-                // =========================================================
+                // BƯỚC 1: TẠO ĐƠN ĐẶT & LỊCH SỬ
                 string maDonMoi = await _context.GenerateIdAsync("DonDat", "MaDon", "DD");
 
                 var donDat = new DonDat
@@ -64,7 +64,6 @@ namespace MyWebApi.Controllers
                     NgayDat = DateTime.Now
                 };
                 _context.DonDats.Add(donDat);
-                await _context.SaveChangesAsync(); // LƯU NGAY: Để DB ghi nhận mã DD mới nhất
 
                 var thanhToan = new ThanhToan
                 {
@@ -73,7 +72,6 @@ namespace MyWebApi.Controllers
                     TrangThaiThanhToan = "Đã thanh toán"
                 };
                 _context.ThanhToans.Add(thanhToan);
-                await _context.SaveChangesAsync(); // LƯU NGAY
 
                 var lichSuTrangThai = new LichSuTrangThaiDon
                 {
@@ -83,13 +81,28 @@ namespace MyWebApi.Controllers
                     ThoiGianCapNhat = DateTime.Now
                 };
                 _context.LichSuTrangThaiDons.Add(lichSuTrangThai);
-                await _context.SaveChangesAsync(); // LƯU NGAY
 
                 var processedServices = new Dictionary<string, string>();
 
-                // =========================================================
-                // BƯỚC 2: XỬ LÝ LỊCH LÀM VIỆC & THUẬT TOÁN AUTO-ASSIGN MỚI
-                // =========================================================
+                // TỐI ƯU 2: Hàm cục bộ giúp tăng ID trên RAM, tránh phải SaveChanges để lấy ID mới
+                string IncrementId(string currentId, string prefix)
+                {
+                    if (string.IsNullOrEmpty(currentId) || currentId.Length <= prefix.Length) return currentId + "1";
+                    string numberPart = currentId.Substring(prefix.Length);
+                    if (int.TryParse(numberPart, out int num))
+                        return prefix + (num + 1).ToString(new string('0', numberPart.Length));
+                    return currentId + Guid.NewGuid().ToString("N").Substring(0, 4); // Fallback an toàn
+                }
+
+                // Khởi tạo Base ID 1 lần duy nhất từ Database
+                string currentMaDonDatDichVu = await _context.GenerateIdAsync("DonDatDichVu", "MaDonDatDichVu", "DU");
+                string currentMaNgayLamViec = await _context.GenerateIdAsync("NgayLamViec", "MaNgayLamViec", "NL");
+
+                // Gom dữ liệu vào List để Bulk Insert
+                var donDatDichVusToInsert = new List<DonDatDichVu>();
+                var ngayLamViecsToInsert = new List<NgayLamViec>();
+
+                // BƯỚC 2: XỬ LÝ LỊCH LÀM VIỆC & THUẬT TOÁN AUTO-ASSIGN
                 foreach (var day in request.ChiTietNgayLamViec)
                 {
                     TimeOnly dayStartTime = TimeOnly.Parse(day.GioBatDau);
@@ -114,10 +127,7 @@ namespace MyWebApi.Controllers
 
                     var potentialHelpers = helperShiftsMap.Keys.ToList();
 
-                    var trangThaiBan = new List<string> {
-    "Đã phân công", "Đã xác nhận", "Đang làm việc",
-    "Đang thực hiện", "Chờ phân công", "Chờ xác nhận"
-};
+                    var trangThaiBan = new List<string> { "Đã phân công", "Đã xác nhận", "Đang làm việc", "Đang thực hiện", "Chờ phân công", "Chờ xác nhận" };
 
                     var jobsInDay = await _context.NgayLamViecs
                         .Where(nlv => nlv.NgayLam == targetDate && trangThaiBan.Contains(nlv.TrangThai))
@@ -125,9 +135,10 @@ namespace MyWebApi.Controllers
                         .ToListAsync();
 
                     var hoSoRanh = await _context.HoSoNguoiGiupViecs
-                                            .Include(hs => hs.KyNangNguoiGiupViecs)
+                        .Include(hs => hs.KyNangNguoiGiupViecs)
                         .Where(hs => potentialHelpers.Contains(hs.MaNguoiGiupViec))
                         .ToListAsync();
+
                     var freeHelpersSkillsMap = hoSoRanh.ToDictionary(hs => hs.MaNguoiGiupViec, hs => hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList());
 
                     var requiredServiceIds = day.DichVus.Select(d => d.MaDichVu).ToList();
@@ -139,7 +150,7 @@ namespace MyWebApi.Controllers
 
                     foreach (var svc in day.DichVus)
                     {
-                        string neededSkill = serviceSkillMap.ContainsKey(svc.MaDichVu) ? serviceSkillMap[svc.MaDichVu] : null;
+                        serviceSkillMap.TryGetValue(svc.MaDichVu, out string neededSkill);
                         string assignedHelperId = null;
                         TimeOnly plannedStartTime = dayStartTime;
 
@@ -153,8 +164,7 @@ namespace MyWebApi.Controllers
                                 TimeOnly possibleEndTime = possibleStartTime.AddHours(svc.ThoiLuong);
 
                                 bool isWithinRegisteredShift = helperShiftsMap.ContainsKey(helperId) &&
-                                                               helperShiftsMap[helperId].Any(shift =>
-                                                                   shift.Start <= possibleStartTime && shift.End >= possibleEndTime);
+                                                               helperShiftsMap[helperId].Any(shift => shift.Start <= possibleStartTime && shift.End >= possibleEndTime);
 
                                 if (!isWithinRegisteredShift) continue;
 
@@ -183,8 +193,7 @@ namespace MyWebApi.Controllers
                                     TimeOnly possibleEndTime = dayStartTime.AddHours(svc.ThoiLuong);
 
                                     bool isWithinRegisteredShift = helperShiftsMap.ContainsKey(helper.Key) &&
-                                                                   helperShiftsMap[helper.Key].Any(shift =>
-                                                                       shift.Start <= dayStartTime && shift.End >= possibleEndTime);
+                                                                   helperShiftsMap[helper.Key].Any(shift => shift.Start <= dayStartTime && shift.End >= possibleEndTime);
 
                                     if (!isWithinRegisteredShift) continue;
 
@@ -215,27 +224,21 @@ namespace MyWebApi.Controllers
                     foreach (var svc in day.DichVus)
                     {
                         string maDonDatDichVu;
-                        if (!processedServices.ContainsKey(svc.MaDichVu))
+                        if (!processedServices.TryGetValue(svc.MaDichVu, out maDonDatDichVu))
                         {
-                            maDonDatDichVu = await _context.GenerateIdAsync("DonDatDichVu", "MaDonDatDichVu", "DU");
+                            maDonDatDichVu = currentMaDonDatDichVu;
+                            currentMaDonDatDichVu = IncrementId(currentMaDonDatDichVu, "DU"); // Tăng ID trên RAM
 
-                            _context.DonDatDichVus.Add(new DonDatDichVu { MaDonDatDichVu = maDonDatDichVu, MaDon = donDat.MaDon, MaDichVu = svc.MaDichVu });
-                            await _context.SaveChangesAsync(); // LƯU NGAY: Để lượt lặp sau không bị trùng mã "DU"
-
+                            donDatDichVusToInsert.Add(new DonDatDichVu { MaDonDatDichVu = maDonDatDichVu, MaDon = donDat.MaDon, MaDichVu = svc.MaDichVu });
                             processedServices[svc.MaDichVu] = maDonDatDichVu;
-                        }
-                        else
-                        {
-                            maDonDatDichVu = processedServices[svc.MaDichVu];
                         }
 
                         string finalHelperId = null;
                         TimeOnly gioBatDau;
                         TimeOnly gioKetThuc;
 
-                        if (serviceAssignments.ContainsKey(svc.MaDichVu))
+                        if (serviceAssignments.TryGetValue(svc.MaDichVu, out var assignment))
                         {
-                            var assignment = serviceAssignments[svc.MaDichVu];
                             finalHelperId = assignment.HelperId;
                             gioBatDau = assignment.Start;
                             gioKetThuc = assignment.End;
@@ -247,9 +250,9 @@ namespace MyWebApi.Controllers
                             unassignedFallbackTime = gioKetThuc;
                         }
 
-                        var ngayLamViec = new NgayLamViec
+                        ngayLamViecsToInsert.Add(new NgayLamViec
                         {
-                            MaNgayLamViec = await _context.GenerateIdAsync("NgayLamViec", "MaNgayLamViec", "NL"),
+                            MaNgayLamViec = currentMaNgayLamViec,
                             MaDonDatDichVu = maDonDatDichVu,
                             MaNguoiGiupViec = finalHelperId,
                             NgayLam = targetDate,
@@ -258,32 +261,25 @@ namespace MyWebApi.Controllers
                             ThoiLuongThucHien = svc.ThoiLuong,
                             ThoiGianPhanCong = finalHelperId != null ? DateTime.Now : null,
                             TrangThai = finalHelperId != null ? "Đã phân công" : "Chờ phân công"
-                        };
-                        _context.NgayLamViecs.Add(ngayLamViec);
-                        await _context.SaveChangesAsync(); // LƯU NGAY: Để lượt lặp sau không bị trùng mã "NL"
+                        });
+
+                        currentMaNgayLamViec = IncrementId(currentMaNgayLamViec, "NL"); // Tăng ID trên RAM
                     }
                 }
 
-                // Đã lưu cuốn chiếu hết rồi nên không cần _context.SaveChangesAsync() ở đây nữa
+                // TỐI ƯU 3: Insert List và gọi SaveChanges 1 lần duy nhất
+                if (donDatDichVusToInsert.Any()) _context.DonDatDichVus.AddRange(donDatDichVusToInsert);
+                if (ngayLamViecsToInsert.Any()) _context.NgayLamViecs.AddRange(ngayLamViecsToInsert);
+
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    message = "Tạo đơn đặt thành công!",
-                    maDon = donDat.MaDon
-                });
+                return Ok(new { success = true, message = "Tạo đơn đặt thành công!", maDon = donDat.MaDon });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Đã xảy ra lỗi hệ thống khi lưu đơn hàng.",
-                    detail = ex.Message,
-                    inner = ex.InnerException?.Message
-                });
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống khi lưu đơn hàng.", detail = ex.Message, inner = ex.InnerException?.Message });
             }
         }
 
@@ -603,18 +599,18 @@ namespace MyWebApi.Controllers
                 DateOnly targetDate = DateOnly.FromDateTime(request.NgayDat);
                 TimeOnly targetStartTime = TimeOnly.FromTimeSpan(request.ThoiGianBatDau);
 
-
                 var dsMaDichVu = request.DanhSachDichVu.Select(d => d.MaDichVu).ToList();
 
-                // ======================================================================
                 // BƯỚC 1: PRE-LOAD DỮ LIỆU TỪ DATABASE
-                // ======================================================================
                 var dichVusYeuCau = await _context.DichVus
                     .Where(dv => dsMaDichVu.Contains(dv.MaDichVu))
                     .ToListAsync();
 
                 if (dichVusYeuCau.Count != dsMaDichVu.Count)
                     return BadRequest("Một hoặc nhiều dịch vụ không tồn tại trong hệ thống.");
+
+                // TỐI ƯU 1: Chuyển thành Dictionary Lookup O(1) để tra cứu siêu nhanh trong vòng lặp
+                var serviceSkillMap = dichVusYeuCau.ToDictionary(dv => dv.MaDichVu, dv => dv.MaKyNang);
 
                 var rawShifts = await _context.LichRanhCaLamViecs
                     .Include(lrc => lrc.MaLichRanhNavigation)
@@ -626,35 +622,20 @@ namespace MyWebApi.Controllers
                     .GroupBy(lrc => lrc.MaLichRanhNavigation.MaNguoiGiupViec)
                     .ToDictionary(
                         g => g.Key,
-                        g => g.Select(lrc => new
-                        {
-                            Start = lrc.MaCaLamViecNavigation.GioBatDau,
-                            End = lrc.MaCaLamViecNavigation.GioKetThuc
-                        }).ToList()
+                        g => g.Select(lrc => new { Start = lrc.MaCaLamViecNavigation.GioBatDau, End = lrc.MaCaLamViecNavigation.GioKetThuc }).ToList()
                     );
 
                 var potentialHelpers = helperShiftsMap.Keys.ToList();
 
                 if (!potentialHelpers.Any())
-                    return Ok(new
-                    {
-                        isAvailable = false,
-                        message = "Ngày này hiện chưa có nhân viên nào đăng ký ca làm việc.",
-                        suggestedTime = (string?)null
-                    });
+                    return Ok(new { isAvailable = false, message = "Ngày này hiện chưa có nhân viên nào đăng ký ca làm việc.", suggestedTime = (string?)null });
 
                 var trangThaiBan = new List<string> { "Đã phân công", "Đang làm việc", "Hoàn thành", "Không đến làm" };
 
                 var jobsInDay = await _context.NgayLamViecs
                     .Include(nlv => nlv.MaDonDatDichVuNavigation)
                     .Where(nlv => nlv.NgayLam == targetDate && trangThaiBan.Contains(nlv.TrangThai))
-                    .Select(nlv => new
-                    {
-                        nlv.MaNguoiGiupViec,
-                        nlv.GioBatDau,
-                        nlv.GioKetThuc,
-                        MaDon = nlv.MaDonDatDichVuNavigation != null ? nlv.MaDonDatDichVuNavigation.MaDon : null
-                    })
+                    .Select(nlv => new { nlv.MaNguoiGiupViec, nlv.GioBatDau, nlv.GioKetThuc, MaDon = nlv.MaDonDatDichVuNavigation != null ? nlv.MaDonDatDichVuNavigation.MaDon : null })
                     .ToListAsync();
 
                 var hoSoRanh = await _context.HoSoNguoiGiupViecs
@@ -662,133 +643,80 @@ namespace MyWebApi.Controllers
                     .Where(hs => potentialHelpers.Contains(hs.MaNguoiGiupViec))
                     .ToListAsync();
 
-                var freeHelpersSkillsMap = hoSoRanh.ToDictionary(
-                    hs => hs.MaNguoiGiupViec,
-                    hs => hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList()
-                );
+                var freeHelpersSkillsMap = hoSoRanh.ToDictionary(hs => hs.MaNguoiGiupViec, hs => hs.KyNangNguoiGiupViecs.Select(k => k.MaKyNang).ToList());
 
-                // ======================================================================
-                // BƯỚC 2: KIỂM TRA 30 PHÚT GIỮA 2 ĐƠN KHÁC NHAU
-                // ======================================================================
-                async Task<(bool isValid, string errorMessage)> ValidateHelperTransitionTime(
-                    string helperId,
-                    TimeOnly newStartTime,
-                    TimeOnly newEndTime,
-                    string? currentMaDon)
+                // TỐI ƯU 2: Hủy bỏ `async Task` để tránh tốn Overhead do không có lời gọi DB (I/O) nào bên trong hàm này
+                (bool isValid, string errorMessage) ValidateHelperTransitionTime(string helperId, TimeOnly newStartTime, TimeOnly newEndTime, string? currentMaDon)
                 {
                     const int minimumTransitionMinutes = 30;
-
-                    var helperJobs = jobsInDay
-                        .Where(x => x.MaNguoiGiupViec == helperId)
-                        .ToList();
+                    var helperJobs = jobsInDay.Where(x => x.MaNguoiGiupViec == helperId).ToList();
 
                     foreach (var existingJob in helperJobs)
                     {
-                        if (!existingJob.GioBatDau.HasValue || !existingJob.GioKetThuc.HasValue)
-                            continue;
+                        if (!existingJob.GioBatDau.HasValue || !existingJob.GioKetThuc.HasValue) continue;
 
                         TimeOnly existingStart = existingJob.GioBatDau.Value;
                         TimeOnly existingEnd = existingJob.GioKetThuc.Value;
 
-                        // Cùng đơn hàng: chỉ kiểm tra xung đột thời gian
                         if (!string.IsNullOrEmpty(currentMaDon) && existingJob.MaDon == currentMaDon)
                         {
-                            bool hasTimeConflict = newStartTime < existingEnd && newEndTime > existingStart;
-                            if (hasTimeConflict)
-                            {
+                            if (newStartTime < existingEnd && newEndTime > existingStart)
                                 return (false, $"Công việc của đơn {currentMaDon} bị xung đột thời gian: {existingStart:HH:mm} - {existingEnd:HH:mm}");
-                            }
                             continue;
                         }
 
-                        // Khác đơn - công việc mới kết thúc trước
                         if (newEndTime <= existingStart)
                         {
                             TimeSpan gap = existingStart.ToTimeSpan() - newEndTime.ToTimeSpan();
-                            if (gap.TotalMinutes < minimumTransitionMinutes)
-                            {
-                                return (false,
-                                    $"Khoảng cách từ công việc này đến công việc khác đơn không đủ 30 phút. " +
-                                    $"Công việc này kết thúc lúc {newEndTime:HH:mm}, công việc tiếp theo bắt đầu lúc {existingStart:HH:mm}. " +
-                                    $"Chỉ còn {gap.TotalMinutes:F0} phút (cần tối thiểu 30 phút).");
-                            }
-
+                            if (gap.TotalMinutes < minimumTransitionMinutes) return (false, "Gap < 30p");
                             continue;
                         }
 
-                        // Khác đơn - công việc cũ kết thúc trước
                         if (existingEnd <= newStartTime)
                         {
                             TimeSpan gap = newStartTime.ToTimeSpan() - existingEnd.ToTimeSpan();
-                            if (gap.TotalMinutes < minimumTransitionMinutes)
-                            {
-                                return (false,
-                                    $"Khoảng cách từ công việc khác đơn đến công việc này không đủ 30 phút. " +
-                                    $"Công việc trước kết thúc lúc {existingEnd:HH:mm}, công việc này bắt đầu lúc {newStartTime:HH:mm}. " +
-                                    $"Chỉ còn {gap.TotalMinutes:F0} phút (cần tối thiểu 30 phút).");
-                            }
-
+                            if (gap.TotalMinutes < minimumTransitionMinutes) return (false, "Gap < 30p");
                             continue;
                         }
 
-                        // Xung đột thời gian
-                        bool hasConflict = newStartTime < existingEnd && newEndTime > existingStart;
-                        if (hasConflict)
-                        {
-                            return (false, $"Công việc này bị xung đột với công việc từ đơn khác: {existingStart:HH:mm} - {existingEnd:HH:mm}");
-                        }
+                        if (newStartTime < existingEnd && newEndTime > existingStart)
+                            return (false, "Xung đột thời gian");
                     }
-
                     return (true, "");
                 }
 
-                // ======================================================================
-                // BƯỚC 3: HÀM KIỂM TRA 1 KHUNG GIỜ CÓ HỢP LỆ HAY KHÔNG
-                // ======================================================================
-                async Task<bool> IsTimeSlotAvailable(TimeOnly testStartTime)
+                // TỐI ƯU 3: Tương tự, bỏ `async Task`
+                bool IsTimeSlotAvailable(TimeOnly testStartTime)
                 {
                     var helperNextFreeTime = new Dictionary<string, TimeOnly>();
 
                     foreach (var reqSvc in request.DanhSachDichVu)
                     {
-                        string neededSkill = dichVusYeuCau
-                            .FirstOrDefault(d => d.MaDichVu == reqSvc.MaDichVu)
-                            ?.MaKyNang;
-
+                        // Dùng Dictionary đã load sẵn để lấy siêu tốc O(1)
+                        serviceSkillMap.TryGetValue(reqSvc.MaDichVu, out string neededSkill);
                         int duration = reqSvc.ThoiLuong;
                         string assignedHelperId = null;
 
-                        // ƯU TIÊN 1: Người cũ trong team làm tiếp
+                        // ƯU TIÊN 1
                         foreach (var helperId in helperNextFreeTime.Keys.ToList())
                         {
-                            var skills = freeHelpersSkillsMap.ContainsKey(helperId)
-                                ? freeHelpersSkillsMap[helperId]
-                                : new List<string>();
+                            var skills = freeHelpersSkillsMap.ContainsKey(helperId) ? freeHelpersSkillsMap[helperId] : new List<string>();
 
                             if (string.IsNullOrEmpty(neededSkill) || skills.Contains(neededSkill))
                             {
                                 TimeOnly possibleStartTime = helperNextFreeTime[helperId];
                                 TimeOnly possibleEndTime = possibleStartTime.AddHours(duration);
 
-                                bool isWithinRegisteredShift = helperShiftsMap[helperId].Any(shift =>
-                                    shift.Start <= possibleStartTime && shift.End >= possibleEndTime);
-
+                                bool isWithinRegisteredShift = helperShiftsMap[helperId].Any(shift => shift.Start <= possibleStartTime && shift.End >= possibleEndTime);
                                 if (!isWithinRegisteredShift) continue;
 
-                                bool isBusyWithOthers = jobsInDay.Any(j =>
-                                    j.MaNguoiGiupViec == helperId &&
-                                    j.GioBatDau.HasValue && j.GioKetThuc.HasValue &&
-                                    j.GioBatDau.Value < possibleEndTime &&
-                                    j.GioKetThuc.Value > possibleStartTime);
-
+                                bool isBusyWithOthers = jobsInDay.Any(j => j.MaNguoiGiupViec == helperId &&
+                                                                           j.GioBatDau.HasValue && j.GioKetThuc.HasValue &&
+                                                                           j.GioBatDau.Value < possibleEndTime &&
+                                                                           j.GioKetThuc.Value > possibleStartTime);
                                 if (isBusyWithOthers) continue;
 
-                                var (isValid, _) = await ValidateHelperTransitionTime(
-                                    helperId,
-                                    possibleStartTime,
-                                    possibleEndTime,
-                                    null);
-
+                                var (isValid, _) = ValidateHelperTransitionTime(helperId, possibleStartTime, possibleEndTime, null);
                                 if (!isValid) continue;
 
                                 assignedHelperId = helperId;
@@ -797,7 +725,7 @@ namespace MyWebApi.Controllers
                             }
                         }
 
-                        // ƯU TIÊN 2: Tìm người mới ra làm song song
+                        // ƯU TIÊN 2
                         if (assignedHelperId == null)
                         {
                             foreach (var helper in freeHelpersSkillsMap)
@@ -810,26 +738,16 @@ namespace MyWebApi.Controllers
                                     TimeOnly possibleEndTime = testStartTime.AddHours(duration);
 
                                     bool isWithinRegisteredShift = helperShiftsMap.ContainsKey(helper.Key) &&
-                                                                   helperShiftsMap[helper.Key].Any(shift =>
-                                                                       shift.Start <= possibleStartTime &&
-                                                                       shift.End >= possibleEndTime);
-
+                                                                   helperShiftsMap[helper.Key].Any(shift => shift.Start <= possibleStartTime && shift.End >= possibleEndTime);
                                     if (!isWithinRegisteredShift) continue;
 
-                                    bool isBusyWithOthers = jobsInDay.Any(j =>
-                                        j.MaNguoiGiupViec == helper.Key &&
-                                        j.GioBatDau.HasValue && j.GioKetThuc.HasValue &&
-                                        j.GioBatDau.Value < possibleEndTime &&
-                                        j.GioKetThuc.Value > possibleStartTime);
-
+                                    bool isBusyWithOthers = jobsInDay.Any(j => j.MaNguoiGiupViec == helper.Key &&
+                                                                               j.GioBatDau.HasValue && j.GioKetThuc.HasValue &&
+                                                                               j.GioBatDau.Value < possibleEndTime &&
+                                                                               j.GioKetThuc.Value > possibleStartTime);
                                     if (isBusyWithOthers) continue;
 
-                                    var (isValid, _) = await ValidateHelperTransitionTime(
-                                        helper.Key,
-                                        possibleStartTime,
-                                        possibleEndTime,
-                                        null);
-
+                                    var (isValid, _) = ValidateHelperTransitionTime(helper.Key, possibleStartTime, possibleEndTime, null);
                                     if (!isValid) continue;
 
                                     assignedHelperId = helper.Key;
@@ -839,24 +757,16 @@ namespace MyWebApi.Controllers
                             }
                         }
 
-                        if (assignedHelperId == null)
-                            return false;
+                        if (assignedHelperId == null) return false;
                     }
 
                     return true;
                 }
 
-                // ======================================================================
                 // BƯỚC 4: KIỂM TRA & TÌM GIỜ GỢI Ý
-                // ======================================================================
-                if (await IsTimeSlotAvailable(targetStartTime))
+                if (IsTimeSlotAvailable(targetStartTime))
                 {
-                    return Ok(new
-                    {
-                        isAvailable = true,
-                        message = "Khung giờ này có thể đặt lịch.",
-                        suggestedTime = (string?)null
-                    });
+                    return Ok(new { isAvailable = true, message = "Khung giờ này có thể đặt lịch.", suggestedTime = (string?)null });
                 }
 
                 TimeOnly maxEndTime = new TimeOnly(20, 0);
@@ -867,32 +777,21 @@ namespace MyWebApi.Controllers
 
                 while (currentTime.AddHours(maxDurationOfSingleService) <= maxEndTime)
                 {
-                    if (await IsTimeSlotAvailable(currentTime))
+                    if (IsTimeSlotAvailable(currentTime))
                     {
                         suggestedTime = currentTime.ToString("HH:mm");
                         break;
                     }
-
                     currentTime = currentTime.AddMinutes(30);
                 }
 
-                return Ok(new
-                {
-                    isAvailable = false,
-                    message = "Khung giờ bạn chọn đã kín lịch hoặc nhân viên không có ca làm việc phù hợp.",
-                    suggestedTime = suggestedTime
-                });
+                return Ok(new { isAvailable = false, message = "Khung giờ bạn chọn đã kín lịch hoặc nhân viên không có ca làm việc phù hợp.", suggestedTime = suggestedTime });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    message = "Lỗi server khi xử lý kiểm tra lịch rảnh.",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { message = "Lỗi server khi xử lý kiểm tra lịch rảnh.", error = ex.Message });
             }
         }
-
     }
 
     // =========================================================================

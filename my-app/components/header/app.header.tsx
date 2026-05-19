@@ -172,13 +172,22 @@ export default function Header() {
             </div>
 
             {user.role === "Customer" && (
-              <Link
-                href={ROUTES.CUSTOMER.HISTORY}
-                className="text-black block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0]"
-                onClick={() => setOpenAvatar(false)}
-              >
-                Lịch sử đơn hàng
-              </Link>
+              <>
+                <Link
+                  href={ROUTES.CUSTOMER.HISTORY}
+                  className="text-black block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0]"
+                  onClick={() => setOpenAvatar(false)}
+                >
+                  Lịch sử đơn hàng
+                </Link>
+                <Link
+                  href={ROUTES.CUSTOMER.COMPLAINTS}
+                  className="text-black block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0]"
+                  onClick={() => setOpenAvatar(false)}
+                >
+                  Lịch sử khiếu nại
+                </Link>
+              </>
             )}
 
             <button

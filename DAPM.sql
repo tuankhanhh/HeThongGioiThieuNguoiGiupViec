@@ -219,7 +219,7 @@ CREATE TABLE KhieuNai (
     MaNhanVien CHAR(5) NULL,
     NoiDung NVARCHAR(255),              
     ThoiGian DATETIME DEFAULT GETDATE(), 
-    TrangThai NVARCHAR(30) DEFAULT N'Chưa xử lý',
+    TrangThai NVARCHAR(30) DEFAULT N'Chờ xử lý',
     PhanHoi NVARCHAR(255),              
     FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
     FOREIGN KEY(MaKhachHang) REFERENCES NguoiDung(MaNguoiDung),
@@ -516,4 +516,23 @@ SET
     -- 3. Đảm bảo trạng thái đang là "Đã phân công" để Frontend hiện nút
     TrangThai = N'Đã phân công'
 WHERE MaNgayLamViec = 'NL012';
+
+INSERT INTO KhieuNai (
+    MaKhieuNai,
+    MaDon,
+    MaKhachHang,
+    MaNhanVien,
+    NoiDung,
+    TrangThai,
+    PhanHoi
+)
+VALUES (
+    'KN002',
+    'DD001',         
+    'NDUNG',
+    NULL,
+    N'Người giúp việc đến trễ hơn thời gian đã hẹn.',
+    N'Chờ xử lý',
+    NULL
+);
 */

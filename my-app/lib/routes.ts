@@ -20,6 +20,7 @@ export const ROUTES = {
     NOTICE: "/customer/bookings/notice",
     PROFILE: "/customer/profile",
     HISTORY: "/customer/history",
+    COMPLAINTS: "/customer/complaint",
     LOGIN: "/customer/login",
     REGISTER: "/customer/register",
   },

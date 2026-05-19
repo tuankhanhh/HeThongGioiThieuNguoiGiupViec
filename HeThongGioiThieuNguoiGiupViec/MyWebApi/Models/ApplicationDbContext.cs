@@ -161,7 +161,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.MaKhachHang).IsFixedLength();
             entity.Property(e => e.MaNhanVien).IsFixedLength();
             entity.Property(e => e.ThoiGian).HasDefaultValueSql("(getdate())");
-            entity.Property(e => e.TrangThai).HasDefaultValue("Chưa xử lý");
+            entity.Property(e => e.TrangThai).HasDefaultValue("Chờ xử lý");
 
             entity.HasOne(d => d.MaDonNavigation).WithMany(p => p.KhieuNais)
                 .OnDelete(DeleteBehavior.ClientSetNull)

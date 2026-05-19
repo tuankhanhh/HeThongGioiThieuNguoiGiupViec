@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ROUTES } from "@/lib/routes";
 // ==========================================
 // 1. DATA & INTERFACES
 // ==========================================
@@ -255,7 +256,7 @@ export default function StepList() {
             </p>
           </div>
           <Link
-            href="/customer/list-services"
+            href={ROUTES.PUBLIC.LIST_SERVICES}
             onClick={handleClick}
             className={`flex-shrink-0 px-8 py-3.5 rounded-2xl bg-white text-amber-600 font-bold text-lg hover:bg-amber-50 transition-all duration-700 delay-300 shadow-lg ${
               isCtaVisible
