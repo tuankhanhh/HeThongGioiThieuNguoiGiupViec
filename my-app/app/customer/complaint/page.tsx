@@ -21,14 +21,14 @@ export interface Complaint {
   noiDung: string;
   phanHoi: string;
   thoiGian: string;
-  trangThai: string; // "Chờ xử lý", "Đang xử lý", "Đã giải quyết", "Từ chối"
+  trangThai: string; // "Chờ xử lý", "Đang xử lý", "Đã xử lý", "Từ chối"
 }
 
 const TABS = [
   { label: "Tất cả", value: "Tất cả" },
   { label: "Chờ xử lý", value: "Chờ xử lý" },
   { label: "Đang xử lý", value: "Đang xử lý" },
-  { label: "Đã giải quyết", value: "Đã giải quyết" },
+  { label: "Đã xử lý", value: "Đã xử lý" },
 ];
 
 export default function ComplaintHistoryPage() {
@@ -44,7 +44,7 @@ export default function ComplaintHistoryPage() {
     const fetchComplaints = async () => {
       setIsLoading(true);
       try {
-        const response: any = await api.get(`/complaints`);
+        const response: any = await api.get(`/v1/khieu-nai/allofCus`);
         const data = response?.data || response;
         setComplaints(data || []);
       } catch (error) {
@@ -193,7 +193,7 @@ const statusConfig = {
     badge: "border-blue-200 bg-blue-50",
     icon: <SupportAgentOutlined sx={{ fontSize: 16 }} className="mr-1" />,
   },
-  "Đã giải quyết": {
+  "Đã xử lý": {
     text: "text-emerald-700",
     badge: "border-emerald-200 bg-emerald-50",
     icon: <CheckCircleOutline sx={{ fontSize: 16 }} className="mr-1" />,

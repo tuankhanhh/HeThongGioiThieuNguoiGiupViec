@@ -34,7 +34,7 @@ export default function DanhSachKhieuNaiPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get<any>("/v1/staff/danh-sach-khieu-nai");
+      const res = await api.get<any>("/v1/khieu-nai/danh-sach");
       let data = res?.data ?? [];
 
       // Client-side filtering
