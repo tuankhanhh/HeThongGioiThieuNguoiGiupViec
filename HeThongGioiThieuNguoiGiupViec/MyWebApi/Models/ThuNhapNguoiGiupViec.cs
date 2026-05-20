@@ -23,6 +23,8 @@ public partial class ThuNhapNguoiGiupViec
 
     [StringLength(30)]
     public string? TrangThai { get; set; }
+
+    [Column(TypeName = "datetime")]
     public DateTime? ThoiGianTao { get; set; }
 
     [ForeignKey("MaNgayLamViec")]

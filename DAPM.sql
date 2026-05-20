@@ -490,6 +490,8 @@ SELECT * FROM CaLamViec;
 SELECT * FROM LichRanh;
 SELECT * FROM LichRanhCaLamViec;
 
+SELECT * FROM ThanhPhan;
+SELECT * FROM DichVuThanhPhan;
 SELECT * FROM DichVu;
 SELECT * FROM DonDat;
 SELECT * FROM DonDatDichVu;

@@ -36,6 +36,24 @@ const menuItems = [
         ),
     },
     {
+        name: "Thành phần DV",
+        path: "/admin/service-components",
+        icon: (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+        ),
+    },
+    {
+        name: "Kỹ năng",
+        path: "/admin/skills",
+        icon: (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+        ),
+    },
+    {
         name: "Báo cáo",
         path: "/admin/reports",
         icon: (
@@ -60,17 +78,44 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const currentPage = menuItems.find((m) => m.path === pathname)?.name ?? "Admin";
 
     return (
-        <div style={{ 
+        <div className="admin-container" style={{ 
             display: "flex", 
             height: "100vh", 
             background: "#f8fafc", 
             overflow: "hidden",
             fontFamily: "var(--font-inter), sans-serif"
         }}>
+            <style>{`
+                @media (max-width: 768px) {
+                    .admin-sidebar {
+                        position: absolute !important;
+                        z-index: 100 !important;
+                        height: 100vh;
+                        transform: translateX(-100%);
+                    }
+                    .admin-sidebar.open {
+                        transform: translateX(0);
+                    }
+                    .admin-overlay {
+                        display: block !important;
+                        position: fixed;
+                        inset: 0;
+                        background: rgba(0,0,0,0.5);
+                        z-index: 90;
+                    }
+                    .mobile-toggle { display: block !important; }
+                    .desktop-toggle { display: none !important; }
+                }
+                .mobile-toggle { display: none; }
+                .admin-overlay { display: none; }
+            `}</style>
+            
+            {/* Mobile Overlay */}
+            <div className={`admin-overlay ${!collapsed ? "open" : ""}`} onClick={() => setCollapsed(true)} style={{ display: collapsed ? "none" : "block" }} />
 
             {/* ── Sidebar ── */}
             <aside 
-                className="gpu-accelerated"
+                className={`gpu-accelerated admin-sidebar ${!collapsed ? "open" : ""}`}
                 style={{
                     width: collapsed ? "70px" : "240px",
                     minWidth: collapsed ? "70px" : "240px",
@@ -108,7 +153,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     </div>
                     {!collapsed && (
                         <div style={{ overflow: "hidden", whiteSpace: "nowrap" }}>
-                            <div style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>HomeCare</div>
+                            <div style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>Homezy</div>
                             <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Hệ thống quản trị</div>
                         </div>
                     )}
@@ -213,6 +258,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
 
                 <button
+                    className="desktop-toggle"
                     onClick={() => setCollapsed(!collapsed)}
                     style={{
                         position: "absolute", top: "50%", right: "-1px",
@@ -244,17 +290,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     height: "64px",
                     background: "#fff",
                     borderBottom: "1px solid #e2e8f0",
-                    padding: "0 32px",
+                    padding: "0 24px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
                     flexShrink: 0,
                     boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
                 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontSize: "14px", fontWeight: 500, color: "#64748b" }}>Admin</span>
-                        <span style={{ fontSize: "14px", color: "#cbd5e1" }}>/</span>
-                        <span style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{currentPage}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <button className="mobile-toggle" onClick={() => setCollapsed(!collapsed)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex" }}>
+                            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <span style={{ fontSize: "14px", fontWeight: 500, color: "#64748b", display: "none" }}>Admin</span>
+                        <span style={{ fontSize: "14px", color: "#cbd5e1", display: "none" }}>/</span>
+                        <span style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a" }}>{currentPage}</span>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -279,8 +330,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </header>
 
                 {/* Page content */}
-                <main style={{ flex: 1, overflow: "auto", padding: "32px" }}>
-                    <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+                <main style={{ flex: 1, overflow: "auto", padding: "24px 16px" }}>
+                    <div style={{ maxWidth: "1280px", margin: "0 auto", paddingBottom: "40px" }}>
                         {children}
                     </div>
                 </main>
