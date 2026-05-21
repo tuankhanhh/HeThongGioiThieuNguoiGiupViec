@@ -438,6 +438,18 @@ export default function ChiTietKhieuNaiPage() {
 
   const isResolved = kn?.trangThai === "Đã xử lý";
 
+  const handleTiepNhanKhieuNai = async () => {
+    setSubmitting(true);
+    try {
+      await api.post(`/v1/khieu-nai/dang-xu-ly/${id}`);
+      setSuccessMsg("Đã tiếp nhận khiếu nại. Bạn có thể bắt đầu xử lý.");
+      await fetchData(); // Cập nhật lại data mới nhất
+    } catch (err: any) {
+      setActionError(err?.message ?? "Lỗi khi tiếp nhận khiếu nại.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const handleAutoReassign = async () => {
     setActionError(null);
     setSuccessMsg(null);
@@ -788,7 +800,42 @@ export default function ChiTietKhieuNaiPage() {
                     </div>
                   )}
 
-                  {isResolved ? (
+                  {kn.trangThai === "Chờ xử lý" ? (
+                    // TRẠNG THÁI 1: CHƯA TIẾP NHẬN
+                    <div className="h-full flex items-center justify-center p-6 text-center min-h-[300px]">
+                      <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 max-w-sm w-full shadow-sm">
+                        <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+                          <svg
+                            className="w-7 h-7"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            />
+                          </svg>
+                        </div>
+                        <h3 className="text-slate-800 font-bold mb-2 text-lg">
+                          Tiếp nhận khiếu nại
+                        </h3>
+                        <p className="text-[13.5px] text-slate-500 mb-6">
+                          Bạn cần tiếp nhận để bắt đầu sử dụng các công cụ xử lý
+                          sự cố. Trạng thái sẽ được cập nhật cho khách hàng.
+                        </p>
+                        <button
+                          onClick={handleTiepNhanKhieuNai}
+                          disabled={submitting}
+                          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors shadow-sm disabled:opacity-50"
+                        >
+                          {submitting ? "Đang xử lý..." : "Tiếp nhận ngay"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : isResolved ? (
                     <div className="h-full flex items-center justify-center p-6 text-center min-h-[300px]">
                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 max-w-sm w-full">
                         <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">

@@ -271,6 +271,10 @@ namespace MyWebApi.Controllers
                             maNgayLamViec = nlv.MaNgayLamViec,
                             ngayLam = nlv.NgayLam,
                             gioBatDau = nlv.GioBatDau,
+                            gioKetThuc = nlv.GioKetThuc ??
+                            (nlv.GioBatDau.HasValue
+                                ? TimeOnly.FromTimeSpan(nlv.GioBatDau.Value.ToTimeSpan().Add(TimeSpan.FromHours(nlv.ThoiLuongThucHien ?? 2)))
+                                : null),
                             trangThai = nlv.TrangThai,
                             maNguoiGiupViec = nlv.MaNguoiGiupViec,
                             tenNguoiGiupViec = nlv.MaNguoiGiupViecNavigation != null

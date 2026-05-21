@@ -14,6 +14,7 @@ interface NgayLamViec {
   maNgayLamViec: string;
   ngayLam: string;
   gioBatDau: string;
+  gioKetThuc?: string;
   trangThai: string;
   maNguoiGiupViec: string | null;
   tenNguoiGiupViec: string | null;
@@ -797,6 +798,7 @@ export default function ChiTietYeuCauPage() {
               <InfoRow label="Địa chỉ" value={don.diaChi} />
               <InfoRow label="Ngày đặt" value={formatDate(don.ngayDat)} />
               <InfoRow label="Số ngày" value={`${don.soNgay} ngày`} />
+              <InfoRow label="Ghi chú" value={don.ghiChu} />
               <InfoRow
                 label="Tổng tiền"
                 value={
@@ -835,7 +837,7 @@ export default function ChiTietYeuCauPage() {
           </div>
 
           {/* Dịch vụ đặt - grouped */}
-          {don.dichVus.length > 0 && (
+          {/* {don.dichVus.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-emerald-50/40">
                 <div className="w-1.5 h-5 rounded-full bg-emerald-500" />
@@ -927,10 +929,10 @@ export default function ChiTietYeuCauPage() {
                                         : "Phân công"}
                                   </button>
                                 )}
-                              </div>
+                              </div> */}
 
-                              {/* Inline Edit Panel */}
-                              {isEditing && (
+          {/* Inline Edit Panel */}
+          {/* {isEditing && (
                                 <div className="mt-3 bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-3">
                                   <div className="flex items-center justify-between">
                                     <h4 className="text-[13px] font-bold text-slate-700">
@@ -1060,6 +1062,230 @@ export default function ChiTietYeuCauPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            </div> */}
+          {/* )} */}
+          {/* Dịch vụ đặt - Group theo ngày */}
+          {don.dichVus.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-emerald-50/40">
+                <div className="w-1.5 h-5 rounded-full bg-emerald-500" />
+                <h2 className="text-base font-bold text-slate-800">
+                  Lịch trình thực hiện
+                </h2>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {(() => {
+                  // Gom nhóm các ca làm việc theo ngày
+                  const groupedByDate = don.dichVus.reduce(
+                    (acc, dv) => {
+                      dv.ngayLamViecs.forEach((nlv) => {
+                        if (!acc[nlv.ngayLam]) acc[nlv.ngayLam] = [];
+                        acc[nlv.ngayLam].push({
+                          ...nlv,
+                          tenDichVu: dv.tenDichVu,
+                        });
+                      });
+                      return acc;
+                    },
+                    {} as Record<
+                      string,
+                      (NgayLamViec & { tenDichVu: string })[]
+                    >,
+                  );
+
+                  const sortedDates = Object.keys(groupedByDate).sort(
+                    (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+                  );
+
+                  return sortedDates.map((dateStr) => (
+                    <div key={dateStr} className="p-6 bg-slate-50/30">
+                      {/* Tiêu đề ngày */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <svg
+                          className="w-6 h-6 text-indigo-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                        <h3 className="text-lg font-bold text-slate-900">
+                          Ngày thực hiện: {formatDate(dateStr)}
+                        </h3>
+                      </div>
+
+                      {/* Các ca làm việc trong ngày */}
+                      <div className="space-y-4">
+                        {groupedByDate[dateStr].map((ca) => {
+                          const isEditing = editingSlotId === ca.maNgayLamViec;
+                          return (
+                            <div
+                              key={ca.maNgayLamViec}
+                              className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden"
+                            >
+                              <div
+                                className={`absolute top-0 left-0 w-1.5 h-full ${ca.trangThai === "Đã phân công" ? "bg-emerald-500" : "bg-amber-500"}`}
+                              ></div>
+
+                              <div className="pl-3">
+                                <div className="flex justify-between items-center mb-3">
+                                  <span className="font-semibold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-md text-[13.5px] border border-indigo-100">
+                                    {ca.tenDichVu}
+                                  </span>
+                                  <span
+                                    className={`text-xs font-bold px-3 py-1.5 rounded-full ${ca.trangThai === "Đã phân công" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}
+                                  >
+                                    {ca.trangThai ?? "Chờ phân công"}
+                                  </span>
+                                </div>
+
+                                <div className="text-[14px] text-slate-600 mb-3">
+                                  <span className="font-semibold text-slate-800">
+                                    Thời gian:{" "}
+                                  </span>
+                                  {ca.gioBatDau} -{" "}
+                                  {ca.gioKetThuc || "Chưa xác định"}
+                                </div>
+
+                                <div className="border-t border-slate-100 pt-3 flex flex-wrap items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                                      <svg
+                                        className="w-4 h-4"
+                                        fill="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                                      </svg>
+                                    </div>
+                                    <span
+                                      className={`text-[14px] ${ca.tenNguoiGiupViec ? "font-bold text-slate-700" : "font-medium text-slate-500 italic"}`}
+                                    >
+                                      {ca.tenNguoiGiupViec ||
+                                        "Hệ thống đang điều phối nhân viên..."}
+                                    </span>
+                                  </div>
+
+                                  {canAct && (
+                                    <button
+                                      onClick={() => {
+                                        if (isEditing) {
+                                          setEditingSlotId(null);
+                                          setSelectedMaidForSlot("");
+                                          setSlotCandidates([]);
+                                        } else {
+                                          openSlotEdit(
+                                            ca.maNgayLamViec,
+                                            ca.maNguoiGiupViec || "",
+                                          );
+                                        }
+                                      }}
+                                      className="inline-flex items-center px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-[13px] font-bold transition-all cursor-pointer"
+                                    >
+                                      {isEditing
+                                        ? "Hủy"
+                                        : ca.tenNguoiGiupViec
+                                          ? "Thay đổi"
+                                          : "Phân công"}
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* KHUNG CHỌN NHÂN VIÊN (Giữ nguyên logic cũ của bạn) */}
+                                {isEditing && (
+                                  <div className="mt-4 bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-3">
+                                    {/* Dán nguyên khối <input> và <MaidCarousel> của bạn ở đây để không làm mất logic */}
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="text-[13px] font-bold text-slate-700">
+                                        Đổi người giúp việc —{" "}
+                                        {formatDate(ca.ngayLam)}
+                                      </h4>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      placeholder="Tìm ứng viên..."
+                                      value={slotSearch}
+                                      onChange={(e) =>
+                                        setSlotSearch(e.target.value)
+                                      }
+                                      className="w-full px-3 py-2 text-[13px] rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                                    />
+
+                                    {slotCandidatesLoading ? (
+                                      <p className="text-[12px] text-slate-400 text-center py-4">
+                                        Đang tải...
+                                      </p>
+                                    ) : (
+                                      <MaidCarousel>
+                                        {slotCandidates
+                                          .filter(
+                                            (c) =>
+                                              slotSearch.trim() === "" ||
+                                              c.hoTen
+                                                .toLowerCase()
+                                                .includes(
+                                                  slotSearch.toLowerCase(),
+                                                ),
+                                          )
+                                          .map((c) => (
+                                            <MaidCandidateOption
+                                              key={c.maNguoiGiupViec}
+                                              m={c}
+                                              name={
+                                                "inline-maid-" +
+                                                ca.maNgayLamViec
+                                              }
+                                              checked={
+                                                selectedMaidForSlot ===
+                                                c.maNguoiGiupViec
+                                              }
+                                              onChange={() =>
+                                                setSelectedMaidForSlot(
+                                                  c.maNguoiGiupViec,
+                                                )
+                                              }
+                                            />
+                                          ))}
+                                      </MaidCarousel>
+                                    )}
+                                    <div className="flex gap-2 justify-end pt-1">
+                                      <button
+                                        onClick={() => setEditingSlotId(null)}
+                                        className="px-3 py-1.5 rounded-lg border text-slate-600 text-xs font-semibold hover:bg-white cursor-pointer"
+                                      >
+                                        Hủy
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleSaveSlotAssignment(
+                                            ca.maNgayLamViec,
+                                          )
+                                        }
+                                        disabled={
+                                          submittingSlot || !selectedMaidForSlot
+                                        }
+                                        className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer"
+                                      >
+                                        Lưu thay đổi
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           )}

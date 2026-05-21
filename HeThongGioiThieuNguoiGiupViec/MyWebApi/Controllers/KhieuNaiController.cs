@@ -47,7 +47,7 @@ namespace MyWebApi.Controllers
                 NoiDung = k.GetType().GetProperty("NoiDung")?.GetValue(k, null)?.ToString() ?? "Không có nội dung",
                 PhanHoi = k.GetType().GetProperty("PhanHoi")?.GetValue(k, null)?.ToString() ?? "",
                 ThoiGian = k.ThoiGian?.ToString("yyyy-MM-dd HH:mm:ss") ?? "",
-                TrangThai = k.TrangThai ?? "Chưa xử lý"
+                TrangThai = k.TrangThai ?? "Chờ xử lý"
             }).ToList();
 
             return Ok(mappedComplaints);
@@ -122,8 +122,9 @@ namespace MyWebApi.Controllers
                     .Where(n =>
                         n.MaDonDatDichVuNavigation != null &&
                         n.MaDonDatDichVuNavigation.MaDon == kn.MaDon &&
-                        n.TrangThai != "Hoàn thành" &&
-                        n.TrangThai != "Hủy lịch")
+                        //n.TrangThai != "Hoàn thành" &&
+                        //n.TrangThai != "Hủy lịch")
+                        n.TrangThai == "Không đến làm")
                     .AsEnumerable()
                     .Select(nlv =>
                     {
@@ -262,8 +263,9 @@ namespace MyWebApi.Controllers
                 .Where(n =>
                     n.MaDonDatDichVuNavigation != null &&
                     n.MaDonDatDichVuNavigation.MaDon == kn.MaDon &&
-                    n.TrangThai != "Hoàn thành" &&
-                    n.TrangThai != "Hủy lịch")
+                    //n.TrangThai != "Hoàn thành" &&
+                    //n.TrangThai != "Hủy lịch")
+                    n.TrangThai == "Không đến làm")
                 .ToListAsync();
                 Console.WriteLine($"DEBUG: Tìm thấy {ngayLamViecs.Count} ca làm việc cho đơn {kn.MaDon}");
                 if (!ngayLamViecs.Any())
@@ -673,6 +675,37 @@ namespace MyWebApi.Controllers
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.Message });
+            }
+        }
+        // POST /api/v1/khieu-nai/dang-xu-ly/{id}
+        [HttpPost("dang-xu-ly/{id}")]
+        public async Task<IActionResult> ChuyenTrangThaiDangXuLy(string id)
+        {
+            try
+            {
+                var kn = await _context.KhieuNais.FirstOrDefaultAsync(k => k.MaKhieuNai == id);
+                if (kn == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy khiếu nại." });
+
+                if (kn.TrangThai == "Đã xử lý")
+                    return BadRequest(new { success = false, message = "Khiếu nại này đã được xử lý xong." });
+
+                kn.TrangThai = "Đang xử lý";
+
+                // Cập nhật người đang giải quyết nếu có
+                var maNhanVien = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(maNhanVien))
+                {
+                    kn.MaNhanVien = maNhanVien;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Đã chuyển trạng thái khiếu nại sang Đang xử lý." });
+            }
+            catch (Exception ex)
+            {
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.Message });
             }
         }
