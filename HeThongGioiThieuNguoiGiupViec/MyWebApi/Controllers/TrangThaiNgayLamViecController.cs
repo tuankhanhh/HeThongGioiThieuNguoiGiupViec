@@ -118,26 +118,26 @@ namespace MyWebApi.Controllers
                     _context.ThuNhapNguoiGiupViecs.Add(thuNhap);
                 }
             }
-            // ---> LOGIC TỰ ĐỘNG TẠO KHIẾU NẠI Ở ĐÂY <---
+            // ---> LOGIC TỰ ĐỘNG TẠO KHIẾU NẠI <---
             else if (request.TrangThai == "Không đến làm")
             {
-                string maDon = job.MaDonDatDichVuNavigation.MaDonNavigation.MaDon;
+                // Sử dụng luôn tham số maNgayLamViec của hàm, không khai báo lại
                 string maKhachHang = job.MaDonDatDichVuNavigation.MaDonNavigation.MaKhachhang;
 
-                // Kiểm tra xem đã tạo khiếu nại cho lỗi này chưa (Tránh tạo trùng nếu gọi API nhiều lần)
+                // Kiểm tra xem đã tạo khiếu nại cho ngày làm việc này chưa
                 bool daTaoKhieuNai = await _context.KhieuNais
-                    .AnyAsync(k => k.MaDon == maDon && k.NoiDung == "Người giúp việc không đến làm");
+                    .AnyAsync(k => k.MaNgayLamViec == maNgayLamViec && k.NoiDung == "Người giúp việc không đến làm");
 
                 if (!daTaoKhieuNai)
                 {
                     var khieuNai = new KhieuNai
                     {
                         MaKhieuNai = await _context.GenerateIdAsync("KhieuNai", "MaKhieuNai", "KN"),
-                        MaDon = maDon,
+                        MaNgayLamViec = maNgayLamViec, // Dùng biến từ parameter
                         MaKhachHang = maKhachHang,
                         NoiDung = "Người giúp việc không đến làm",
                         ThoiGian = DateTime.Now,
-                        TrangThai = "Chờ xử lý" 
+                        TrangThai = "Chờ xử lý"
                     };
 
                     _context.KhieuNais.Add(khieuNai);
@@ -154,6 +154,7 @@ namespace MyWebApi.Controllers
 
             return Ok(new { message = "Cập nhật trạng thái thành công!" });
         }
+
         private async Task SyncOrderStatusAsync(string maDon)
         {
             // 1. Lấy trạng thái hiện tại của đơn đặt

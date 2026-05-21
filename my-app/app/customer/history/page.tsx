@@ -43,6 +43,11 @@ const statusConfig = {
     text: "text-yellow-700",
     badge: "bg-yellow-100",
   },
+  "Có sự cố": {
+    bg: "bg-orange-50",
+    text: "text-orange-700",
+    badge: "bg-orange-100",
+  },
   "Hủy đơn": {
     bg: "bg-red-50",
     text: "text-red-700",
@@ -230,6 +235,7 @@ export default function OrderHistoryPage() {
             "Đã xác nhận",
             "Đang thực hiện",
             "Hủy đơn",
+            "Có sự cố",
           ].map((status) => {
             const count = orders.filter((o) => o.trangThai === status).length;
             return (

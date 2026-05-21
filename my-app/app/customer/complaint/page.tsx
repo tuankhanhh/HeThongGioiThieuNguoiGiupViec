@@ -18,6 +18,7 @@ import Link from "next/link";
 export interface Complaint {
   maKhieuNai: string;
   maDon: string;
+  maNgayLamViec: string;
   noiDung: string;
   phanHoi: string;
   thoiGian: string;
@@ -255,9 +256,9 @@ function ComplaintCard({ complaint }: { complaint: Complaint }) {
                 className="text-slate-400"
               />
               <span>
-                Mã đơn đặt:{" "}
+                Mã ngày làm việc:{" "}
                 <strong className="font-mono group-hover:text-blue-600 transition-colors">
-                  {complaint.maDon}
+                  {complaint.maNgayLamViec}
                 </strong>
               </span>
             </div>
