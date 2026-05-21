@@ -16,7 +16,7 @@ public partial class KhieuNai
 
     [StringLength(5)]
     [Unicode(false)]
-    public string MaDon { get; set; } = null!;
+    public string MaNgayLamViec { get; set; } = null!;
 
     [StringLength(5)]
     [Unicode(false)]
@@ -38,13 +38,13 @@ public partial class KhieuNai
     [StringLength(255)]
     public string? PhanHoi { get; set; }
 
-    [ForeignKey("MaDon")]
-    [InverseProperty("KhieuNais")]
-    public virtual DonDat MaDonNavigation { get; set; } = null!;
-
     [ForeignKey("MaKhachHang")]
     [InverseProperty("KhieuNaiMaKhachHangNavigations")]
     public virtual NguoiDung MaKhachHangNavigation { get; set; } = null!;
+
+    [ForeignKey("MaNgayLamViec")]
+    [InverseProperty("KhieuNais")]
+    public virtual NgayLamViec MaNgayLamViecNavigation { get; set; } = null!;
 
     [ForeignKey("MaNhanVien")]
     [InverseProperty("KhieuNaiMaNhanVienNavigations")]

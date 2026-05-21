@@ -214,14 +214,14 @@ CREATE TABLE DanhGia (
 -- 20. KhieuNai
 CREATE TABLE KhieuNai (
     MaKhieuNai CHAR(5) PRIMARY KEY,
-    MaDon CHAR(5) NOT NULL,
+    MaNgayLamViec CHAR(5) NOT NULL,
     MaKhachHang CHAR(5) NOT NULL,
     MaNhanVien CHAR(5) NULL,
     NoiDung NVARCHAR(255),              
     ThoiGian DATETIME DEFAULT GETDATE(), 
     TrangThai NVARCHAR(30) DEFAULT N'Chờ xử lý',
     PhanHoi NVARCHAR(255),              
-    FOREIGN KEY(MaDon) REFERENCES DonDat(MaDon),
+    FOREIGN KEY(MaNgayLamViec) REFERENCES NgayLamViec(MaNgayLamViec),
     FOREIGN KEY(MaKhachHang) REFERENCES NguoiDung(MaNguoiDung),
     FOREIGN KEY(MaNhanVien) REFERENCES NguoiDung(MaNguoiDung)
 );
@@ -445,8 +445,8 @@ INSERT INTO DanhGia (MaDanhGia, MaDon, SoSao) VALUES
 ('DG001', 'DD006', 5), ('DG002', 'DD007', 4);
 
 -- 19. KhieuNai (Tiền tố: KN001 hoặc theo mã hóa khác. Giữ nguyên KN001 như cũ do khác bảng)
-INSERT INTO KhieuNai (MaKhieuNai, MaDon, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai) VALUES 
-('KN001', 'DD006', 'KH003', 'NV001', N'Nhân viên đến muộn 15 phút', GETDATE(), N'Chờ xử lý');
+INSERT INTO KhieuNai (MaKhieuNai, MaNgayLamViec, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai) VALUES 
+('KN001', 'NL001', 'KH003', 'NV001', N'Nhân viên đến muộn 15 phút', GETDATE(), N'Chờ xử lý');
 GO
 -- Hàm
 CREATE PROCEDURE sp_TaoMaTuDong
