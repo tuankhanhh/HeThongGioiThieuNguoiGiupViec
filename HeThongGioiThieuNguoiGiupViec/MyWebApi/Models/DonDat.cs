@@ -43,9 +43,6 @@ public partial class DonDat
     public virtual ICollection<DonDatDichVu> DonDatDichVus { get; set; } = new List<DonDatDichVu>();
 
     [InverseProperty("MaDonNavigation")]
-    public virtual ICollection<KhieuNai> KhieuNais { get; set; } = new List<KhieuNai>();
-
-    [InverseProperty("MaDonNavigation")]
     public virtual ICollection<LichSuTrangThaiDon> LichSuTrangThaiDons { get; set; } = new List<LichSuTrangThaiDon>();
 
     [ForeignKey("MaKhachhang")]

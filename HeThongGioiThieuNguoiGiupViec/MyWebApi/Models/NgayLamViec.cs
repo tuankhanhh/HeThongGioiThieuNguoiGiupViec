@@ -36,6 +36,9 @@ public partial class NgayLamViec
     [StringLength(30)]
     public string? TrangThai { get; set; }
 
+    [InverseProperty("MaNgayLamViecNavigation")]
+    public virtual ICollection<KhieuNai> KhieuNais { get; set; } = new List<KhieuNai>();
+
     [ForeignKey("MaDonDatDichVu")]
     [InverseProperty("NgayLamViecs")]
     public virtual DonDatDichVu MaDonDatDichVuNavigation { get; set; } = null!;
