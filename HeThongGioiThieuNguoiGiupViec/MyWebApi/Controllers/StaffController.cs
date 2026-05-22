@@ -271,6 +271,10 @@ namespace MyWebApi.Controllers
                             maNgayLamViec = nlv.MaNgayLamViec,
                             ngayLam = nlv.NgayLam,
                             gioBatDau = nlv.GioBatDau,
+                            gioKetThuc = nlv.GioKetThuc ??
+                            (nlv.GioBatDau.HasValue
+                                ? TimeOnly.FromTimeSpan(nlv.GioBatDau.Value.ToTimeSpan().Add(TimeSpan.FromHours(nlv.ThoiLuongThucHien ?? 2)))
+                                : null),
                             trangThai = nlv.TrangThai,
                             maNguoiGiupViec = nlv.MaNguoiGiupViec,
                             tenNguoiGiupViec = nlv.MaNguoiGiupViecNavigation != null
@@ -1057,6 +1061,33 @@ namespace MyWebApi.Controllers
                 await transaction.RollbackAsync();
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.Message });
             }
+        }
+
+        // Thêm vào trong class StaffController
+        [HttpGet("me")]
+        public async Task<IActionResult> GetStaffProfile()
+        {
+            var staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(staffId))
+                return Unauthorized(new { message = "Không tìm thấy thông tin định danh." });
+
+            var staff = await _context.NguoiDungs
+                .Include(u => u.NguoiDungVaiTros)
+                    .ThenInclude(uv => uv.MaVaiTroNavigation)
+                .FirstOrDefaultAsync(u => u.MaNguoiDung == staffId);
+
+            if (staff == null)
+                return NotFound(new { message = "Không tìm thấy hồ sơ nhân viên." });
+
+            return Ok(new
+            {
+                hoTen = staff.HoTen,
+                email = staff.Email,
+                // Giả sử bảng NguoiDung có cột SoDienThoai và DiaChi
+                soDienThoai = staff.SoDienThoai,
+                diaChi = staff.DiaChi,
+                role = staff.NguoiDungVaiTros.Select(uv => uv.MaVaiTroNavigation.TenVaiTro).FirstOrDefault()
+            });
         }
 
         // =============================================

@@ -438,6 +438,18 @@ export default function ChiTietKhieuNaiPage() {
 
   const isResolved = kn?.trangThai === "Đã xử lý";
 
+  const handleTiepNhanKhieuNai = async () => {
+    setSubmitting(true);
+    try {
+      await api.post(`/v1/khieu-nai/dang-xu-ly/${id}`);
+      setSuccessMsg("Đã tiếp nhận khiếu nại. Bạn có thể bắt đầu xử lý.");
+      await fetchData(); // Cập nhật lại data mới nhất
+    } catch (err: any) {
+      setActionError(err?.message ?? "Lỗi khi tiếp nhận khiếu nại.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const handleAutoReassign = async () => {
     setActionError(null);
     setSuccessMsg(null);
@@ -506,28 +518,69 @@ export default function ChiTietKhieuNaiPage() {
     setManualModalOpen(false);
   };
 
+  // const handleCancelOrder = async () => {
+  //   setActionError(null);
+  //   setSuccessMsg(null);
+  //   setHuyDonError("");
+  //   if (!huyDonLyDo.trim()) {
+  //     setHuyDonError("Vui lòng nhập lý do hủy đơn.");
+  //     return;
+  //   }
+  //   setConfirmMessage(
+  //     "Bạn có chắc chắn muốn hủy đơn và hoàn tiền? Hành động này không thể hoàn tác.",
+  //   );
+  //   setConfirmAction(() => async () => {
+  //     setSubmitting(true);
+  //     try {
+  //       const res = await api.post<any>("/v1/khieu-nai/huy-don-su-co", {
+  //         maKhieuNai: id,
+  //         noiDungPhanHoi: huyDonLyDo.trim(),
+  //       });
+  //       setSuccessMsg(res?.message || "Hủy đơn thành công.");
+  //       await fetchData();
+  //     } catch (err: any) {
+  //       setActionError(err?.message ?? "Lỗi hủy đơn.");
+  //     } finally {
+  //       setSubmitting(false);
+  //       setConfirmModal(false);
+  //     }
+  //   });
+  //   setConfirmModal(true);
+  // };
   const handleCancelOrder = async () => {
     setActionError(null);
     setSuccessMsg(null);
     setHuyDonError("");
+
     if (!huyDonLyDo.trim()) {
-      setHuyDonError("Vui lòng nhập lý do hủy đơn.");
+      setHuyDonError("Vui lòng nhập lý do hủy ca làm việc.");
       return;
     }
+
+    // Lấy ra ca lỗi hiện tại
+    const caLoi = kn?.caLamViecLoi?.[0];
+    if (!caLoi) {
+      setActionError("Không tìm thấy thông tin ca làm việc để hủy.");
+      return;
+    }
+
     setConfirmMessage(
-      "Bạn có chắc chắn muốn hủy đơn và hoàn tiền? Hành động này không thể hoàn tác.",
+      `Bạn có chắc chắn muốn hủy ca làm việc ${caLoi.maNgayLamViec} không? Ca này sẽ bị hủy trên hệ thống của khách hàng.`,
     );
     setConfirmAction(() => async () => {
       setSubmitting(true);
       try {
-        const res = await api.post<any>("/v1/khieu-nai/huy-don-su-co", {
-          maKhieuNai: id,
-          noiDungPhanHoi: huyDonLyDo.trim(),
+        const res = await api.post<any>("/v1/khieu-nai/huy-ca-don-le", {
+          MaNgayLamViec: caLoi.maNgayLamViec,
+          MaKhieuNai: id,
+          LyDo: huyDonLyDo.trim(),
         });
-        setSuccessMsg(res?.message || "Hủy đơn thành công.");
+        setSuccessMsg(res?.message || "Hủy ca thành công.");
         await fetchData();
       } catch (err: any) {
-        setActionError(err?.message ?? "Lỗi hủy đơn.");
+        setActionError(
+          err?.response?.data?.message || err?.message || "Lỗi hủy ca.",
+        );
       } finally {
         setSubmitting(false);
         setConfirmModal(false);
@@ -535,7 +588,6 @@ export default function ChiTietKhieuNaiPage() {
     });
     setConfirmModal(true);
   };
-
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <button
@@ -764,7 +816,7 @@ export default function ChiTietKhieuNaiPage() {
                     onClick={() => setActiveTab(2)}
                     className={`flex-1 py-3 text-[13px] font-semibold transition-colors ${activeTab === 2 ? "border-b-2 border-rose-600 text-rose-600 bg-rose-50/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
                   >
-                    Hủy lịch
+                    Hủy ca
                   </button>
                 </div>
 
@@ -788,7 +840,42 @@ export default function ChiTietKhieuNaiPage() {
                     </div>
                   )}
 
-                  {isResolved ? (
+                  {kn.trangThai === "Chờ xử lý" ? (
+                    // TRẠNG THÁI 1: CHƯA TIẾP NHẬN
+                    <div className="h-full flex items-center justify-center p-6 text-center min-h-[300px]">
+                      <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 max-w-sm w-full shadow-sm">
+                        <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+                          <svg
+                            className="w-7 h-7"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            />
+                          </svg>
+                        </div>
+                        <h3 className="text-slate-800 font-bold mb-2 text-lg">
+                          Tiếp nhận khiếu nại
+                        </h3>
+                        <p className="text-[13.5px] text-slate-500 mb-6">
+                          Bạn cần tiếp nhận để bắt đầu sử dụng các công cụ xử lý
+                          sự cố. Trạng thái sẽ được cập nhật cho khách hàng.
+                        </p>
+                        <button
+                          onClick={handleTiepNhanKhieuNai}
+                          disabled={submitting}
+                          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors shadow-sm disabled:opacity-50"
+                        >
+                          {submitting ? "Đang xử lý..." : "Tiếp nhận ngay"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : isResolved ? (
                     <div className="h-full flex items-center justify-center p-6 text-center min-h-[300px]">
                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 max-w-sm w-full">
                         <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
@@ -1014,10 +1101,71 @@ export default function ChiTietKhieuNaiPage() {
                                             Thay đổi
                                           </button>
                                           {!hasCandidates && !loadingShifts && (
+                                            <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-[12.5px] text-rose-700 font-medium text-center shadow-sm">
+                                              <span className="block mb-1">
+                                                ⚠️ Không có người thay thế phù
+                                                hợp!
+                                              </span>
+                                              Vui lòng chuyển sang tab{" "}
+                                              <strong className="uppercase">
+                                                Hủy ca
+                                              </strong>{" "}
+                                              để xử lý.
+                                            </div>
+                                          )}
+                                          {/* <button
+                                            onClick={() => {
+                                              setConfirmMessage(
+                                                `Bạn có chắc chắn muốn hủy riêng ca làm việc ${ca.maNgayLamViec}?`,
+                                              );
+                                              setConfirmAction(
+                                                () => async () => {
+                                                  setSubmitting(true);
+                                                  setActionError(null);
+                                                  setSuccessMsg(null);
+                                                  try {
+                                                    // Bắn đúng DTO viết HOA chữ cái đầu như Backend quy định
+                                                    await api.post(
+                                                      "/v1/khieu-nai/huy-ca-don-le",
+                                                      {
+                                                        MaNgayLamViec:
+                                                          ca.maNgayLamViec,
+                                                        MaKhieuNai: id, // ID của phiếu khiếu nại hiện tại trên URL
+                                                        LyDo: "Không có người làm thay thế phù hợp",
+                                                      },
+                                                    );
+                                                    setSuccessMsg(
+                                                      `Đã hủy riêng ca ${ca.maNgayLamViec} và giải phóng người giúp việc.`,
+                                                    );
+                                                    await fetchData(); // Refresh lại RAM và UI
+                                                  } catch (err: any) {
+                                                    setActionError(
+                                                      err?.response?.data
+                                                        ?.message ||
+                                                        err?.message ||
+                                                        "Lỗi khi hủy ca lẻ.",
+                                                    );
+                                                  } finally {
+                                                    setSubmitting(false);
+                                                    setConfirmModal(false);
+                                                  }
+                                                },
+                                              );
+                                              setConfirmModal(true);
+                                            }}
+                                            disabled={
+                                              submitting ||
+                                              ca.trangThai === "Hủy lịch"
+                                            }
+                                            className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[13px] font-bold transition-colors disabled:opacity-50 text-center"
+                                          >
+                                            Hủy ca này
+                                          </button> */}
+                                          {/* {!hasCandidates && !loadingShifts && (
                                             <span className="text-[11px] text-rose-500 text-center font-medium">
                                               Không có NV phù hợp
                                             </span>
-                                          )}
+                                          )} */}
                                         </div>
                                       </div>
                                     </div>
@@ -1030,7 +1178,7 @@ export default function ChiTietKhieuNaiPage() {
                       )}
 
                       {/* Tab 2: Hủy lịch */}
-                      {activeTab === 2 && (
+                      {/* {activeTab === 2 && (
                         <div className="space-y-5 flex-1 flex flex-col">
                           <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100 flex gap-3 items-start">
                             <svg
@@ -1072,6 +1220,59 @@ export default function ChiTietKhieuNaiPage() {
                               {submitting
                                 ? "Đang xử lý..."
                                 : "Xác nhận hủy đơn & Hoàn tiền"}
+                            </button>
+                          </div>
+                        </div>
+                      )} */}
+                      {activeTab === 2 && (
+                        <div className="space-y-5 flex-1 flex flex-col">
+                          <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 flex gap-3 items-start">
+                            <svg
+                              className="w-5 h-5 text-amber-600 shrink-0 mt-0.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                              />
+                            </svg>
+                            <div className="text-[13.5px] text-amber-800 leading-relaxed">
+                              <p className="font-bold mb-1">
+                                Xác nhận hủy ca đơn lẻ
+                              </p>
+                              <p>
+                                Hành động này chỉ hủy duy nhất ca làm việc sự cố{" "}
+                                <strong>
+                                  {kn?.caLamViecLoi?.[0]?.maNgayLamViec}
+                                </strong>
+                                . Lý do hủy sẽ được gửi đến khách hàng thông qua
+                                phản hồi khiếu nại. Các ca làm việc khác của đơn
+                                hàng vẫn diễn ra bình thường.
+                              </p>
+                            </div>
+                          </div>
+
+                          <ReasonTextarea
+                            value={huyDonLyDo}
+                            onChange={setHuyDonLyDo}
+                            error={huyDonError}
+                            label="Lý do hủy ca (Hiển thị cho khách hàng)"
+                            placeholder="Nhập lý do chi tiết..."
+                            disabled={submitting}
+                          />
+                          <div className="mt-auto pt-4">
+                            <button
+                              onClick={handleCancelOrder}
+                              disabled={submitting || !kn?.caLamViecLoi?.[0]}
+                              className="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[14.5px] font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                              {submitting
+                                ? "Đang xử lý..."
+                                : "Xác nhận hủy ca này"}
                             </button>
                           </div>
                         </div>

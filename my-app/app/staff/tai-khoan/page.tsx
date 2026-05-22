@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api, tokenStore } from "@/services/api";
 
@@ -8,6 +8,7 @@ interface UserInfo {
   hoTen: string;
   email: string;
   soDienThoai: string;
+  diaChi: string;
   role: string;
 }
 
@@ -18,7 +19,7 @@ function InfoItem({
 }: {
   label: string;
   value: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between py-3.5 border-b border-slate-100 last:border-0">
@@ -49,23 +50,32 @@ export default function TaiKhoanPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await api.get<any>("/User/me");
+        setLoading(true);
 
-        // Console log ra để xem cấu trúc thật của API trả về
-        console.log("Dữ liệu User/me:", res);
+        // baseURL của bạn đã có /api:
+        // NEXT_PUBLIC_API_URL=http://localhost:5231/api
+        // nên ở đây chỉ gọi /v1/staff/me
+        const res = await api.get<any>("/v1/staff/me");
 
-        // Trích xuất đúng object chứa thông tin (nếu backend bọc trong res.data thì lấy res.data)
+        console.log("Dữ liệu Staff/me:", res);
+
+        // api wrapper của bạn trả về data trực tiếp, nhưng giữ dòng này để an toàn
         const userData = res.data || res;
 
         setUser({
-          hoTen: userData.HoTen || userData.hoTen || "—",
-          email: userData.Email || userData.email || "—",
+          hoTen: userData.hoTen || userData.HoTen || "—",
+          email: userData.email || userData.Email || "—",
           soDienThoai:
-            userData.SoDienThoai ||
             userData.soDienThoai ||
+            userData.SoDienThoai ||
             userData.phone ||
             "—",
-          role: userData.Role || userData.role || "Nhân viên",
+          diaChi:
+            userData.diaChi ||
+            userData.DiaChi ||
+            userData.address ||
+            "Chưa cập nhật",
+          role: userData.role || userData.Role || "Nhân viên",
         });
       } catch (err) {
         console.error("Lỗi lấy thông tin:", err);
@@ -73,6 +83,7 @@ export default function TaiKhoanPage() {
         setLoading(false);
       }
     };
+
     fetchUser();
   }, []);
 
@@ -93,11 +104,11 @@ export default function TaiKhoanPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-4">
-        {/* Avatar area */}
         <div className="bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 px-6 py-8 flex items-center gap-5">
           <div className="w-[72px] h-[72px] rounded-2xl bg-white/15 border-2 border-white/30 flex items-center justify-center text-white font-bold text-3xl backdrop-blur-sm shrink-0">
             {loading ? "?" : (user?.hoTen?.charAt(0) ?? "S")}
           </div>
+
           <div>
             <p className="text-[20px] font-bold text-white leading-tight">
               {loading ? "Đang tải..." : (user?.hoTen ?? "—")}
@@ -106,12 +117,11 @@ export default function TaiKhoanPage() {
               {user?.email ?? ""}
             </p>
             <span className="inline-block mt-2 text-[11.5px] font-bold px-3 py-1 rounded-full bg-white/20 text-white backdrop-blur-sm border border-white/20">
-              Nhân viên
+              {user?.role ?? "Nhân viên"}
             </span>
           </div>
         </div>
 
-        {/* Info */}
         <div className="px-6 py-2">
           {loading ? (
             <div className="py-10 flex flex-col items-center gap-3">
@@ -141,6 +151,7 @@ export default function TaiKhoanPage() {
                   </svg>
                 }
               />
+
               <InfoItem
                 label="Email"
                 value={user?.email ?? "—"}
@@ -160,6 +171,7 @@ export default function TaiKhoanPage() {
                   </svg>
                 }
               />
+
               <InfoItem
                 label="Số điện thoại"
                 value={user?.soDienThoai ?? "—"}
@@ -179,9 +191,36 @@ export default function TaiKhoanPage() {
                   </svg>
                 }
               />
+
+              <InfoItem
+                label="Địa chỉ"
+                value={user?.diaChi ?? "Chưa cập nhật"}
+                icon={
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                }
+              />
+
               <InfoItem
                 label="Vai trò"
-                value="Nhân viên (Staff)"
+                value={user?.role ?? "Nhân viên"}
                 icon={
                   <svg
                     className="w-4 h-4"
@@ -203,7 +242,6 @@ export default function TaiKhoanPage() {
         </div>
       </div>
 
-      {/* Logout button */}
       <button
         onClick={handleLogout}
         className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl border-2 border-red-200 text-red-600 text-[14px] font-bold hover:bg-red-50 hover:border-red-300 transition-all duration-150 cursor-pointer group"

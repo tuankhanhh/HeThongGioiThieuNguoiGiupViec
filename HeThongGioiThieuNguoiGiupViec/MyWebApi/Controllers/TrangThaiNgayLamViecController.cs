@@ -128,6 +128,7 @@ namespace MyWebApi.Controllers
                 bool daTaoKhieuNai = await _context.KhieuNais
                     .AnyAsync(k => k.MaNgayLamViec == maNgayLamViec && k.NoiDung == "Người giúp việc không đến làm");
 
+
                 if (!daTaoKhieuNai)
                 {
                     var khieuNai = new KhieuNai
