@@ -1,14 +1,12 @@
-using Microsoft.AspNetCore.Authorization;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyWebApi.DTO.Request.KhieuNai;
 using MyWebApi.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using MyWebApi.Extensions;
+using MyWebApi.Controllers;
+
 
 namespace MyWebApi.Controllers
 {
@@ -711,35 +709,31 @@ namespace MyWebApi.Controllers
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 1. Tìm ca làm việc
                 var nlv = await _context.NgayLamViecs
                     .Include(n => n.MaDonDatDichVuNavigation)
-                    .ThenInclude(dv => dv.MaDonNavigation)
-                    .ThenInclude(d => d.LichSuTrangThaiDons)
                     .FirstOrDefaultAsync(n => n.MaNgayLamViec == request.MaNgayLamViec);
 
                 if (nlv == null) return NotFound(new { success = false, message = "Không tìm thấy ca làm việc." });
 
-                // 2. Cập nhật trạng thái ca
-                nlv.TrangThai = "Hủy lịch";
-                nlv.MaNguoiGiupViec = null;
-                nlv.ThoiGianPhanCong = null;
+                string maDon = nlv.MaDonDatDichVuNavigation?.MaDon;
 
-                // 3. (TÙY CHỌN) Cập nhật lịch sử đơn hàng nếu muốn khách biết ca này đã hủy
-                var currentStatus = nlv.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
-                .OrderByDescending(l => l.ThoiGianCapNhat)
-                .FirstOrDefault()?.TrangThai ?? "Đã xác nhận";
-                string maLichSu = await _context.GenerateIdAsync("LichSuTrangThaiDon", "MaLichSu", "LS");
-                var lichSu = new LichSuTrangThaiDon
+                // 1. THÊM LỊCH SỬ TRẠNG THÁI "ĐÃ XÁC NHẬN" TRƯỚC
+                if (!string.IsNullOrEmpty(maDon))
                 {
-                    MaLichSu = maLichSu,
-                    MaDon = nlv.MaDonDatDichVuNavigation.MaDon,
-                    TrangThai = currentStatus,
-                    ThoiGianCapNhat = DateTime.Now
-                };
-                _context.LichSuTrangThaiDons.Add(lichSu);
+                    string maLichSu = await _context.GenerateIdAsync("LichSuTrangThaiDon", "MaLichSu", "LS");
+                    var lichSuXacNhan = new LichSuTrangThaiDon
+                    {
+                        MaLichSu = maLichSu,
+                        MaDon = maDon,
+                        TrangThai = "Đã xác nhận",
+                        ThoiGianCapNhat = DateTime.Now
+                    };
+                    _context.LichSuTrangThaiDons.Add(lichSuXacNhan);
+                }
 
-                // 4. Nếu có Khiếu nại liên quan, đóng khiếu nại đó lại
+                // 2. CẬP NHẬT TRẠNG THÁI NGÀY LÀM VIỆC
+                nlv.TrangThai = "Hủy lịch";
+
                 if (!string.IsNullOrEmpty(request.MaKhieuNai))
                 {
                     var kn = await _context.KhieuNais.FindAsync(request.MaKhieuNai);
@@ -750,7 +744,16 @@ namespace MyWebApi.Controllers
                     }
                 }
 
+                // 3. LƯU TẤT CẢ VÀO DATABASE
+                // Bước này sẽ lưu cả lịch sử "Đã xác nhận" và thay đổi của "Ngày làm việc" cùng lúc
                 await _context.SaveChangesAsync();
+
+                // 4. GỌI HÀM AUTO CẬP NHẬT TRẠNG THÁI TỔNG CỦA ĐƠN
+                if (!string.IsNullOrEmpty(maDon))
+                {
+                    await AutoUpdateStatus(maDon);
+                }
+
                 await transaction.CommitAsync();
 
                 return Ok(new { success = true, message = "Đã hủy ca làm việc thành công." });
@@ -759,6 +762,91 @@ namespace MyWebApi.Controllers
             {
                 await transaction.RollbackAsync();
                 return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        private async Task AutoUpdateStatus(string maDon)
+        {
+            // 1. Lấy trạng thái hiện tại của đơn đặt
+            var lastHistory = await _context.LichSuTrangThaiDons
+                .Where(ls => ls.MaDon == maDon)
+                .OrderByDescending(ls => ls.ThoiGianCapNhat)
+                .FirstOrDefaultAsync();
+
+            string currentStatus = lastHistory?.TrangThai ?? "";
+
+            // Bỏ qua nếu đơn đã bị hủy từ trước 
+            if (currentStatus == "Hủy đơn") return;
+
+            // 2. Lấy tất cả Ngày Làm Việc của đơn
+            var allNgayLamViecs = await _context.DonDatDichVus
+                .Where(dd => dd.MaDon == maDon)
+                .SelectMany(dd => dd.NgayLamViecs)
+                .ToListAsync();
+
+            if (!allNgayLamViecs.Any()) return;
+
+            string newStatus = currentStatus;
+
+            // 3. CHUẨN BỊ CÁC ĐIỀU KIỆN (Dựa trên 5 quy tắc)
+
+            // Quy tắc 1: Có ít nhất 1 ca "Không đến làm"
+            bool hasKhongDenLam = allNgayLamViecs.Any(nl => nl.TrangThai == "Không đến làm");
+
+            // Quy tắc 2: Có ít nhất 1 ca "Đang làm việc"
+            bool hasDangLamViec = allNgayLamViecs.Any(nl => nl.TrangThai == "Đang làm việc");
+
+            // Quy tắc 4: Tất cả đều "Hủy lịch"
+            bool allHuyLich = allNgayLamViecs.All(nl => nl.TrangThai == "Hủy lịch");
+
+            // Quy tắc 3 & 5 (Gộp chung): Có ít nhất 1 ca "Hoàn thành" VÀ các ca còn lại chỉ là "Hoàn thành" hoặc "Hủy lịch"
+            bool hasHoanThanh = allNgayLamViecs.Any(nl => nl.TrangThai == "Hoàn thành");
+            bool onlyHoanThanhAndHuyLich = allNgayLamViecs.All(nl => nl.TrangThai == "Hoàn thành" || nl.TrangThai == "Hủy lịch");
+
+            // 4. ÁP DỤNG THỨ TỰ ƯU TIÊN (Từ cao xuống thấp)
+            if (hasKhongDenLam)
+            {
+                // Ưu tiên 1: Có sự cố
+                newStatus = "Có sự cố";
+            }
+            else if (hasDangLamViec)
+            {
+                // Ưu tiên 2: Đang thực hiện
+                newStatus = "Đang thực hiện";
+            }
+            else if (hasHoanThanh && onlyHoanThanhAndHuyLich)
+            {
+                // Ưu tiên 3: Hoàn thành 
+                newStatus = "Hoàn thành";
+            }
+            else if (allHuyLich)
+            {
+                // Ưu tiên 4: Hủy đơn
+                newStatus = "Hủy đơn";
+            }
+            else if (hasHoanThanh)
+            {
+                // [TÙY CHỌN BỔ SUNG] 
+                // Nếu có 1 ca "Hoàn thành", nhưng ca của ngày hôm sau vẫn đang "Chờ phân công" hoặc "Đã phân công"
+                // Theo luật của bạn nó sẽ rớt xuống đây. Gán thành "Đang thực hiện" để thể hiện đơn đang chạy dở dang.
+                newStatus = "Đang thực hiện";
+            }
+
+            // ==============================================================
+            // 5. NẾU THAY ĐỔI TRẠNG THÁI -> GHI LỊCH SỬ MỚI
+            // ==============================================================
+            if (newStatus != currentStatus)
+            {
+                var newHistory = new LichSuTrangThaiDon
+                {
+                    MaLichSu = await _context.GenerateIdAsync("LichSuTrangThaiDon", "MaLichSu", "LS"),
+                    MaDon = maDon,
+                    TrangThai = newStatus,
+                    ThoiGianCapNhat = DateTime.Now
+                };
+
+                _context.LichSuTrangThaiDons.Add(newHistory);
+                await _context.SaveChangesAsync();
             }
         }
 
