@@ -538,3 +538,54 @@ VALUES (
     NULL
 );
 */
+
+
+--TRƯỜNG THÊM TEST--
+
+--Ngày 24.05.2026
+--Dọn dẹp nhà cửa  2h (có người thay thế) -- Phân công lại cho Trần Văn Nam trước khi xác nhận đơn đặt
+---để ca giặt sofa không có người thay thế
+-- Giặt sofa 2h (không có người thay thế)
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
+('LR018', 'GV001', '2026-05-24'),
+('LR019', 'GV004', '2026-05-24'),
+('LR020', 'GV005', '2026-05-24'),
+('LR021', 'GV006', '2026-05-24'),
+('LR022', 'GV007', '2026-05-24');
+GO
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) VALUES
+('LR018', 'CA001'),
+('LR018', 'CA002'),
+
+('LR019', 'CA003'),
+
+('LR020', 'CA001'),
+('LR020', 'CA002'),
+
+('LR021', 'CA001'),
+
+('LR022', 'CA004');
+GO
+
+INSERT INTO KyNangNguoiGiupViec
+(MaKyNang, MaHoSo, KinhNghiem)
+VALUES
+('KN006', 'HS005', N'2 năm giặt sofa'),
+('KN006', 'HS006', N'1 năm vệ sinh nệm');
+
+INSERT INTO KhieuNai
+(MaKhieuNai, MaNgayLamViec, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai)
+VALUES
+('KN002', 'NL012', 'NDUNG', 'NV001',
+ N'Người giúp việc đến muộn và làm việc không đúng yêu cầu',
+ GETDATE(),
+ N'Chờ xử lý');
+
+INSERT INTO KhieuNai
+(MaKhieuNai, MaNgayLamViec, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai)
+VALUES
+('KN003', 'NL013', 'NDUNG', 'NV001',
+ N'Người giúp việc báo hủy sát giờ, cần hỗ trợ thay thế',
+ GETDATE(),
+ N'Chờ xử lý');
+GO

@@ -23,6 +23,10 @@ interface CaLamViecLoi {
     hoTen: string;
     kyNangs: { maKyNang: string; tenKyNang: string; kinhNghiem: string }[];
   } | null;
+  nhanVienHienTai?: {
+    maNguoiGiupViec: string;
+    hoTen: string;
+  };
 }
 
 interface KhieuNaiDetail {
@@ -374,15 +378,14 @@ export default function ChiTietKhieuNaiPage() {
   const [selectedShiftForManual, setSelectedShiftForManual] =
     useState<ShiftOption | null>(null);
 
+  type SelectedHelper = {
+    maNguoiGiupViec: string;
+    hoTen: string;
+    kyNangs: { maKyNang: string; tenKyNang: string; kinhNghiem: string }[];
+  };
+
   const [manualSelections, setManualSelections] = useState<
-    Record<
-      string,
-      {
-        maNguoiGiupViec: string;
-        hoTen: string;
-        kyNangs: { maKyNang: string; tenKyNang: string; kinhNghiem: string }[];
-      }
-    >
+    Record<string, SelectedHelper>
   >({});
   // Tab 2 state (Hủy lịch)
   const [huyDonLyDo, setHuyDonLyDo] = useState("");
@@ -393,7 +396,11 @@ export default function ChiTietKhieuNaiPage() {
     (() => Promise<void>) | null
   >(null);
   const [confirmMessage, setConfirmMessage] = useState("");
-
+  const hasAnyCandidate = kn?.caLamViecLoi?.some((ca) => {
+    const manual = manualSelections?.[ca.maNgayLamViec];
+    const auto = ca.nguoiDeXuat;
+    return !!manual || !!auto;
+  });
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -589,7 +596,7 @@ export default function ChiTietKhieuNaiPage() {
     setConfirmModal(true);
   };
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="max-w-7xl mx-auto px-6 xl:px-8">
       <button
         onClick={() => router.back()}
         className="flex items-center gap-2 text-[13px] font-semibold text-slate-500 hover:text-indigo-600 mb-6 transition-colors cursor-pointer group"
@@ -670,12 +677,12 @@ export default function ChiTietKhieuNaiPage() {
           )}
 
           {/* Main Content 2 Columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-40">
             {/* Left Column (Information) */}
-            <div className="lg:col-span-5 space-y-6">
+            <div className="lg:col-span-6 space-y-6">
               {/* Thông tin khiếu nại */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-rose-100 bg-rose-50/30 flex items-center gap-3">
+                <div className="px-5 py-3 border-b border-rose-200 bg-rose-100 flex items-center gap-3">
                   <div className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center">
                     <svg
                       className="w-3.5 h-3.5 text-rose-600"
@@ -721,7 +728,7 @@ export default function ChiTietKhieuNaiPage() {
 
               {/* Khách hàng & Đơn đặt */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-emerald-100 bg-emerald-50/30 flex items-center gap-3">
+                <div className="px-5 py-3 border-b border-emerald-200 bg-emerald-100 flex items-center gap-3">
                   <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
                     <svg
                       className="w-3.5 h-3.5 text-emerald-600"
@@ -776,9 +783,9 @@ export default function ChiTietKhieuNaiPage() {
             </div>
 
             {/* Right Column (Workspace) */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-6 space-y-6">
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
+                <div className="px-6 py-4 border-b border-indigo-200 bg-indigo-100 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
                     <svg
                       className="w-4 h-4 text-indigo-600"
@@ -933,8 +940,12 @@ export default function ChiTietKhieuNaiPage() {
                             </div>
                             <button
                               onClick={handleAutoReassign}
-                              disabled={submitting || !kn?.caLamViecLoi?.length}
-                              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[13.5px] font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50 whitespace-nowrap"
+                              disabled={
+                                submitting ||
+                                !kn?.caLamViecLoi?.length ||
+                                !hasAnyCandidate
+                              }
+                              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[13.5px] font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                             >
                               {submitting
                                 ? "Đang xử lý..."
@@ -959,215 +970,167 @@ export default function ChiTietKhieuNaiPage() {
                             ) : (
                               <div className="space-y-3">
                                 {kn.caLamViecLoi.map((ca) => {
+                                  // 1. Lấy dữ liệu nguồn tin cậy nhất
                                   const shiftExtraInfo = shiftsInfo.find(
                                     (s) => s.maNgayLamViec === ca.maNgayLamViec,
                                   );
-                                  const hasCandidates =
-                                    shiftExtraInfo &&
-                                    shiftExtraInfo.candidates &&
-                                    shiftExtraInfo.candidates.length > 0;
+                                  const candidates =
+                                    shiftExtraInfo?.candidates || [];
+                                  const hasCandidates = candidates.length > 0;
+
+                                  // 2. Logic xác định người hiển thị (Ưu tiên người chọn thủ công > Người tốt nhất trong danh sách > null)
+                                  const manualPick =
+                                    manualSelections[ca.maNgayLamViec];
+
+                                  const bestCandidate = manualPick
+                                    ? {
+                                        maNguoiGiupViec:
+                                          manualPick.maNguoiGiupViec,
+                                        hoTen: manualPick.hoTen,
+                                        kyNangs: manualPick.kyNangs,
+                                      }
+                                    : ca.nguoiDeXuat
+                                      ? {
+                                          maNguoiGiupViec:
+                                            ca.nguoiDeXuat.maNguoiGiupViec,
+                                          hoTen: ca.nguoiDeXuat.hoTen,
+                                          kyNangs: ca.nguoiDeXuat.kyNangs,
+                                        }
+                                      : null;
 
                                   return (
                                     <div
                                       key={ca.maNgayLamViec}
-                                      className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-200 transition-colors group"
+                                      className="space-y-2"
                                     >
-                                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        <div className="space-y-2 flex-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-[14px] font-bold text-slate-800">
-                                              {ca.tenDichVu}
-                                            </span>
-                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[11px] font-mono rounded-md">
-                                              {ca.maNgayLamViec}
-                                            </span>
-                                          </div>
-
-                                          <div className="flex items-center gap-4 text-[13px]">
-                                            <div className="flex items-center gap-1.5 text-slate-600">
-                                              <svg
-                                                className="w-4 h-4 text-slate-400"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                              >
-                                                <path
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                  strokeWidth={2}
-                                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                />
-                                              </svg>
-                                              {new Date(
-                                                ca.ngayLam,
-                                              ).toLocaleDateString("vi-VN")}
-                                            </div>
-                                            <div className="flex items-center gap-2 font-mono">
-                                              <span className="text-slate-500 line-through decoration-rose-400">
-                                                {ca.gioBatDau}
-                                              </span>
-                                              <svg
-                                                className="w-3.5 h-3.5 text-slate-400"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                              >
-                                                <path
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                  strokeWidth={2}
-                                                  d="M17 8l4 4m0 0l-4 4m4-4H3"
-                                                />
-                                              </svg>
-                                              <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">
-                                                {calculateNewTime(
-                                                  ca.gioBatDau,
-                                                  thoiGianLuiPhut,
-                                                )}
-                                              </span>
-                                            </div>
-                                          </div>
-
-                                          <div className="text-[12.5px] text-slate-500 flex items-center gap-1.5">
-                                            <svg
-                                              className="w-3.5 h-3.5"
-                                              fill="none"
-                                              viewBox="0 0 24 24"
-                                              stroke="currentColor"
-                                            >
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                              />
-                                            </svg>
-                                            NV Hiện tại:{" "}
-                                            <span className="font-medium text-slate-700">
-                                              {ca.tenNguoiGiupViec || "Chưa có"}
-                                            </span>
-                                          </div>
-                                          {(() => {
-                                            const manualPick =
-                                              manualSelections[
-                                                ca.maNgayLamViec
-                                              ];
-                                            const deXuat =
-                                              manualPick ?? ca.nguoiDeXuat;
-                                            if (!deXuat) return null;
-                                            return (
-                                              <div
-                                                className={`mt-1 px-2 py-1.5 rounded-lg text-[12px] flex flex-col gap-0.5 border ${manualPick ? "bg-emerald-50 border-emerald-200" : "bg-indigo-50 border-indigo-100"}`}
-                                              >
-                                                <span
-                                                  className={`font-bold ${manualPick ? "text-emerald-600" : "text-indigo-600"}`}
-                                                >
-                                                  {manualPick
-                                                    ? "Đã chọn thủ công:"
-                                                    : "Đề xuất thay thế:"}
+                                      {/* CARD CHÍNH */}
+                                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-200 transition-colors group">
+                                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                          <div className="space-y-3 flex-1">
+                                            {/* Thông tin ca làm */}
+                                            <div>
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-[14px] font-bold text-slate-800">
+                                                  {ca.tenDichVu}
                                                 </span>
-                                                <span className="text-slate-700 font-medium">
-                                                  {deXuat.hoTen}
+                                                <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[11px] font-mono rounded-md">
+                                                  {ca.maNgayLamViec}
                                                 </span>
-                                                {deXuat.kyNangs?.[0] && (
-                                                  <span className="text-slate-500">
-                                                    Kỹ năng:{" "}
-                                                    {
-                                                      deXuat.kyNangs[0]
-                                                        .tenKyNang
-                                                    }
-                                                    {" — "}Kinh nghiệm:{" "}
-                                                    {deXuat.kyNangs[0]
-                                                      .kinhNghiem || "Mới"}
-                                                  </span>
-                                                )}
                                               </div>
-                                            );
-                                          })()}
-                                        </div>
 
-                                        <div className="flex flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-4">
-                                          <button
-                                            onClick={() =>
-                                              openManualAssign(ca.maNgayLamViec)
-                                            }
-                                            disabled={
-                                              loadingShifts ||
-                                              submitting ||
-                                              !hasCandidates
-                                            }
-                                            className="px-4 py-2 bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-lg text-[13px] font-bold transition-colors disabled:opacity-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-white"
-                                          >
-                                            Thay đổi
-                                          </button>
-                                          {!hasCandidates && !loadingShifts && (
-                                            <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-[12.5px] text-rose-700 font-medium text-center shadow-sm">
-                                              <span className="block mb-1">
-                                                ⚠️ Không có người thay thế phù
-                                                hợp!
-                                              </span>
-                                              Vui lòng chuyển sang tab{" "}
-                                              <strong className="uppercase">
-                                                Hủy ca
-                                              </strong>{" "}
-                                              để xử lý.
+                                              <div className="flex items-center gap-4 text-[13px] mt-1">
+                                                <div className="flex items-center gap-1.5 text-slate-600">
+                                                  {new Date(
+                                                    ca.ngayLam,
+                                                  ).toLocaleDateString("vi-VN")}
+                                                </div>
+
+                                                <div className="flex items-center gap-2 font-mono">
+                                                  <span className="text-slate-500 line-through decoration-rose-400">
+                                                    {ca.gioBatDau}
+                                                  </span>
+                                                  <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">
+                                                    {calculateNewTime(
+                                                      ca.gioBatDau,
+                                                      thoiGianLuiPhut,
+                                                    )}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              {/* NV hiện tại xuống dưới */}
+                                              {(ca.nhanVienHienTai ||
+                                                ca.maNguoiGiupViec) && (
+                                                <div className="mt-3 p-3 rounded-lg border bg-slate-50 border-slate-200">
+                                                  <p className="text-[11px] font-bold uppercase text-slate-600">
+                                                    NV hiện tại:
+                                                  </p>
+                                                  <p className="text-[14px] font-bold text-slate-800">
+                                                    {ca.nhanVienHienTai
+                                                      ?.hoTen ||
+                                                      ca.tenNguoiGiupViec ||
+                                                      "Chưa có"}
+                                                  </p>
+                                                  <p className="text-[12px] text-slate-500">
+                                                    Mã:{" "}
+                                                    {ca.nhanVienHienTai
+                                                      ?.maNguoiGiupViec ||
+                                                      ca.maNguoiGiupViec ||
+                                                      "—"}
+                                                  </p>
+                                                </div>
+                                              )}
                                             </div>
-                                          )}
-                                          {/* <button
-                                            onClick={() => {
-                                              setConfirmMessage(
-                                                `Bạn có chắc chắn muốn hủy riêng ca làm việc ${ca.maNgayLamViec}?`,
-                                              );
-                                              setConfirmAction(
-                                                () => async () => {
-                                                  setSubmitting(true);
-                                                  setActionError(null);
-                                                  setSuccessMsg(null);
-                                                  try {
-                                                    // Bắn đúng DTO viết HOA chữ cái đầu như Backend quy định
-                                                    await api.post(
-                                                      "/v1/khieu-nai/huy-ca-don-le",
-                                                      {
-                                                        MaNgayLamViec:
-                                                          ca.maNgayLamViec,
-                                                        MaKhieuNai: id, // ID của phiếu khiếu nại hiện tại trên URL
-                                                        LyDo: "Không có người làm thay thế phù hợp",
-                                                      },
-                                                    );
-                                                    setSuccessMsg(
-                                                      `Đã hủy riêng ca ${ca.maNgayLamViec} và giải phóng người giúp việc.`,
-                                                    );
-                                                    await fetchData(); // Refresh lại RAM và UI
-                                                  } catch (err: any) {
-                                                    setActionError(
-                                                      err?.response?.data
-                                                        ?.message ||
-                                                        err?.message ||
-                                                        "Lỗi khi hủy ca lẻ.",
-                                                    );
-                                                  } finally {
-                                                    setSubmitting(false);
-                                                    setConfirmModal(false);
-                                                  }
-                                                },
-                                              );
-                                              setConfirmModal(true);
-                                            }}
-                                            disabled={
-                                              submitting ||
-                                              ca.trangThai === "Hủy lịch"
-                                            }
-                                            className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[13px] font-bold transition-colors disabled:opacity-50 text-center"
-                                          >
-                                            Hủy ca này
-                                          </button> */}
-                                          {/* {!hasCandidates && !loadingShifts && (
-                                            <span className="text-[11px] text-rose-500 text-center font-medium">
-                                              Không có NV phù hợp
-                                            </span>
-                                          )} */}
+                                          </div>
+
+                                          {/* Nút */}
+                                          <div className="flex flex-col gap-2">
+                                            <button
+                                              onClick={() =>
+                                                openManualAssign(
+                                                  ca.maNgayLamViec,
+                                                )
+                                              }
+                                              disabled={
+                                                loadingShifts ||
+                                                submitting ||
+                                                !hasCandidates
+                                              }
+                                              className="px-4 py-2 bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-lg text-[13px] font-bold transition-colors disabled:opacity-50 disabled:border-slate-200 disabled:text-slate-400"
+                                            >
+                                              Thay đổi
+                                            </button>
+                                          </div>
                                         </div>
                                       </div>
+
+                                      {/* 🔥 KHỐI ĐỀ XUẤT - nằm ngoài border */}
+                                      {bestCandidate && (
+                                        <div
+                                          className={`p-3 rounded-lg border shadow-sm ${
+                                            manualPick
+                                              ? "bg-emerald-50 border-emerald-200"
+                                              : "bg-indigo-50 border-indigo-100"
+                                          }`}
+                                        >
+                                          <p
+                                            className={`text-[11px] font-bold uppercase ${
+                                              manualPick
+                                                ? "text-emerald-700"
+                                                : "text-indigo-700"
+                                            }`}
+                                          >
+                                            {manualPick
+                                              ? "Đã chọn thủ công:"
+                                              : "Đề xuất thay thế:"}
+                                          </p>
+
+                                          <p className="text-[14px] font-bold text-slate-800">
+                                            {bestCandidate.hoTen}
+                                          </p>
+
+                                          <p className="text-[12px] text-slate-500">
+                                            Kỹ năng:{" "}
+                                            {bestCandidate.kyNangs?.[0]
+                                              ?.tenKyNang || "—"}
+                                            {" — "}Kinh nghiệm:{" "}
+                                            {bestCandidate.kyNangs?.[0]
+                                              ?.kinhNghiem || "Mới"}
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      {/* 🔥 KHỐI CẢNH BÁO */}
+                                      {!bestCandidate && !loadingShifts && (
+                                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-[12.5px] text-rose-700 font-medium shadow-sm">
+                                          ⚠️ Không có người thay thế phù hợp!
+                                          Vui lòng chuyển sang tab{" "}
+                                          <strong className="uppercase">
+                                            Hủy ca
+                                          </strong>{" "}
+                                          để xử lý.
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
@@ -1176,54 +1139,6 @@ export default function ChiTietKhieuNaiPage() {
                           </div>
                         </div>
                       )}
-
-                      {/* Tab 2: Hủy lịch */}
-                      {/* {activeTab === 2 && (
-                        <div className="space-y-5 flex-1 flex flex-col">
-                          <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100 flex gap-3 items-start">
-                            <svg
-                              className="w-5 h-5 text-rose-600 shrink-0 mt-0.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                              />
-                            </svg>
-                            <p className="text-[13.5px] text-rose-800 leading-relaxed">
-                              Hành động này sẽ{" "}
-                              <strong>hủy bỏ toàn bộ đơn hàng</strong>, đồng
-                              thời tất cả các ca làm việc chưa hoàn thành của
-                              đơn sẽ bị chuyển sang trạng thái Hủy lịch. Vui
-                              lòng kiểm tra kỹ trước khi xác nhận.
-                            </p>
-                          </div>
-
-                          <ReasonTextarea
-                            value={huyDonLyDo}
-                            onChange={setHuyDonLyDo}
-                            error={huyDonError}
-                            label="Lý do hủy đơn"
-                            placeholder="Nhập lý do chi tiết để báo cáo..."
-                            disabled={submitting}
-                          />
-                          <div className="mt-auto pt-4">
-                            <button
-                              onClick={handleCancelOrder}
-                              disabled={submitting}
-                              className="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[14.5px] font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                              {submitting
-                                ? "Đang xử lý..."
-                                : "Xác nhận hủy đơn & Hoàn tiền"}
-                            </button>
-                          </div>
-                        </div>
-                      )} */}
                       {activeTab === 2 && (
                         <div className="space-y-5 flex-1 flex flex-col">
                           <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 flex gap-3 items-start">
