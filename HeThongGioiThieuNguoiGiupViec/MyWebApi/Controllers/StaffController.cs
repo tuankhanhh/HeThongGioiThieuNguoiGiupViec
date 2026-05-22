@@ -22,7 +22,50 @@ namespace MyWebApi.Controllers
         {
             _context = context;
         }
+        //DANH SÁCH CÁC NGƯỜI GIÚP VIỆC Ở TRANG CHỦ
+        // GET /api/v1/staff/ho-so-cac-nguoi-giup-viec
+        [HttpGet("ho-so-cac-nguoi-giup-viec")]
+        public async Task<IActionResult> GetHoSoCacNguoiGiupViec()
+        {
+            try
+            {
+                var danhSach = await _context.HoSoNguoiGiupViecs
+                    .Where(hs => hs.TrangThaiXacMinh == "Đã duyệt")
+                    .Include(hs => hs.MaNguoiGiupViecNavigation)
+                    .Include(hs => hs.KyNangNguoiGiupViecs)
+                        .ThenInclude(kn => kn.MaKyNangNavigation)
+                    .AsNoTracking()
+                    .Select(hs => new
+                    {
+                        maHoSo = hs.MaHoSo,
+                        maNguoiGiupViec = hs.MaNguoiGiupViec,
+                        hoTen = hs.MaNguoiGiupViecNavigation.HoTen,
+                        soDienThoai = hs.MaNguoiGiupViecNavigation.SoDienThoai,
+                        gioiTinh = hs.GioiTinh,
+                        anhChanDung = hs.AnhChanDung,
+                        danhSachKyNang = hs.KyNangNguoiGiupViecs
+                            .Select(kn => kn.MaKyNangNavigation.TenKyNang)
+                            .ToList()
+                    })
+                    .ToListAsync();
 
+                return Ok(new
+                {
+                    success = true,
+                    message = "Lấy danh sách người giúp việc thành công.",
+                    data = danhSach
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi hệ thống.",
+                    detail = ex.Message
+                });
+            }
+        }
         // =============================================
         // 1. HO SO NGUOI GIUP VIEC
         // =============================================
