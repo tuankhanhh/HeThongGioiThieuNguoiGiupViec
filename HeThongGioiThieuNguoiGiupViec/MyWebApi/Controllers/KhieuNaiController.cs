@@ -34,7 +34,8 @@ namespace MyWebApi.Controllers
 
             // Truy vấn bảng KhieuNai
             var rawComplaints = await _context.KhieuNais
-                .Include(k => k.MaDonNavigation) // Lấy thông tin đơn đặt liên quan
+                .Include(k => k.MaNgayLamViecNavigation)
+        .ThenInclude(n => n.MaDonDatDichVuNavigation) // Lấy thông tin đơn đặt liên quan
                 .Where(k => k.MaKhachHang == customerId)
                 .OrderByDescending(k => k.ThoiGian) // Mới nhất lên đầu
                 .ToListAsync();
@@ -42,7 +43,7 @@ namespace MyWebApi.Controllers
             var mappedComplaints = rawComplaints.Select(k => new ComplaintDto
             {
                 MaKhieuNai = k.MaKhieuNai,
-                MaDon = k.MaDon,
+                MaDon = k.MaNgayLamViecNavigation.MaDonDatDichVuNavigation.MaDon,
                 // Giả sử bảng KhieuNai của bạn có trường NoiDung và PhanHoi (nếu chưa có bạn cần tự map trường tương ứng)
                 NoiDung = k.GetType().GetProperty("NoiDung")?.GetValue(k, null)?.ToString() ?? "Không có nội dung",
                 PhanHoi = k.GetType().GetProperty("PhanHoi")?.GetValue(k, null)?.ToString() ?? "",
@@ -61,16 +62,16 @@ namespace MyWebApi.Controllers
             {
                 var danhSach = await _context.KhieuNais
                     .Include(kn => kn.MaKhachHangNavigation)
-                    .Include(kn => kn.MaDonNavigation)
+                    .Include(kn => kn.MaNgayLamViecNavigation)
                     .Select(kn => new
                     {
                         maKhieuNai = kn.MaKhieuNai,
-                        maDon = kn.MaDon,
+                        maDon = kn.MaNgayLamViecNavigation.MaDonDatDichVuNavigation.MaDon,
                         maKhachHang = kn.MaKhachHang,
                         hoTenKhachHang = kn.MaKhachHangNavigation.HoTen,
                         sdtKhachHang = kn.MaKhachHangNavigation.SoDienThoai,
                         maNhanVien = kn.MaNhanVien,
-                        ngayDatDon = kn.MaDonNavigation.NgayDat,
+                        ngayDatDon = kn.MaNgayLamViecNavigation.MaDonDatDichVuNavigation.MaDonNavigation.NgayDat,
                         trangThai = kn.TrangThai
                     })
                     .ToListAsync();
@@ -90,11 +91,13 @@ namespace MyWebApi.Controllers
             try
             {
                 var kn = await _context.KhieuNais
-                    .Include(k => k.MaKhachHangNavigation)
-                    .Include(k => k.MaNhanVienNavigation)
-                    .Include(k => k.MaDonNavigation)
-                        .ThenInclude(d => d.LichSuTrangThaiDons)
-                    .FirstOrDefaultAsync(k => k.MaKhieuNai == id);
+                .Include(k => k.MaKhachHangNavigation)
+                .Include(k => k.MaNhanVienNavigation)
+                .Include(k => k.MaNgayLamViecNavigation) 
+                    .ThenInclude(n => n.MaDonDatDichVuNavigation)
+                        .ThenInclude(dv => dv.MaDonNavigation)
+                            .ThenInclude(d => d.LichSuTrangThaiDons)
+                .FirstOrDefaultAsync(k => k.MaKhieuNai == id);
 
                 if (kn == null)
                 {
@@ -104,6 +107,7 @@ namespace MyWebApi.Controllers
                         message = "Không tìm thấy khiếu nại."
                     });
                 }
+                var donDat = kn.MaNgayLamViecNavigation.MaDonDatDichVuNavigation.MaDonNavigation;
 
                 // Danh sách hồ sơ đã duyệt
                 var danhSachHoSoDaDuyet = await _context.HoSoNguoiGiupViecs
@@ -119,23 +123,20 @@ namespace MyWebApi.Controllers
                     .Include(n => n.MaDonDatDichVuNavigation)
                         .ThenInclude(dv => dv.MaDichVuNavigation)
                     .Include(n => n.MaNguoiGiupViecNavigation)
-                    .Where(n =>
-                        n.MaDonDatDichVuNavigation != null &&
-                        n.MaDonDatDichVuNavigation.MaDon == kn.MaDon &&
-                        //n.TrangThai != "Hoàn thành" &&
-                        //n.TrangThai != "Hủy lịch")
-                        n.TrangThai == "Không đến làm")
+                    .Where(n => n.MaNgayLamViec == kn.MaNgayLamViec)
+                    //.Where(n => n.MaDonDatDichVuNavigation.MaDon == donDat.MaDon && n.TrangThai == "Không đến làm")
                     .AsEnumerable()
                     .Select(nlv =>
                     {
                         var maNguoiDangLam = nlv.MaNguoiGiupViec;
-
+                        var maKyNangYeuCau = nlv.MaDonDatDichVuNavigation?.MaDichVuNavigation?.MaKyNang;
                         // Gợi ý người mới (tạm thời lấy người đầu tiên phù hợp,
                         // khác người hiện tại)
                         var nguoiDeXuat = danhSachHoSoDaDuyet
-                            .FirstOrDefault(hs =>
-                                hs.MaNguoiGiupViec != maNguoiDangLam
-                            );
+                        .FirstOrDefault(hs =>
+                            hs.MaNguoiGiupViec != maNguoiDangLam &&
+                            (maKyNangYeuCau == null || hs.KyNangNguoiGiupViecs.Any(k => k.MaKyNang == maKyNangYeuCau))
+                        );
 
                         return new
                         {
@@ -194,7 +195,7 @@ namespace MyWebApi.Controllers
                 var result = new
                 {
                     maKhieuNai = kn.MaKhieuNai,
-                    maDon = kn.MaDon,
+                    maDon = donDat.MaDon,
                     noiDung = kn.NoiDung,
                     thoiGian = kn.ThoiGian,
                     trangThai = kn.TrangThai,
@@ -213,12 +214,10 @@ namespace MyWebApi.Controllers
 
                     thongTinDon = new
                     {
-                        ngayDat = kn.MaDonNavigation?.NgayDat,
-                        tongTien = kn.MaDonNavigation?.TongTien,
-                        diaChi = kn.MaDonNavigation?.DiaChi,
-
-                        trangThaiHienTai = kn.MaDonNavigation?
-                            .LichSuTrangThaiDons
+                        ngayDat = donDat.NgayDat,
+                        tongTien = donDat.TongTien,
+                        diaChi = donDat.DiaChi,
+                        trangThaiHienTai = donDat.LichSuTrangThaiDons
                             .OrderByDescending(l => l.ThoiGianCapNhat)
                             .FirstOrDefault()?.TrangThai
                     },
@@ -251,23 +250,18 @@ namespace MyWebApi.Controllers
             try
             {
                 var kn = await _context.KhieuNais
-                .Include(k => k.MaDonNavigation)
-                    .ThenInclude(d => d.DonDatDichVus)
-                        .ThenInclude(dv => dv.MaDichVuNavigation)
+                .Include(k => k.MaNgayLamViecNavigation)
+                    .ThenInclude(n => n.MaDonDatDichVuNavigation)
+                        .ThenInclude(dv => dv.MaDonNavigation)
                 .FirstOrDefaultAsync(k => k.MaKhieuNai == request.maKhieuNai);
                 if (kn == null) return NotFound("Không tìm thấy khiếu nại.");
 
-                var donDat = kn.MaDonNavigation;
+                var donDat = kn.MaNgayLamViecNavigation.MaDonDatDichVuNavigation.MaDonNavigation;
                 var ngayLamViecs = await _context.NgayLamViecs
                 .Include(n => n.MaDonDatDichVuNavigation)
-                .Where(n =>
-                    n.MaDonDatDichVuNavigation != null &&
-                    n.MaDonDatDichVuNavigation.MaDon == kn.MaDon &&
-                    //n.TrangThai != "Hoàn thành" &&
-                    //n.TrangThai != "Hủy lịch")
-                    n.TrangThai == "Không đến làm")
+                    //.Where(n => n.MaDonDatDichVuNavigation.MaDon == donDat.MaDon && n.TrangThai == "Không đến làm")
+                    .Where(n => n.MaNgayLamViec == kn.MaNgayLamViec)
                 .ToListAsync();
-                Console.WriteLine($"DEBUG: Tìm thấy {ngayLamViecs.Count} ca làm việc cho đơn {kn.MaDon}");
                 if (!ngayLamViecs.Any())
                     return BadRequest(new { success = false, message = "Không có ca làm việc nào có thể lùi lịch." });
 
@@ -311,7 +305,7 @@ namespace MyWebApi.Controllers
                     .Where(n => n.MaNguoiGiupViec != null
                              && _context.DonDatDichVus.Any(dv =>
                                  dv.MaDonDatDichVu == n.MaDonDatDichVu &&
-                                 dv.MaDon == kn.MaDon))
+                                 dv.MaDon == donDat.MaDon))
                     .Select(n => n.MaNguoiGiupViec!)
                     .Distinct()
                     .ToListAsync();
@@ -446,14 +440,10 @@ namespace MyWebApi.Controllers
                 }
 
                 string maLichSu = await _context.GenerateIdAsync("LichSuTrangThaiDon", "MaLichSu", "LS");
-                Console.WriteLine($"KhieuNai: {kn.MaKhieuNai}, TrangThai: {kn.TrangThai}");
-                Console.WriteLine($"MaNhanVien: {kn.MaNhanVien}");
-                Console.WriteLine($"PhanHoi: {kn.PhanHoi}");
-                Console.WriteLine($"MaDon: {kn.MaDon}");
                 var lichSu = new LichSuTrangThaiDon
                 {
                     MaLichSu = maLichSu,
-                    MaDon = kn.MaDon,
+                    MaDon = donDat.MaDon,
                     TrangThai = "Đã xác nhận",
                     ThoiGianCapNhat = DateTime.Now
                 };
@@ -540,14 +530,14 @@ namespace MyWebApi.Controllers
 
                     return existingStart < gioKetThuc && existingEnd > gioBatDau;
                 });
-
+                var maDonHienTai = ngayLamViec.MaDonDatDichVuNavigation.MaDon;
                 if (biTrungLich)
                     return BadRequest(new { success = false, message = "Người giúp việc bị trùng lịch." });
                 var danhSachNguoiHienTai = await _context.NgayLamViecs
                     .Where(n => n.MaNguoiGiupViec != null
                              && _context.DonDatDichVus.Any(dv =>
                                  dv.MaDonDatDichVu == n.MaDonDatDichVu &&
-                                 dv.MaDon == kn.MaDon))
+                                 dv.MaDon == maDonHienTai))
                     .Select(n => n.MaNguoiGiupViec!)
                     .Distinct()
                     .ToListAsync();
@@ -587,7 +577,7 @@ namespace MyWebApi.Controllers
                 var lichSu = new LichSuTrangThaiDon
                 {
                     MaLichSu = maLichSu,
-                    MaDon = kn.MaDon,
+                    MaDon = maDonHienTai,
                     TrangThai = "Đã xác nhận",
                     ThoiGianCapNhat = DateTime.Now
                 };
@@ -617,67 +607,69 @@ namespace MyWebApi.Controllers
         }
 
         // POST /api/v1/khieu-nai/huy-don-su-co
-        [HttpPost("huy-don-su-co")]
-        public async Task<IActionResult> HuyDonSuCo([FromBody] YeuCauHuyDonDto request)
-        {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var kn = await _context.KhieuNais
-                    .Include(k => k.MaDonNavigation)
-                        .ThenInclude(d => d.DonDatDichVus)
-                            .ThenInclude(dv => dv.NgayLamViecs)
-                    .FirstOrDefaultAsync(k => k.MaKhieuNai == request.maKhieuNai);
+        //[HttpPost("huy-don-su-co")]
+        //public async Task<IActionResult> HuyDonSuCo([FromBody] YeuCauHuyDonDto request)
+        //{
+        //    using var transaction = await _context.Database.BeginTransactionAsync();
+        //    try
+        //    {
+        //        var kn = await _context.KhieuNais
+        //        .Include(k => k.MaNgayLamViecNavigation)
+        //            .ThenInclude(n => n.MaDonDatDichVuNavigation)
+        //                .ThenInclude(dv => dv.MaDonNavigation)
+        //                    .ThenInclude(d => d.DonDatDichVus)
+        //                        .ThenInclude(dv => dv.NgayLamViecs)
+        //        .FirstOrDefaultAsync(k => k.MaKhieuNai == request.maKhieuNai);
 
-                if (kn == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy khiếu nại." });
+        //        if (kn == null)
+        //            return NotFound(new { success = false, message = "Không tìm thấy khiếu nại." });
 
-                var donDat = kn.MaDonNavigation;
+        //        var donDat = kn.MaNgayLamViecNavigation.MaDonDatDichVuNavigation.MaDonNavigation;
 
-                // Đổi trạng thái khiếu nại
-                kn.TrangThai = "Đã xử lý";
-                kn.PhanHoi = $"Đã hủy đơn. Lý do: {request.noiDungPhanHoi}";
-                var maNhanVien = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                Console.WriteLine($"User Claim MaNhanVien: {maNhanVien}");
-                if (!string.IsNullOrEmpty(maNhanVien))
-                    kn.MaNhanVien = maNhanVien;
+        //        // Đổi trạng thái khiếu nại
+        //        kn.TrangThai = "Đã xử lý";
+        //        kn.PhanHoi = $"Đã hủy đơn. Lý do: {request.noiDungPhanHoi}";
+        //        var maNhanVien = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        //        Console.WriteLine($"User Claim MaNhanVien: {maNhanVien}");
+        //        if (!string.IsNullOrEmpty(maNhanVien))
+        //            kn.MaNhanVien = maNhanVien;
 
-                // Thêm lịch sử trạng thái hủy đơn
-                string maLichSu = await _context.GenerateIdAsync("LichSuTrangThaiDon", "MaLichSu", "LS");
-                var lichSu = new LichSuTrangThaiDon
-                {
-                    MaLichSu = maLichSu,
-                    MaDon = kn.MaDon,
-                    TrangThai = "Hủy đơn",
-                    ThoiGianCapNhat = DateTime.Now
-                };
-                _context.LichSuTrangThaiDons.Add(lichSu);
+        //        // Thêm lịch sử trạng thái hủy đơn
+        //        string maLichSu = await _context.GenerateIdAsync("LichSuTrangThaiDon", "MaLichSu", "LS");
+        //        var lichSu = new LichSuTrangThaiDon
+        //        {
+        //            MaLichSu = maLichSu,
+        //            MaDon = donDat.MaDon,
+        //            TrangThai = "Hủy đơn",
+        //            ThoiGianCapNhat = DateTime.Now
+        //        };
+        //        _context.LichSuTrangThaiDons.Add(lichSu);
 
-                donDat.GhiChu = string.IsNullOrEmpty(donDat.GhiChu) ? $"Lý do hủy (Sự cố): {request.noiDungPhanHoi}" : $"{donDat.GhiChu}\nLý do hủy (Sự cố): {request.noiDungPhanHoi}";
+        //        donDat.GhiChu = string.IsNullOrEmpty(donDat.GhiChu) ? $"Lý do hủy (Sự cố): {request.noiDungPhanHoi}" : $"{donDat.GhiChu}\nLý do hủy (Sự cố): {request.noiDungPhanHoi}";
 
-                // Hủy các ca làm việc chưa hoàn thành
-                var ngayLamViecs = donDat.DonDatDichVus.SelectMany(dv => dv.NgayLamViecs).Where(n => n.TrangThai != "Hoàn thành");
-                foreach (var nlv in ngayLamViecs)
-                {
-                    nlv.TrangThai = "Hủy lịch";
-                }
-                Console.WriteLine("=== DEBUG BEFORE SAVE ===");
+        //        // Hủy các ca làm việc chưa hoàn thành
+        //        var ngayLamViecs = donDat.DonDatDichVus.SelectMany(dv => dv.NgayLamViecs).Where(n => n.TrangThai != "Hoàn thành");
+        //        foreach (var nlv in ngayLamViecs)
+        //        {
+        //            nlv.TrangThai = "Hủy lịch";
+        //        }
+        //        Console.WriteLine("=== DEBUG BEFORE SAVE ===");
 
-                foreach (var entry in _context.ChangeTracker.Entries())
-                {
-                    Console.WriteLine($"👉 Entity: {entry.Entity.GetType().Name}, State: {entry.State}");
-                }
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+        //        foreach (var entry in _context.ChangeTracker.Entries())
+        //        {
+        //            Console.WriteLine($"👉 Entity: {entry.Entity.GetType().Name}, State: {entry.State}");
+        //        }
+        //        await _context.SaveChangesAsync();
+        //        await transaction.CommitAsync();
 
-                return Ok(new { success = true, message = "Đã hủy đơn hàng và các ca làm việc." });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.Message });
-            }
-        }
+        //        return Ok(new { success = true, message = "Đã hủy đơn hàng và các ca làm việc." });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        await transaction.RollbackAsync();
+        //        return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.Message });
+        //    }
+        //}
         // POST /api/v1/khieu-nai/dang-xu-ly/{id}
         [HttpPost("dang-xu-ly/{id}")]
         public async Task<IActionResult> ChuyenTrangThaiDangXuLy(string id)
@@ -708,6 +700,70 @@ namespace MyWebApi.Controllers
             {
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống.", detail = ex.Message });
             }
+        }
+        [HttpPost("huy-ca-don-le")]
+        public async Task<IActionResult> HuyCaDonLe([FromBody] HuyCaDonLeRequest request)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Tìm ca làm việc
+                var nlv = await _context.NgayLamViecs
+                    .Include(n => n.MaDonDatDichVuNavigation)
+                    .ThenInclude(dv => dv.MaDonNavigation)
+                    .ThenInclude(d => d.LichSuTrangThaiDons)
+                    .FirstOrDefaultAsync(n => n.MaNgayLamViec == request.MaNgayLamViec);
+
+                if (nlv == null) return NotFound(new { success = false, message = "Không tìm thấy ca làm việc." });
+
+                // 2. Cập nhật trạng thái ca
+                nlv.TrangThai = "Hủy lịch";
+                nlv.MaNguoiGiupViec = null; 
+                nlv.ThoiGianPhanCong = null;
+
+                // 3. (TÙY CHỌN) Cập nhật lịch sử đơn hàng nếu muốn khách biết ca này đã hủy
+                var currentStatus = nlv.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
+                .OrderByDescending(l => l.ThoiGianCapNhat)
+                .FirstOrDefault()?.TrangThai ?? "Đã xác nhận";
+                string maLichSu = await _context.GenerateIdAsync("LichSuTrangThaiDon", "MaLichSu", "LS");
+                var lichSu = new LichSuTrangThaiDon
+                {
+                    MaLichSu = maLichSu,
+                    MaDon = nlv.MaDonDatDichVuNavigation.MaDon,
+                    TrangThai = currentStatus,
+                    ThoiGianCapNhat = DateTime.Now
+                };
+                _context.LichSuTrangThaiDons.Add(lichSu);
+
+                // 4. Nếu có Khiếu nại liên quan, đóng khiếu nại đó lại
+                if (!string.IsNullOrEmpty(request.MaKhieuNai))
+                {
+                    var kn = await _context.KhieuNais.FindAsync(request.MaKhieuNai);
+                    if (kn != null)
+                    {
+                        kn.TrangThai = "Đã xử lý";
+                        kn.PhanHoi = $"Đã hủy ca làm việc: {nlv.MaNgayLamViec}. Lý do: {request.LyDo}";
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new { success = true, message = "Đã hủy ca làm việc thành công." });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // Thêm DTO này nếu chưa có
+        public class HuyCaDonLeRequest
+        {
+            public string MaNgayLamViec { get; set; } = null!;
+            public string MaKhieuNai { get; set; } = null!;
+            public string LyDo { get; set; } = null!;
         }
 
     }

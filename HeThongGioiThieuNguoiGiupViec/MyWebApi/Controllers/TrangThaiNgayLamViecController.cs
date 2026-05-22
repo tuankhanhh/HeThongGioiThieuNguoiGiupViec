@@ -126,14 +126,16 @@ namespace MyWebApi.Controllers
 
                 // Kiểm tra xem đã tạo khiếu nại cho lỗi này chưa (Tránh tạo trùng nếu gọi API nhiều lần)
                 bool daTaoKhieuNai = await _context.KhieuNais
-                    .AnyAsync(k => k.MaDon == maDon && k.NoiDung == "Người giúp việc không đến làm");
+                    //.AnyAsync(k => k.MaDon == maDon && k.NoiDung == "Người giúp việc không đến làm");
+                    .AnyAsync(k => k.MaNgayLamViec == job.MaNgayLamViec && k.NoiDung == "Người giúp việc không đến làm");
 
                 if (!daTaoKhieuNai)
                 {
                     var khieuNai = new KhieuNai
                     {
                         MaKhieuNai = await _context.GenerateIdAsync("KhieuNai", "MaKhieuNai", "KN"),
-                        MaDon = maDon,
+                        //MaDon = maDon,
+                        MaNgayLamViec = job.MaNgayLamViec,
                         MaKhachHang = maKhachHang,
                         NoiDung = "Người giúp việc không đến làm",
                         ThoiGian = DateTime.Now,
