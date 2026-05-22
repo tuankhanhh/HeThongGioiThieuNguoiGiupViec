@@ -161,7 +161,7 @@ export default function DashboardPage() {
           />
           <StatsCard
             icon={<AccessTime sx={{ width: 24, height: 24 }} />}
-            label="Đang Thực Hiện"
+            label="Đang Làm Việc"
             value={stats.inProgress}
             color="amber"
           />

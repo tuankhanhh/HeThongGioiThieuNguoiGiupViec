@@ -48,7 +48,7 @@ namespace MyWebApi.Controllers
                             && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
                                 .OrderByDescending(ls => ls.ThoiGianCapNhat)
                                 .Select(ls => ls.TrangThai)
-                                .FirstOrDefault() == "Đã xác nhận")
+                                .FirstOrDefault() != "Chờ xác nhận")
                 .ToListAsync();
 
             var mappedJobs = rawJobs.Select(n => new NgayLamViec
@@ -101,7 +101,7 @@ namespace MyWebApi.Controllers
                             && n.MaDonDatDichVuNavigation.MaDonNavigation.LichSuTrangThaiDons
                                 .OrderByDescending(ls => ls.ThoiGianCapNhat)
                                 .Select(ls => ls.TrangThai)
-                                .FirstOrDefault() == "Đã xác nhận")
+                                .FirstOrDefault() != "Chờ xác nhận")
                 .ToListAsync();
 
             var mappedJobs = rawJobs.Select(n => new ChiTietNgayLamViec
