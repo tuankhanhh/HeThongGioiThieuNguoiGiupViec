@@ -126,10 +126,16 @@ export default function CustomerProfilePage() {
     }
   };
 
+  // Logic validate Email bằng Regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isEmailValid = emailRegex.test(profile.email);
+  const isEmailError = profile.email.length > 0 && !isEmailValid;
+
   const isProfileValid =
     profile.hoTen.trim() !== "" &&
     profile.soDienThoai.length === 10 &&
-    profile.diaChi.trim() !== "";
+    profile.diaChi.trim() !== "" &&
+    isEmailValid;
 
   const isPhoneError =
     profile.soDienThoai.length > 0 && profile.soDienThoai.length < 10;
@@ -139,7 +145,8 @@ export default function CustomerProfilePage() {
     return (
       profile.hoTen !== originalProfile.hoTen ||
       profile.soDienThoai !== originalProfile.soDienThoai ||
-      profile.diaChi !== originalProfile.diaChi
+      profile.diaChi !== originalProfile.diaChi ||
+      profile.email !== originalProfile.email // Bổ sung kiểm tra thay đổi email
     );
   };
 
@@ -153,6 +160,7 @@ export default function CustomerProfilePage() {
         hoTen: profile.hoTen,
         soDienThoai: profile.soDienThoai,
         diaChi: profile.diaChi,
+        email: profile.email, // Thêm email vào payload
       });
 
       setOriginalProfile({ ...profile });
@@ -209,21 +217,36 @@ export default function CustomerProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Email (Read Only) */}
-                <div className="md:col-span-2 opacity-80">
+                {/* Email (Cho phép cập nhật) */}
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Email đăng nhập
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <OutlinedInput
                     fullWidth
-                    disabled
+                    required
+                    name="email"
+                    placeholder="Nhập địa chỉ email hợp lệ"
                     value={profile.email}
+                    onChange={handleProfileChange}
+                    error={isEmailError}
                     startAdornment={
                       <InputAdornment position="start">
-                        <EmailOutlinedIcon fontSize="small" />
+                        <EmailOutlinedIcon
+                          fontSize="small"
+                          className={
+                            isEmailError ? "text-red-500" : "text-indigo-500"
+                          }
+                        />
                       </InputAdornment>
                     }
                   />
+                  {isEmailError && (
+                    <FormHelperText error className="font-medium">
+                      Vui lòng nhập định dạng email hợp lệ (ví dụ:
+                      name@example.com)
+                    </FormHelperText>
+                  )}
                 </div>
 
                 {/* Họ Tên */}

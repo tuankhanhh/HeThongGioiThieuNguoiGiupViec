@@ -61,10 +61,31 @@ namespace MyWebApi.Controllers
             if (string.IsNullOrWhiteSpace(request.HoTen))
                 return BadRequest(new { message = "Họ tên không được để trống." });
 
-            if (string.IsNullOrWhiteSpace(request.SoDienThoai) || request.SoDienThoai.Length > 10)
-                return BadRequest(new { message = "Số điện thoại không hợp lệ." });
+            if (string.IsNullOrWhiteSpace(request.SoDienThoai) || request.SoDienThoai.Length != 10)
+                return BadRequest(new { message = "Số điện thoại không hợp lệ (phải đủ 10 số)." });
 
-            // Cập nhật thông tin
+            // Validate Email
+            if (string.IsNullOrWhiteSpace(request.Email))
+                return BadRequest(new { message = "Email không được để trống." });
+
+            // Kiểm tra định dạng Email hợp lệ
+            if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(request.Email))
+                return BadRequest(new { message = "Định dạng email không hợp lệ." });
+
+            // Kiểm tra Email trùng lặp (Nếu khách hàng đổi sang một Email khác)
+            if (user.Email != request.Email)
+            {
+                bool emailExists = await _context.NguoiDungs
+                    .AnyAsync(u => u.Email == request.Email && u.MaNguoiDung != userId);
+
+                if (emailExists)
+                    return BadRequest(new { message = "Email này đã được sử dụng bởi một tài khoản khác. Vui lòng chọn email khác." });
+
+                // Nếu không trùng, cập nhật Email mới
+                user.Email = request.Email;
+            }
+
+            // Cập nhật các thông tin khác
             user.HoTen = request.HoTen;
             user.SoDienThoai = request.SoDienThoai;
             user.DiaChi = request.DiaChi;
@@ -144,6 +165,7 @@ namespace MyWebApi.Controllers
         public string HoTen { get; set; }
         public string SoDienThoai { get; set; }
         public string DiaChi { get; set; }
+        public string Email { get; set; }
     }
 
     public class HoSoNguoiDungDTO
