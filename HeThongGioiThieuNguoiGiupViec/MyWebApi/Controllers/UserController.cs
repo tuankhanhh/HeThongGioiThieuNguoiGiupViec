@@ -69,6 +69,21 @@ namespace MyWebApi.Controllers
             }
         }
 
+        [HttpPost("registerStaff")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RegisterStaff(RegisterRequest request)
+        {
+            try
+            {
+                var response = await _authService.RegisterAsyncStaff(request);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         // ================= REFRESH TOKEN =================
         [HttpPost("refresh-token")]
         [AllowAnonymous]

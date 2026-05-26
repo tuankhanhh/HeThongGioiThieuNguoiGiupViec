@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/admin/AdminLayout";
 import api from "@/services/api";
+import Swal from "sweetalert2"; // <-- Import SweetAlert2
 
 interface User {
   maNguoiDung: string;
@@ -53,33 +54,91 @@ export default function UsersManagement() {
   };
 
   const handleAssignRole = async (maNguoiDung: string, roleName: string) => {
-    if (
-      !confirm(
-        `Bạn có chắc chắn muốn đổi vai trò của người dùng này sang ${roleName}?`,
-      )
-    )
+    const result = await Swal.fire({
+      title: "Xác nhận thay đổi",
+      text: `Bạn có chắc chắn muốn đổi vai trò của người dùng này sang ${roleName}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3b82f6",
+      cancelButtonColor: "#ef4444",
+      confirmButtonText: "Đồng ý",
+      cancelButtonText: "Hủy bỏ",
+      // Đã xóa dòng borderRadius ở đây
+    });
+
+    if (!result.isConfirmed) {
+      fetchUsers();
       return;
+    }
+
     try {
       await api.post("/user/assign-role", { maNguoiDung, roleName });
+
+      // Thông báo thành công
+      Swal.fire({
+        title: "Thành công!",
+        text: "Đã cập nhật vai trò người dùng.",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
       fetchUsers();
     } catch (error) {
-      alert("Lỗi khi cập nhật vai trò: " + (error as any).message);
+      // Thông báo lỗi
+      Swal.fire({
+        title: "Lỗi!",
+        text: "Không thể cập nhật vai trò: " + (error as any).message,
+        icon: "error",
+      });
     }
   };
 
   const handleToggleStatus = async (user: User) => {
     if (user.roles.includes("Admin")) {
-      alert("Không thể khóa tài khoản của Quản trị viên khác!");
+      Swal.fire({
+        title: "Cảnh báo!",
+        text: "Không thể khóa tài khoản của Quản trị viên khác!",
+        icon: "warning",
+        confirmButtonColor: "#3b82f6",
+      });
       return;
     }
 
     const action = user.trangThai ? "khóa" : "mở khóa";
-    if (!confirm(`Bạn có chắc chắn muốn ${action} tài khoản này?`)) return;
+
+    // Sử dụng SweetAlert thay cho confirm
+    const result = await Swal.fire({
+      title: "Xác nhận",
+      text: `Bạn có chắc chắn muốn ${action} tài khoản này?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: user.trangThai ? "#ef4444" : "#10b981", // Nút đỏ để khóa, xanh để mở
+      cancelButtonColor: "#94a3b8",
+      confirmButtonText: `Đồng ý, ${action}`,
+      cancelButtonText: "Hủy bỏ",
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       await api.post(`/admin/users/${user.maNguoiDung}/toggle-status`);
+
+      Swal.fire({
+        title: "Thành công!",
+        text: `Đã ${action} tài khoản thành công.`,
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
       fetchUsers();
     } catch (error) {
-      alert(`Lỗi khi ${action} tài khoản: ` + (error as any).message);
+      Swal.fire({
+        title: "Lỗi!",
+        text: `Lỗi khi ${action} tài khoản: ` + (error as any).message,
+        icon: "error",
+      });
     }
   };
 

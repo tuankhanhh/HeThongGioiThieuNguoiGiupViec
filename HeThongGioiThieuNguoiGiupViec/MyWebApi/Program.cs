@@ -173,7 +173,7 @@ using (var scope = app.Services.CreateScope())
 
         adminUser = new NguoiDung
         {
-            MaNguoiDung = "ADMIN", // tránh GUID + tránh trùng
+            MaNguoiDung = "DMINA", // tránh GUID + tránh trùng
             SoDienThoai = "0332711675",
             MatKhau = hashedPassword,
             Email = "admin@gmail.com",
@@ -226,7 +226,7 @@ using (var scope = app.Services.CreateScope())
 
         staffUser = new NguoiDung
         {
-            MaNguoiDung = "NVIEN",
+            MaNguoiDung = "VIENN",
             SoDienThoai = "1111111111",
             MatKhau = hashedPassword,
             Email = "staff@gmail.com",
