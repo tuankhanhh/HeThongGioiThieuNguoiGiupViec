@@ -195,18 +195,35 @@ namespace MyWebApi.Service
             if (user == null || role == null)
                 return false;
 
-            if (await _context.NguoiDungVaiTros.AnyAsync(ur =>
-                ur.MaNguoiDung == maNguoiDung && ur.MaVaiTro == role.MaVaiTro))
-                return false;
+            // Lấy tất cả vai trò hiện tại của user
+            var currentRoles = await _context.NguoiDungVaiTros
+                .Where(ur => ur.MaNguoiDung == maNguoiDung)
+                .Include(ur => ur.MaVaiTroNavigation)
+                .ToListAsync();
 
-            var userRole = new NguoiDungVaiTro
+            // Xóa tất cả vai trò cũ (trừ Admin để bảo vệ)
+            var rolesToRemove = currentRoles
+                .Where(ur => ur.MaVaiTroNavigation.TenVaiTro != "Admin")
+                .ToList();
+
+            _context.NguoiDungVaiTros.RemoveRange(rolesToRemove);
+
+            // Kiểm tra xem vai trò mới đã tồn tại chưa
+            var roleExists = currentRoles.Any(ur => ur.MaVaiTro == role.MaVaiTro);
+
+            // Thêm vai trò mới nếu chưa có
+            if (!roleExists)
             {
-                MaNguoiDung = maNguoiDung,
-                MaVaiTro = role.MaVaiTro,
-                NgayGan = DateTime.UtcNow
-            };
+                var userRole = new NguoiDungVaiTro
+                {
+                    MaNguoiDung = maNguoiDung,
+                    MaVaiTro = role.MaVaiTro,
+                    NgayGan = DateTime.UtcNow
+                };
 
-            _context.NguoiDungVaiTros.Add(userRole);
+                _context.NguoiDungVaiTros.Add(userRole);
+            }
+
             await _context.SaveChangesAsync();
 
             return true;
