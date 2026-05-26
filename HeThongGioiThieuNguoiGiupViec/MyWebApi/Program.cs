@@ -271,7 +271,7 @@ using (var scope = app.Services.CreateScope())
     // 4. SEED cus
     // =======================
     var customerUser = await context.NguoiDungs
-        .FirstOrDefaultAsync(u => u.SoDienThoai == "999999999");
+        .FirstOrDefaultAsync(u => u.SoDienThoai == "9999999999");
 
     if (customerUser == null)
     {
@@ -280,11 +280,12 @@ using (var scope = app.Services.CreateScope())
         customerUser = new NguoiDung
         {
             MaNguoiDung = "NDUNG",
-            SoDienThoai = "999999999",
+            SoDienThoai = "9999999999",
             MatKhau = hashedPassword,
             Email = "customer@gmail.com",
             HoTen = "Customer Default",
             TrangThai = true,
+            DiaChi = "48 Cao Thắng",
             NgayTao = DateTime.UtcNow,
 
             RefreshToken = null,

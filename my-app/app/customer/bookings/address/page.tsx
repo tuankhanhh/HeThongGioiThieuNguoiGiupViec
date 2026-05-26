@@ -8,8 +8,11 @@ import OrderSummary, {
   DayOrder,
 } from "@/components/componentsCustomer/OrderSumary";
 import { useRouter } from "next/navigation";
-import Swal from "sweetalert2"; // Thêm thư viện thông báo
+import Swal from "sweetalert2";
 import { ROUTES } from "@/lib/routes";
+
+// Cần import api service của bạn (giống trang Profile)
+import api from "@/services/api";
 
 const BookingPage = () => {
   const router = useRouter();
@@ -20,18 +23,35 @@ const BookingPage = () => {
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
 
-  // 1. Lấy dữ liệu từ localStorage khi component mounted
+  // 1. Lấy dữ liệu từ localStorage và API khi component mounted
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    //eslint-disable-next-line
     setIsMounted(true);
     const savedWorkDays = localStorage.getItem("booking_workdays");
-
-    // Tải lại địa chỉ và ghi chú nếu người dùng quay lại từ trang thanh toán
     const savedAddress = localStorage.getItem("booking_address");
     const savedNote = localStorage.getItem("booking_note");
 
-    if (savedAddress) setAddress(savedAddress);
     if (savedNote) setNote(savedNote);
+
+    // Xử lý lấy địa chỉ
+    if (savedAddress) {
+      // Nếu có sẵn trong localStorage (do quay lại từ trang Payment), dùng luôn
+      setAddress(savedAddress);
+    } else {
+      // Nếu chưa có, gọi API lấy địa chỉ mặc định từ Profile
+      const fetchDefaultAddress = async () => {
+        try {
+          // Lưu ý: Đổi endpoint "/api/profile/address" cho đúng với định tuyến backend của bạn
+          const response = await api.get<any>("/Customer/address");
+          if (response && response.diaChi) {
+            setAddress(response.diaChi);
+          }
+        } catch (error) {
+          console.error("Không thể lấy địa chỉ mặc định:", error);
+        }
+      };
+      fetchDefaultAddress();
+    }
 
     if (savedWorkDays) {
       try {
@@ -95,7 +115,6 @@ const BookingPage = () => {
                   "& fieldset": { border: "none" },
                   borderRadius: "12px",
                 }}
-                // ĐỔI SANG DÙNG slotProps Ở ĐÂY 👇
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -132,10 +151,7 @@ const BookingPage = () => {
         </div>
 
         <div className="lg:col-span-4">
-          <OrderSummary
-            orders={workDays}
-            onNext={handleNext} // Gắn hàm xử lý vào nút bấm
-          />
+          <OrderSummary orders={workDays} onNext={handleNext} />
         </div>
       </div>
     </div>

@@ -174,6 +174,12 @@ export default function Header() {
             {user.role === "Customer" && (
               <>
                 <Link
+                  href={ROUTES.CUSTOMER.PROFILE}
+                  className="block px-4 py-3 text-sm font-semibold text-black hover:bg-[#f0f9f0] rounded-xl"
+                >
+                  Hồ sơ cá nhân
+                </Link>
+                <Link
                   href={ROUTES.CUSTOMER.HISTORY}
                   className="text-black block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0]"
                   onClick={() => setOpenAvatar(false)}
@@ -186,6 +192,12 @@ export default function Header() {
                   onClick={() => setOpenAvatar(false)}
                 >
                   Lịch sử khiếu nại
+                </Link>
+                <Link
+                  href={ROUTES.CUSTOMER.PASSWORD}
+                  className="block px-4 py-3 text-sm font-semibold text-black hover:bg-[#f0f9f0] rounded-xl"
+                >
+                  Đổi mật khẩu
                 </Link>
               </>
             )}
@@ -286,12 +298,40 @@ export default function Header() {
           {isMounted && user && (
             <div className="mt-2 border-t pt-2">
               {user.role === "Customer" && (
-                <Link
-                  href={ROUTES.CUSTOMER.HISTORY}
+                <>
+                  <Link
+                    href={ROUTES.CUSTOMER.PROFILE}
+                    className="block px-4 py-3 text-sm font-semibold text-black hover:bg-[#f0f9f0] rounded-xl"
+                  >
+                    Hồ sơ cá nhân
+                  </Link>
+                  <Link
+                    href={ROUTES.CUSTOMER.COMPLAINTS}
+                    className="text-black block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0]"
+                    onClick={() => setOpenAvatar(false)}
+                  >
+                    Lịch sử khiếu nại
+                  </Link>
+                  <Link
+                    href={ROUTES.CUSTOMER.HISTORY}
+                    className="block px-4 py-3 text-sm font-semibold text-black hover:bg-[#f0f9f0] rounded-xl"
+                  >
+                    Lịch sử đơn hàng
+                  </Link>
+                  <Link
+                    href={ROUTES.CUSTOMER.COMPLAINTS}
+                    className="text-black block px-4 py-3 text-sm font-semibold hover:bg-[#f0f9f0]"
+                    onClick={() => setOpenAvatar(false)}
+                  >
+                    Lịch sử khiếu nại
+                  </Link>
+                  <Link
+                  href={ROUTES.CUSTOMER.PASSWORD}
                   className="block px-4 py-3 text-sm font-semibold text-black hover:bg-[#f0f9f0] rounded-xl"
                 >
-                  Lịch sử đơn hàng
+                  Đổi mật khẩu
                 </Link>
+                </>
               )}
 
               <button

@@ -23,6 +23,7 @@ export const ROUTES = {
     COMPLAINTS: "/customer/complaint",
     LOGIN: "/customer/login",
     REGISTER: "/customer/register",
+    PASSWORD: "/customer/password",
   },
 
   // Staff - Nhân viên văn phòng/điều hành
