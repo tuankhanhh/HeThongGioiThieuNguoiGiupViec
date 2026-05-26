@@ -50,40 +50,35 @@ export default function ReportsPage() {
     }
   };
 
-  const exportToExcel = () => {
-    // Chuẩn bị dữ liệu CSV với BOM UTF-8 để hiển thị đúng tiếng Việt trong Excel
-    let csvContent = "\uFEFF"; // Byte Order Mark
-    
-    // Tiêu đề báo cáo
-    csvContent += `"BÁO CÁO DOANH THU NĂM ${year}"\n\n`;
-    
-    // Thông tin tổng quan
-    csvContent += `"Ngày xuất báo cáo:", "${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}"\n`;
-    csvContent += `"Tổng doanh thu cả năm:", "${totalRevenue.toLocaleString()} đ"\n`;
-    csvContent += `"Tổng đơn hàng:", "${totalBookings} đơn"\n`;
-    csvContent += `"Doanh thu trung bình / đơn:", "${avgPerOrder.toLocaleString()} đ"\n\n`;
-    
-    // Tiêu đề cột
-    csvContent += `"Tháng", "Số lượng đơn hàng", "Doanh thu (VND)", "Trung bình trên đơn (VND)"\n`;
-    
-    // Dữ liệu từng tháng
-    revenueData.forEach((data, index) => {
-      const avg = data.count > 0 ? Math.round(data.revenue / data.count) : 0;
-      csvContent += `"${monthFullNames[index]}", "${data.count} đơn", "${data.revenue}", "${avg > 0 ? avg : '-'}"\n`;
-    });
-    
-    // Dòng tổng kết
-    csvContent += `\n"Tổng cộng cả năm", "${totalBookings} đơn", "${totalRevenue}", "${avgPerOrder > 0 ? avgPerOrder : '-'}"\n`;
-    
-    // Tạo blob và tải xuống dưới dạng .csv
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Bao_Cao_Doanh_Thu_Nam_${year}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const exportToExcel = async () => {
+    try {
+      const { exportToExcel: exportUtil } = await import("@/utils/exportExcel");
+      
+      // Chuẩn bị dữ liệu cho Excel
+      const excelData = revenueData.map((data, index) => ({
+        "Tháng": monthFullNames[index],
+        "Số đơn hàng": data.count,
+        "Doanh thu (VND)": data.revenue,
+        "Trung bình/đơn (VND)": data.count > 0 ? Math.round(data.revenue / data.count) : 0,
+      }));
+
+      // Thêm dòng tổng kết
+      excelData.push({
+        "Tháng": "TỔNG CỘNG CẢ NĂM",
+        "Số đơn hàng": totalBookings,
+        "Doanh thu (VND)": totalRevenue,
+        "Trung bình/đơn (VND)": avgPerOrder,
+      });
+
+      exportUtil(
+        excelData, 
+        `Bao_Cao_Doanh_Thu_Nam_${year}`,
+        `BÁO CÁO DOANH THU NĂM ${year}`
+      );
+    } catch (error) {
+      console.error("Lỗi khi xuất Excel:", error);
+      alert("Có lỗi xảy ra khi xuất báo cáo Excel");
+    }
   };
 
   const totalRevenue = revenueData.reduce((s,m) => s + m.revenue, 0);

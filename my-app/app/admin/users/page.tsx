@@ -268,7 +268,6 @@ export default function UsersManagement() {
             }}
           >
             <option value="all">Tất cả vai trò</option>
-            <option value="Admin">Admin</option>
             <option value="Staff">Nhân viên</option>
             <option value="Maid">Người giúp việc</option>
             <option value="Customer">Khách hàng</option>
@@ -550,7 +549,6 @@ export default function UsersManagement() {
                             opacity: user.roles.includes("Admin") ? 0.5 : 1,
                           }}
                         >
-                          <option value="Admin">Admin</option>
                           <option value="Staff">Staff</option>
                           <option value="Maid">Maid</option>
                           <option value="Customer">Customer</option>
