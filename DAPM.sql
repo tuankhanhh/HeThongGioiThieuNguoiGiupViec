@@ -510,14 +510,15 @@ values ('LS015','DD014',GETDATE(),N'Đã xác nhận')
 UPDATE NgayLamViec
 SET 
     -- 1. Cập nhật ngày làm việc thành ngày hôm nay
-    NgayLam = CAST(GETDATE() AS DATE),
+    NgayLam = GETDATE(),
     
     -- 2. Cập nhật giờ bắt đầu lùi lại 30 phút so với lúc bạn chạy lệnh này
     GioBatDau = CAST(DATEADD(MINUTE, -30, GETDATE()) AS TIME),
+	GioKetThuc = CAST(DATEADD(MINUTE, ThoiLuongThucHien + 30, GETDATE()) AS TIME),
     
     -- 3. Đảm bảo trạng thái đang là "Đã phân công" để Frontend hiện nút
     TrangThai = N'Đã phân công'
-WHERE MaNgayLamViec = 'NL012';
+	WHERE MaNgayLamViec = 'NL012';
 
 INSERT INTO KhieuNai (
     MaKhieuNai,
@@ -572,7 +573,7 @@ INSERT INTO KyNangNguoiGiupViec
 VALUES
 ('KN006', 'HS005', N'2 năm giặt sofa'),
 ('KN006', 'HS006', N'1 năm vệ sinh nệm');
-
+/*
 INSERT INTO KhieuNai
 (MaKhieuNai, MaNgayLamViec, MaKhachHang, MaNhanVien, NoiDung, ThoiGian, TrangThai)
 VALUES
@@ -589,3 +590,4 @@ VALUES
  GETDATE(),
  N'Chờ xử lý');
 GO
+*/
