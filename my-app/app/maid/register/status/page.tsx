@@ -48,7 +48,7 @@ export default function ApplicationStatusPage() {
         // - Tự động đính kèm Authorization: Bearer <token>
         // - Tự động handle Refresh Token nếu bị 401
         // Lưu ý: Đảm bảo path truyền vào khớp với NEXT_PUBLIC_API_URL của bạn.
-        const data = await api.get<StatusResponse>("/v1/maid/status");
+        const data = await api.get<StatusResponse>("/v1/hoso/status");
 
         if (data.status === "Đã duyệt") {
           // Bạn có thể cân nhắc thêm ROUTES.MAID.HOME / ROUTES.MAID.DASHBOARD ở đây
