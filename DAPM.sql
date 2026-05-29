@@ -327,13 +327,13 @@ INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro, NgayGan) VALUES
 
 -- 9. HoSoNguoiGiupViec (Tiền tố: HS)
 INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, TrangThaiXacMinh, AnhChanDung) VALUES
-('HS001', 'GV001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', 'default.png'),
-('HS002', 'GV002', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', 'default.png'),
-('HS003', 'GV003', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Đã duyệt', 'default.png'),
-('HS004', 'GV004', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'default.png'),
-('HS005', 'GV005', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'default.png'),
-('HS006', 'GV006', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'default.png'),
-('HS007', 'GV007', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Đã duyệt', 'default.png');
+('HS001', 'GV001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', NULL),
+('HS002', 'GV002', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', NULL),
+('HS003', 'GV003', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Đã duyệt', NULL),
+('HS004', 'GV004', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', NULL),
+('HS005', 'GV005', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', NULL),
+('HS006', 'GV006', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', NULL),
+('HS007', 'GV007', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Đã duyệt', NULL);
 
 -- 10. KyNangNguoiGiupViec (Mã KN và Mã HS đã chuẩn hóa)
 INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES

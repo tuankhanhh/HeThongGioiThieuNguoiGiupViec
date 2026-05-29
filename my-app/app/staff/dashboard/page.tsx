@@ -62,6 +62,7 @@ export default function StaffDashboardPage() {
   const [selectedHelper, setSelectedHelper] = useState<HelperDetail | null>(
     null,
   );
+  const BACKEND_URL = "https://localhost:7095";
   const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -405,8 +406,10 @@ export default function StaffDashboardPage() {
                 <div className="flex flex-col items-center text-center">
                   <img
                     src={
-                      `/images/anhnguoigiupviec/${helper.anhChanDung}` ||
-                      "/images/anhnguoigiupviec/default.png/"
+                      helper.anhChanDung && helper.anhChanDung.startsWith("/")
+                        ? `${BACKEND_URL}${helper.anhChanDung}`
+                        : helper.anhChanDung ||
+                          "/images/anhnguoigiupviec/default.png"
                     }
                     alt={helper.hoTen}
                     className="w-20 h-20 rounded-full object-cover border-2 border-slate-100 mb-3"
@@ -492,7 +495,13 @@ export default function StaffDashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-12">
                 <div className="md:col-span-4 bg-slate-50 p-6 flex items-center justify-center">
                   <img
-                    src={selectedHelper.anhChanDung || "/default-avatar.png"}
+                    src={
+                      selectedHelper.anhChanDung &&
+                      selectedHelper.anhChanDung.startsWith("/")
+                        ? `${BACKEND_URL}${selectedHelper.anhChanDung}`
+                        : selectedHelper.anhChanDung ||
+                          "/images/anhnguoigiupviec/default.png"
+                    }
                     alt={selectedHelper.hoTen}
                     className="w-56 h-56 rounded-2xl object-cover border border-slate-200 shadow-sm"
                   />
