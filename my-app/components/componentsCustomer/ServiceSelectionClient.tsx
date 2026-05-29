@@ -145,7 +145,7 @@ export default function ServiceSelectionClient({ services }: Props) {
                 >
                   {service.image ? (
                     <img
-                      src={service.image}
+                      src={`/images/dichvu/${service.image}`}
                       alt={service.title}
                       className="w-full h-full object-cover"
                     />

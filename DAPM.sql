@@ -283,12 +283,12 @@ INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) VALUES
 
 -- 5. DichVu (Tiền tố: DV)
 INSERT INTO DichVu (MaDichVu, MaKyNang, TenDichVu, MoTa, GiaTheoGio, HinhAnh, PhoBien, TrangThai) VALUES 
-('DV001','KN001', N'Dọn dẹp nhà cửa', N'Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.', 60000, 'https://images.unsplash.com/photo-1581578731548-c64695cc6952', 1, N'Đang hoạt động'),
-('DV002','KN002', N'Tổng vệ sinh', N'Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.', 150000, 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac', 0, N'Đang hoạt động'),
-('DV003','KN003', N'Nấu ăn gia đình', N'Đi chợ và chuẩn bị những bữa ăn ngon miệng, đảm bảo dinh dưỡng cho gia đình.', 80000, 'https://images.unsplash.com/photo-1556910103-1c02745aae4d', 0, N'Đang hoạt động'),
-('DV004','KN004', N'Chăm sóc trẻ em', N'Trông nom, chơi đùa và chăm sóc bữa ăn, giấc ngủ cho các bé khi bạn bận rộn.', 70000, 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368', 1, N'Đang hoạt động'),
-('DV005','KN005', N'Chăm sóc người cao tuổi', N'Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.', 80000, 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289', 0, N'Đang hoạt động'),
-('DV006','KN006', N'Giặt sofa & nệm', N'Sử dụng máy móc chuyên dụng để hút bụi mịn, khử khuẩn và làm sạch sâu.', 250000, 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92', 0, N'Đang hoạt động');
+('DV001','KN001', N'Dọn dẹp nhà cửa', N'Làm sạch không gian sống, quét bụi, lau sàn và sắp xếp đồ đạc gọn gàng.', 60000, 'dondepnhacua.png', 1, N'Đang hoạt động'),
+('DV002','KN002', N'Tổng vệ sinh', N'Làm sạch sâu mọi ngóc ngách, phù hợp cho nhà mới chuyển hoặc dịp lễ Tết.', 150000, 'tongvesinh.png', 0, N'Đang hoạt động'),
+('DV003','KN003', N'Nấu ăn gia đình', N'Đi chợ và chuẩn bị những bữa ăn ngon miệng, đảm bảo dinh dưỡng cho gia đình.', 80000, 'nauan.png', 0, N'Đang hoạt động'),
+('DV004','KN004', N'Chăm sóc trẻ em', N'Trông nom, chơi đùa và chăm sóc bữa ăn, giấc ngủ cho các bé khi bạn bận rộn.', 70000, 'chamsoctreem.png', 1, N'Đang hoạt động'),
+('DV005','KN005', N'Chăm sóc người cao tuổi', N'Hỗ trợ người lớn tuổi trong sinh hoạt hàng ngày với sự tận tâm và kiên nhẫn.', 80000, 'chamsocnguoigia.png', 0, N'Đang hoạt động'),
+('DV006','KN006', N'Giặt sofa & nệm', N'Sử dụng máy móc chuyên dụng để hút bụi mịn, khử khuẩn và làm sạch sâu.', 250000, 'giatnem.png', 0, N'Đang hoạt động');
 
 -- 6. DichVuThanhPhan
 INSERT INTO DichVuThanhPhan (MaDichVu, MaThanhPhan, GhiChu) VALUES 
@@ -327,13 +327,13 @@ INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro, NgayGan) VALUES
 
 -- 9. HoSoNguoiGiupViec (Tiền tố: HS)
 INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, TrangThaiXacMinh, AnhChanDung) VALUES
-('HS001', 'GV001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', NULL),
-('HS002', 'GV002', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', 'https://example.com/avatar_10.jpg'),
-('HS003', 'GV003', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Đã duyệt', 'https://example.com/avatar_11.jpg'),
-('HS004', 'GV004', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'https://example.com/avatar_12.jpg'),
-('HS005', 'GV005', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
-('HS006', 'GV006', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'),
-('HS007', 'GV007', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Đã duyệt', 'https://images.unsplash.com/photo-1594744803329-05206259021e?w=400');
+('HS001', 'GV001', '079123456789', '1995-05-10', N'Nữ', N'Nguyễn Văn A', '0987654321', N'Đã duyệt', 'default.png'),
+('HS002', 'GV002', '012345678910', '1995-04-12', N'Nữ', N'Nguyễn Văn A', '0901000010', N'Đã duyệt', 'default.png'),
+('HS003', 'GV003', '012345678911', '1992-08-20', N'Nữ', N'Lê Văn B', '0901000011', N'Đã duyệt', 'default.png'),
+('HS004', 'GV004', '012345678912', '1998-02-14', N'Nữ', N'Phạm Văn C', '0901000012', N'Đã duyệt', 'default.png'),
+('HS005', 'GV005', '123456789012', '1990-05-15', N'Nữ', N'Nguyễn Văn Hùng', '0911223344', N'Đã duyệt', 'default.png'),
+('HS006', 'GV006', '987654321098', '1985-10-20', N'Nam', N'Trần Thị Mai', '0922334455', N'Đã duyệt', 'default.png'),
+('HS007', 'GV007', '112233445566', '1992-03-10', N'Nữ', N'Bùi Văn Chín', '0905123123', N'Đã duyệt', 'default.png');
 
 -- 10. KyNangNguoiGiupViec (Mã KN và Mã HS đã chuẩn hóa)
 INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES
