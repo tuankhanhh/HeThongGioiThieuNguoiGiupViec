@@ -404,7 +404,10 @@ export default function StaffDashboardPage() {
               >
                 <div className="flex flex-col items-center text-center">
                   <img
-                    src={helper.anhChanDung || "/default-avatar.png"}
+                    src={
+                      `/images/anhnguoigiupviec/${helper.anhChanDung}` ||
+                      "/images/anhnguoigiupviec/default.png/"
+                    }
                     alt={helper.hoTen}
                     className="w-20 h-20 rounded-full object-cover border-2 border-slate-100 mb-3"
                   />
