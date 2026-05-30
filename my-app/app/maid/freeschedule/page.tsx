@@ -48,7 +48,8 @@ interface ServerSchedule {
     maCaLamViec: string;
     gioBatDau: string;
     gioKetThuc: string;
-    thoiGianTao: string; // <-- THÊM TRƯỜNG NÀY (VD: "2026-05-17T15:00:00Z")
+    thoiGianTao: string;
+    daCoKhachDat?: boolean;
   }[];
 }
 
@@ -89,10 +90,14 @@ export default function HelperAvailability() {
     fetchMySchedule();
   }, []);
 
-  // Hàm kiểm tra xem ca làm việc có nằm trong thời gian 15 phút cho phép hủy không
-  const canDeleteSlot = (thoiGianTao?: string) => {
-    if (!thoiGianTao) return false; // Ẩn nếu không lấy được thời gian tạo
-    const createTime = new Date(thoiGianTao).getTime();
+  // Hàm kiểm tra xem ca làm việc có được phép hủy không
+  const canDeleteSlot = (slot: any) => {
+    // 1. Khách đã đặt -> Ẩn nút ngay lập tức
+    if (slot.daCoKhachDat) return false;
+
+    // 2. Kiểm tra quy định 15 phút
+    if (!slot.thoiGianTao) return false;
+    const createTime = new Date(slot.thoiGianTao).getTime();
     const currentTime = new Date().getTime();
     const diffInMinutes = (currentTime - createTime) / (1000 * 60);
 
@@ -208,12 +213,16 @@ export default function HelperAvailability() {
   const executeSave = async () => {
     setOpenConfirm(false);
     setIsSaving(true);
-    const requests: Promise<any>[] = [];
 
+    const danhSachDangKyMoi: any[] = [];
+    const requestsBoSung: any[] = [];
+
+    // 1. Phân loại dữ liệu
     Object.entries(dateSlots).forEach(([dateStr, slots]) => {
       if (slots.length > 0) {
         const existing = existingSchedule[dateStr];
 
+        // Trường hợp bổ sung ca lẻ vào ngày đã tồn tại
         if (existing && existing.chiTietCaLam.length === 1) {
           const newSlot = slots.find((s) => !s.isSaved);
           if (newSlot) {
@@ -222,39 +231,53 @@ export default function HelperAvailability() {
               gioKetThuc:
                 newSlot.end === "24:00" ? "23:59:59" : `${newSlot.end}:00`,
             };
-            requests.push(
+            requestsBoSung.push(
               api.post(`/LichRanh/bo-sung-ca/${existing.maLichRanh}`, payload),
             );
           }
-        } else if (!existing) {
-          const payload = {
+        }
+        // Trường hợp tạo mới hoàn toàn
+        else if (!existing) {
+          danhSachDangKyMoi.push({
             ngay: dateStr,
             danhSachCa: slots.map((slot) => ({
               gioBatDau: `${slot.start}:00`,
               gioKetThuc: slot.end === "24:00" ? "23:59:59" : `${slot.end}:00`,
             })),
-          };
-          requests.push(api.post("/LichRanh/dang-ky", payload));
+          });
         }
       }
     });
 
     try {
-      await Promise.all(requests);
+      // 2. Thực thi API đăng ký hàng loạt (nếu có ngày mới)
+      if (danhSachDangKyMoi.length > 0) {
+        await api.post("/LichRanh/dang-ky", {
+          danhSachDangKy: danhSachDangKyMoi,
+        });
+      }
+
+      // 3. Thực thi các API bổ sung ca lẻ song song (nếu có)
+      if (requestsBoSung.length > 0) {
+        await Promise.all(requestsBoSung);
+      }
+
+      // 4. Xử lý UI sau khi thành công
       setToast({
         open: true,
-        message: "Lưu lịch thành công!",
+        message: "Lưu lịch rảnh thành công!",
         severity: "success",
       });
       setSelectedDates([]);
       setDateSlots({});
       fetchMySchedule();
     } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.message ||
+        "Có lỗi xảy ra, vui lòng kiểm tra lại!";
       setToast({
         open: true,
-        message:
-          error.response?.data?.message ||
-          "Có lỗi xảy ra, vui lòng kiểm tra lại!",
+        message: errorMsg,
         severity: "error",
       });
     } finally {
@@ -1107,7 +1130,7 @@ export default function HelperAvailability() {
                                     </Box>
 
                                     {/* Icon Hủy ca */}
-                                    {canDeleteSlot(slot.thoiGianTao) && (
+                                    {canDeleteSlot(slot) && (
                                       <IconButton
                                         size="small"
                                         disabled={
