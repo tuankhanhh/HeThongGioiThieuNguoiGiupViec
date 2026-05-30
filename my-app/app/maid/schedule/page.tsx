@@ -13,7 +13,7 @@ import {
 // Import apiService mà bạn đã định nghĩa
 import api from "@/services/api";
 
-// Cập nhật Interface khớp với dữ liệu JSON trả về từ API C#
+// Interface khớp với dữ liệu JSON trả về từ API lịch C#
 interface Job {
   maCongViec: string;
   ngay: string;
@@ -23,9 +23,9 @@ interface Job {
   trangThai: string;
 }
 
-// Cập nhật tên các thống kê để khớp với logic nghiệp vụ
-interface DayStats {
-  totalJobs: number;
+// Interface cho thống kê tổng (All-time) trả về từ API Stats mới
+interface GlobalStats {
+  totalDays: number;
   inProgress: number;
   assigned: number;
 }
@@ -33,10 +33,40 @@ interface DayStats {
 export default function DashboardPage() {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // State cho lịch làm việc theo tháng
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Gọi API mỗi khi thay đổi tháng/năm
+  // State cho thống kê tổng quát (không đổi khi chuyển tháng)
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({
+    totalDays: 0,
+    inProgress: 0,
+    assigned: 0,
+  });
+
+  // 1. Gọi API lấy thống kê TỔNG (Chỉ chạy 1 lần khi load trang)
+  useEffect(() => {
+    const fetchGlobalStats = async () => {
+      try {
+        // Lưu ý: Cần đảm bảo Backend có API /v1/maid/stats như đã trao đổi
+        const res = await api.get<GlobalStats>("/v1/maid/stats");
+        if (res) {
+          setGlobalStats({
+            totalDays: res.totalDays || 0,
+            inProgress: res.inProgress || 0,
+            assigned: res.assigned || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải thống kê tổng:", error);
+      }
+    };
+
+    fetchGlobalStats();
+  }, []);
+
+  // 2. Gọi API lấy dữ liệu LỊCH mỗi khi thay đổi tháng/năm
   useEffect(() => {
     const fetchJobs = async () => {
       setIsLoading(true);
@@ -44,7 +74,7 @@ export default function DashboardPage() {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1;
 
-        // Dùng apiService để gọi GET, tự động handle token và lỗi
+        // Gọi API lấy danh sách công việc của tháng hiện tại
         const data = await api.get<Job[]>(
           `/v1/maid/schedule?year=${year}&month=${month}`,
         );
@@ -59,16 +89,7 @@ export default function DashboardPage() {
     fetchJobs();
   }, [currentDate]);
 
-  // Tính toán số lượng cho 4 thẻ thống kê ở trên
-  const stats: DayStats = useMemo(() => {
-    return {
-      totalJobs: jobs.length,
-      inProgress: jobs.filter((j) => j.trangThai === "Đang làm việc").length,
-      assigned: jobs.filter((j) => j.trangThai === "Đã phân công").length,
-    };
-  }, [jobs]);
-
-  // Gom nhóm công việc theo ngày để đánh dấu trên lịch
+  // Gom nhóm công việc theo ngày để đánh dấu chấm xanh trên lịch
   const jobsByDate = useMemo(() => {
     const map = new Map<string, Job[]>();
     jobs.forEach((job) => {
@@ -151,24 +172,24 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Cập nhật nhãn thống kê để khớp với dữ liệu API nhưng giữ nguyên Layout & Icon */}
+        {/* Sử dụng globalStats để hiển thị tổng All-time */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <StatsCard
             icon={<Business sx={{ width: 24, height: 24 }} />}
-            label="Tổng Công Việc"
-            value={stats.totalJobs}
+            label="Tổng Ngày Làm Việc"
+            value={globalStats.totalDays}
             color="blue"
           />
           <StatsCard
             icon={<AccessTime sx={{ width: 24, height: 24 }} />}
-            label="Đang Làm Việc"
-            value={stats.inProgress}
+            label="Ngày Đang Làm Việc"
+            value={globalStats.inProgress}
             color="amber"
           />
           <StatsCard
             icon={<CheckCircle sx={{ width: 24, height: 24 }} />}
-            label="Đã Phân Công"
-            value={stats.assigned}
+            label="Ngày Đã Phân Công"
+            value={globalStats.assigned}
             color="green"
           />
         </div>

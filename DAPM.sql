@@ -337,12 +337,27 @@ INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTi
 
 -- 10. KyNangNguoiGiupViec (Mã KN và Mã HS đã chuẩn hóa)
 INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES
-('KN001', 'HS001', N'2 năm kinh nghiệm dọn dẹp'), ('KN002', 'HS001', N'Biết nấu ăn gia đình'), ('KN005', 'HS001', N'Giặt ủi chuyên nghiệp'),
-('KN001', 'HS002', N'3 năm'), ('KN002', 'HS002', N'2 năm'), ('KN003', 'HS002', N'1 năm'),
-('KN001', 'HS003', N'4 năm'), ('KN005', 'HS003', N'1 năm'), ('KN004', 'HS003', N'2 năm'),
-('KN003', 'HS004', N'6 tháng'), ('KN004', 'HS004', N'1 năm'),
-('KN001', 'HS005', N'2 năm dọn dẹp'), ('KN002', 'HS005', N'1 năm nấu ăn'), 
-('KN001', 'HS006', N'3 năm dọn dẹp'), ('KN005', 'HS007', N'1 năm giặt ủi');
+('KN001', 'HS001', N'1 - 3 năm'),
+('KN002', 'HS001', N'1 - 3 năm'),
+('KN005', 'HS001', N'1 - 3 năm'),
+
+('KN001', 'HS002', N'1 - 3 năm'),
+('KN002', 'HS002', N'1 - 3 năm'),
+('KN003', 'HS002', N'1 - 3 năm'),
+
+('KN001', 'HS003', N'3 - 5 năm'),
+('KN005', 'HS003', N'1 - 3 năm'),
+('KN004', 'HS003', N'1 - 3 năm'),
+
+('KN003', 'HS004', N'Dưới 1 năm'),
+('KN004', 'HS004', N'1 - 3 năm'),
+
+('KN001', 'HS005', N'1 - 3 năm'),
+('KN002', 'HS005', N'1 - 3 năm'),
+
+('KN001', 'HS006', N'1 - 3 năm'),
+
+('KN005', 'HS007', N'1 - 3 năm');
 
 -- 11. LichRanh (Tiền tố: LR)
 INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES

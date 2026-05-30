@@ -65,6 +65,51 @@ namespace MyWebApi.Controllers
             return Ok(mappedJobs);
         }
 
+        [HttpGet("stats")]
+        public async Task<IActionResult> GetGlobalStats()
+        {
+            var maidId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(maidId))
+            {
+                return Unauthorized(new { message = "Không tìm thấy thông tin định danh của người giúp việc." });
+            }
+
+            var targetStatuses = new List<string> { "Đã phân công", "Đang làm việc" };
+
+            // Lấy TẤT CẢ công việc của người này (Không có filter Year/Month)
+            // Dùng Select để chỉ lấy 2 cột cần thiết cho nhẹ DB (NgayLam và TrangThai)
+            var rawJobs = await _context.NgayLamViecs
+                .Where(n => n.MaNguoiGiupViec == maidId
+                            && n.NgayLam.HasValue
+                            && targetStatuses.Contains(n.TrangThai))
+                .Select(n => new { n.NgayLam, n.TrangThai })
+                .ToListAsync();
+
+            // Gom nhóm theo ngày giống logic ở Frontend
+            var statusByDate = new Dictionary<string, string>();
+            foreach (var job in rawJobs)
+            {
+                var dateStr = job.NgayLam.Value.ToString("yyyy-MM-dd");
+                // Ưu tiên trạng thái "Đang làm việc" nếu 1 ngày có nhiều ca
+                if (!statusByDate.ContainsKey(dateStr) || job.TrangThai == "Đang làm việc")
+                {
+                    statusByDate[dateStr] = job.TrangThai;
+                }
+            }
+
+            // Đếm số lượng
+            int inProgress = statusByDate.Values.Count(v => v == "Đang làm việc");
+            int assigned = statusByDate.Values.Count(v => v == "Đã phân công");
+
+            // Trả về thẳng cục JSON gọn nhẹ
+            return Ok(new
+            {
+                totalDays = statusByDate.Count,
+                inProgress = inProgress,
+                assigned = assigned
+            });
+        }
+
         // ==========================================================
         // 2. API Lấy Chi Tiết Công Việc Trong 1 Ngày (Dùng khi click vào ngày)
         // ==========================================================
