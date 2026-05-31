@@ -337,12 +337,27 @@ INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTi
 
 -- 10. KyNangNguoiGiupViec (Mã KN và Mã HS đã chuẩn hóa)
 INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) VALUES
-('KN001', 'HS001', N'2 năm kinh nghiệm dọn dẹp'), ('KN002', 'HS001', N'Biết nấu ăn gia đình'), ('KN005', 'HS001', N'Giặt ủi chuyên nghiệp'),
-('KN001', 'HS002', N'3 năm'), ('KN002', 'HS002', N'2 năm'), ('KN003', 'HS002', N'1 năm'),
-('KN001', 'HS003', N'4 năm'), ('KN005', 'HS003', N'1 năm'), ('KN004', 'HS003', N'2 năm'),
-('KN003', 'HS004', N'6 tháng'), ('KN004', 'HS004', N'1 năm'),
-('KN001', 'HS005', N'2 năm dọn dẹp'), ('KN002', 'HS005', N'1 năm nấu ăn'), 
-('KN001', 'HS006', N'3 năm dọn dẹp'), ('KN005', 'HS007', N'1 năm giặt ủi');
+('KN001', 'HS001', N'1 - 3 năm'),
+('KN002', 'HS001', N'1 - 3 năm'),
+('KN005', 'HS001', N'1 - 3 năm'),
+
+('KN001', 'HS002', N'1 - 3 năm'),
+('KN002', 'HS002', N'1 - 3 năm'),
+('KN003', 'HS002', N'1 - 3 năm'),
+
+('KN001', 'HS003', N'3 - 5 năm'),
+('KN005', 'HS003', N'1 - 3 năm'),
+('KN004', 'HS003', N'1 - 3 năm'),
+
+('KN003', 'HS004', N'Dưới 1 năm'),
+('KN004', 'HS004', N'1 - 3 năm'),
+
+('KN001', 'HS005', N'1 - 3 năm'),
+('KN002', 'HS005', N'1 - 3 năm'),
+
+('KN001', 'HS006', N'1 - 3 năm'),
+
+('KN005', 'HS007', N'1 - 3 năm');
 
 -- 11. LichRanh (Tiền tố: LR)
 INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
@@ -591,3 +606,81 @@ VALUES
  N'Chờ xử lý');
 GO
 */
+
+--TRƯỜNG
+--THÊM NGƯỜI GIÚP VIỆC PHÙ HỢP--
+-- Tạo tài khoản Người dùng (Mã: GV008) với mật khẩu '123456' đã mã hóa BCrypt
+go
+INSERT INTO NguoiDung (MaNguoiDung, HoTen, Email, SoDienThoai, MatKhau, DiaChi, TrangThai, NgayTao) 
+VALUES
+('GV008', N'Siêu Nhân Giúp Việc', 'sieunhan@example.com', '0999999999', '$2a$10$.5Elh8fgxypNUWhpUUr/xOa2sZm0VIaE0qWuGGl9otUfobb46T1Pq', N'Đà Nẵng', 1, GETDATE());
+go
+-- 2. Gán quyền Người giúp việc (VT004)
+INSERT INTO NguoiDungVaiTro (MaNguoiDung, MaVaiTro, NgayGan) 
+VALUES
+('GV008', 'VT004', GETDATE());
+go
+-- 3. Tạo Hồ sơ (Mã: HS008, trạng thái Đã duyệt)
+INSERT INTO HoSoNguoiGiupViec (MaHoSo, MaNguoiGiupViec, SoCCCD, NgaySinh, GioiTinh, TenNguoiThan, SDTNguoiThan, TrangThaiXacMinh) 
+VALUES
+('HS008', 'GV008', '048099001234', '1995-01-01', N'Nam', N'Người Thân Hỗ Trợ', '0909999999', N'Đã duyệt');
+go
+-- Thêm TOÀN BỘ Kỹ năng cho nhân viên Siêu nhân (Khớp chuẩn Frontend)
+INSERT INTO KyNangNguoiGiupViec (MaKyNang, MaHoSo, KinhNghiem) 
+VALUES
+('KN001', 'HS008', N'Trên 5 năm'),
+('KN002', 'HS008', N'Trên 5 năm'),
+('KN003', 'HS008', N'3 - 5 năm'),
+('KN004', 'HS008', N'1 - 3 năm'),
+('KN005', 'HS008', N'Dưới 1 năm'),
+('KN006', 'HS008', N'1 - 3 năm');
+go
+-- 1. Xóa sạch lịch rảnh cũ của GV008 để làm lại từ đầu (tránh lỗi trùng lặp)
+DELETE FROM LichRanhCaLamViec 
+WHERE MaLichRanh IN (SELECT MaLichRanh FROM LichRanh WHERE MaNguoiGiupViec = 'GV008');
+
+DELETE FROM LichRanh 
+WHERE MaNguoiGiupViec = 'GV008';
+
+-- 2. Kiểm tra và tạo Ca Làm Việc (Sáng: 08:00 - 12:00)
+IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '14:00')
+BEGIN
+    -- Nếu DB chưa có ca này, chèn mã mới CA009
+    INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) 
+    VALUES ('CA009', '08:00', '12:00');
+END
+
+-- 3. Kiểm tra và tạo Ca Làm Việc (Chiều: 14:00 - 18:00)
+IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '16:00' AND GioKetThuc = '20:00')
+BEGIN
+    -- Nếu DB chưa có ca này, chèn mã mới CA010
+    INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) 
+    VALUES ('CA010', '16:00', '20:00');
+END
+
+-- 4. Tạo Ngày rảnh cho 3 ngày (02/06, 03/06, 04/06)
+-- Đặt mã LR901 trở đi để chắc chắn không đụng hàng với dữ liệu cũ
+go
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) 
+VALUES
+('LR901', 'GV008', GETDATE()),
+('LR902', 'GV008', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR903', 'GV008', DATEADD(DAY, 2, CAST(GETDATE() AS DATE)));
+go
+-- 5. Lấy mã ca thực tế trong DB (Dù là CA009 hay mã do C# tự sinh ra)
+DECLARE @MaCaSang CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '14:00');
+DECLARE @MaCaChieu CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '16:00' AND GioKetThuc = '20:00');
+-- 6. Gắn 2 ca vừa tìm được vào 3 ngày rảnh
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) 
+VALUES
+-- Lịch ngày 02/06
+('LR901', @MaCaSang), 
+('LR901', @MaCaChieu),
+
+-- Lịch ngày 03/06
+('LR902', @MaCaSang), 
+('LR902', @MaCaChieu),
+
+-- Lịch ngày 04/06
+('LR903', @MaCaSang), 
+('LR903', @MaCaChieu);

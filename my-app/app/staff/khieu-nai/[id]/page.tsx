@@ -146,6 +146,8 @@ const ManualAssignModal = ({
     (slideIndex + 1) * itemsPerSlide,
   );
 
+  const BACKEND_URL = "https://localhost:7095";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -216,7 +218,12 @@ const ManualAssignModal = ({
                     >
                       <div className="flex gap-4 items-start mb-4">
                         <img
-                          src={c.anhChanDung || "/default-avatar.png"}
+                          src={
+                            c.anhChanDung && c.anhChanDung.startsWith("/")
+                              ? `${BACKEND_URL}${c.anhChanDung}`
+                              : c.anhChanDung ||
+                                "/images/anhnguoigiupviec/default.png"
+                          }
                           alt={c.hoTen}
                           className="w-16 h-16 rounded-full object-cover border-2 border-indigo-50"
                         />
