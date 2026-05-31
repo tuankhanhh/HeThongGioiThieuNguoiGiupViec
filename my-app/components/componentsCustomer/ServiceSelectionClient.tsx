@@ -28,20 +28,6 @@ interface Props {
   services: Service[];
 }
 
-const getImageUrl = (imagePath: string) => {
-  if (!imagePath) return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500";
-  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-    return imagePath;
-  }
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5231/api";
-  const apiOrigin = apiUrl.replace(/\/api$/, "");
-  if (imagePath.startsWith("/uploads/") || imagePath.startsWith("uploads/")) {
-    const cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
-    return `${apiOrigin}${cleanPath}`;
-  }
-  return `/images/dichvu/${imagePath}`;
-};
-
 // ---------------- CLIENT COMPONENT ----------------
 export default function ServiceSelectionClient({ services }: Props) {
   const router = useRouter();
@@ -132,11 +118,10 @@ export default function ServiceSelectionClient({ services }: Props) {
                 key={service.id}
                 onClick={() => handleSelect(service.id)}
                 className={`relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border
-                ${
-                  isSelected
+                ${isSelected
                     ? "bg-[#9ff1d7] border-[#0d7660] shadow-md transform scale-[1.02]"
                     : "bg-[#f3f7f6] border-transparent hover:bg-white hover:border-[#9ff1d7] shadow-sm hover:shadow-lg"
-                }`}
+                  }`}
               >
                 {/* Icon tích chọn */}
                 {isSelected && (
@@ -159,7 +144,7 @@ export default function ServiceSelectionClient({ services }: Props) {
                 >
                   {service.image ? (
                     <img
-                      src={getImageUrl(service.image)}
+                      src={`/images/dichvu/${service.image}`}
                       alt={service.title}
                       className="w-full h-full object-cover"
                     />
@@ -209,11 +194,10 @@ export default function ServiceSelectionClient({ services }: Props) {
             onClick={handleContinue}
             disabled={selectedServices.length === 0}
             className={`text-base font-bold py-4 px-12 rounded-2xl flex items-center gap-3 transition-all w-full md:w-auto justify-center cursor-pointer
-            ${
-              selectedServices.length > 0
+            ${selectedServices.length > 0
                 ? "bg-[#0d7660] hover:bg-[#0a6350] text-white shadow-lg active:scale-95"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
+              }`}
           >
             Tiếp tục
             <ArrowForwardIcon fontSize="small" />

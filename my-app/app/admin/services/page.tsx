@@ -37,16 +37,13 @@ const emptyForm: FormData = {
   tenKyNang: "", // Khởi tạo chuỗi rỗng
 };
 
-const getImageUrl = (imagePath: string) => {
+const getImageUrl = (imagePath: string | null | undefined): string => {
   if (!imagePath) return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500";
-  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-    return imagePath;
-  }
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5231/api";
-  const apiOrigin = apiUrl.replace(/\/api$/, "");
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) return imagePath;
   if (imagePath.startsWith("/uploads/") || imagePath.startsWith("uploads/")) {
-    const cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
-    return `${apiOrigin}${cleanPath}`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5231/api";
+    const origin = apiUrl.replace(/\/api$/, "");
+    return `${origin}${imagePath.startsWith("/") ? imagePath : "/" + imagePath}`;
   }
   return `/images/dichvu/${imagePath}`;
 };
@@ -422,11 +419,7 @@ export default function ServicesManagement() {
                 }}
               >
                 <img
-                  src={
-                    service.hinhAnh
-                      ? `/images/dichvu/${service.hinhAnh}`
-                      : "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"
-                  }
+                  src={getImageUrl(service.hinhAnh)}
                   alt={service.tenDichVu}
                   loading="lazy"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -813,11 +806,7 @@ export default function ServicesManagement() {
                   }}
                 >
                   <img
-                    src={
-                      viewingService.hinhAnh
-                        ? `/images/dichvu/${viewingService.hinhAnh}`
-                        : "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"
-                    }
+                    src={getImageUrl(viewingService.hinhAnh)}
                     style={{
                       width: "100%",
                       height: "100%",
@@ -949,7 +938,7 @@ export default function ServicesManagement() {
                   )
                 </h4>
                 {viewingService.thanhPhans &&
-                viewingService.thanhPhans.length > 0 ? (
+                  viewingService.thanhPhans.length > 0 ? (
                   <div
                     style={{
                       display: "grid",
@@ -1296,14 +1285,11 @@ export default function ServicesManagement() {
                       const formDataUpload = new FormData();
                       formDataUpload.append("file", file);
                       try {
-                        const response: { imageUrl: string } = await api.post(
+                        const response = await api.post(
                           "/dichvu/upload-image",
                           formDataUpload,
                         );
-                        setFormData({
-                          ...formData,
-                          hinhAnh: response.imageUrl,
-                        });
+                        setFormData({ ...formData, hinhAnh: response.imageUrl });
                         showAlert(
                           "Tải ảnh lên thành công!",
                           "Thành công",
