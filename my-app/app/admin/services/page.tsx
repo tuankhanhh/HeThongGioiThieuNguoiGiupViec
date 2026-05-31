@@ -409,8 +409,9 @@ export default function ServicesManagement() {
               >
                 <img
                   src={
-                    service.hinhAnh ||
-                    "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"
+                    service.hinhAnh
+                      ? `/images/dichvu/${service.hinhAnh}`
+                      : "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"
                   }
                   alt={service.tenDichVu}
                   loading="lazy"
@@ -798,7 +799,11 @@ export default function ServicesManagement() {
                   }}
                 >
                   <img
-                    src={viewingService.hinhAnh}
+                    src={
+                      viewingService.hinhAnh
+                        ? `/images/dichvu/${viewingService.hinhAnh}`
+                        : "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"
+                    }
                     style={{
                       width: "100%",
                       height: "100%",
@@ -1277,11 +1282,14 @@ export default function ServicesManagement() {
                       const formDataUpload = new FormData();
                       formDataUpload.append("file", file);
                       try {
-                        const response = await api.post(
+                        const response: { imageUrl: string } = await api.post(
                           "/dichvu/upload-image",
                           formDataUpload,
                         );
-                        setFormData({ ...formData, hinhAnh: response.imageUrl });
+                        setFormData({
+                          ...formData,
+                          hinhAnh: response.imageUrl,
+                        });
                         showAlert(
                           "Tải ảnh lên thành công!",
                           "Thành công",

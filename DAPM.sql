@@ -643,7 +643,7 @@ DELETE FROM LichRanh
 WHERE MaNguoiGiupViec = 'GV008';
 
 -- 2. Kiểm tra và tạo Ca Làm Việc (Sáng: 08:00 - 12:00)
-IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '12:00')
+IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '14:00')
 BEGIN
     -- Nếu DB chưa có ca này, chèn mã mới CA009
     INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) 
@@ -651,11 +651,11 @@ BEGIN
 END
 
 -- 3. Kiểm tra và tạo Ca Làm Việc (Chiều: 14:00 - 18:00)
-IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '14:00' AND GioKetThuc = '18:00')
+IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '16:00' AND GioKetThuc = '20:00')
 BEGIN
     -- Nếu DB chưa có ca này, chèn mã mới CA010
     INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) 
-    VALUES ('CA010', '14:00', '18:00');
+    VALUES ('CA010', '16:00', '20:00');
 END
 
 -- 4. Tạo Ngày rảnh cho 3 ngày (02/06, 03/06, 04/06)
@@ -663,13 +663,13 @@ END
 go
 INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) 
 VALUES
-('LR901', 'GV008', '2026-06-02'),
-('LR902', 'GV008', '2026-06-03'),
-('LR903', 'GV008', '2026-06-04');
+('LR901', 'GV008', GETDATE()),
+('LR902', 'GV008', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
+('LR903', 'GV008', DATEADD(DAY, 2, CAST(GETDATE() AS DATE)));
 go
 -- 5. Lấy mã ca thực tế trong DB (Dù là CA009 hay mã do C# tự sinh ra)
-DECLARE @MaCaSang CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '12:00');
-DECLARE @MaCaChieu CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '14:00' AND GioKetThuc = '18:00');
+DECLARE @MaCaSang CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '14:00');
+DECLARE @MaCaChieu CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '16:00' AND GioKetThuc = '20:00');
 -- 6. Gắn 2 ca vừa tìm được vào 3 ngày rảnh
 INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) 
 VALUES

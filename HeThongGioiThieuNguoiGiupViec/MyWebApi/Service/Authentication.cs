@@ -33,7 +33,6 @@ namespace MyWebApi.Service
 
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
-
             var user = await _context.NguoiDungs
                 .Include(u => u.NguoiDungVaiTros)
                 .ThenInclude(ur => ur.MaVaiTroNavigation)
@@ -46,9 +45,16 @@ namespace MyWebApi.Service
 
             bool isPasswordValid = _passwordService.VerifyPassword(request.MatKhau, user.MatKhau);
 
-            if (!user.TrangThai || !isPasswordValid)
+            // Kiểm tra mật khẩu trước
+            if (!isPasswordValid)
             {
                 throw new UnauthorizedAccessException("Sai tài khoản hoặc mật khẩu");
+            }
+
+            // Kiểm tra trạng thái tài khoản sau khi xác thực mật khẩu thành công
+            if (!user.TrangThai)
+            {
+                throw new UnauthorizedAccessException("Tài khoản đã bị khóa");
             }
 
             var roles = user.NguoiDungVaiTros
