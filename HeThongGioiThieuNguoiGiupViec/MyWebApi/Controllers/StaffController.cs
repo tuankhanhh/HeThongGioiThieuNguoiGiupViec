@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyWebApi.DTO.Request.Staff;
 using MyWebApi.Models;
+using MyWebApi.Service;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,10 +18,12 @@ namespace MyWebApi.Controllers
     public class StaffController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPasswordService _passwordService;
 
-        public StaffController(ApplicationDbContext context)
+        public StaffController(ApplicationDbContext context, IPasswordService passwordService)
         {
             _context = context;
+            _passwordService = passwordService;
         }
         //DANH SÁCH CÁC NGƯỜI GIÚP VIỆC Ở TRANG CHỦ
         // GET /api/v1/staff/ho-so-cac-nguoi-giup-viec
@@ -1147,6 +1150,42 @@ namespace MyWebApi.Controllers
             while (await _context.LichSuTrangThaiDons.AnyAsync(x => x.MaLichSu == ma));
             return ma;
         }
+
+        // =============================================
+        // 5. DOI MAT KHAU
+        // =============================================
+
+        // POST /api/v1/staff/doi-mat-khau
+        [HttpPost("doi-mat-khau")]
+        public async Task<IActionResult> DoiMatKhau([FromBody] DoiMatKhauRequest request)
+        {
+            if (request == null
+                || string.IsNullOrWhiteSpace(request.MatKhauCu)
+                || string.IsNullOrWhiteSpace(request.MatKhauMoi))
+            {
+                return BadRequest(new { success = false, message = "Vui lòng điền đầy đủ thông tin." });
+            }
+
+            var staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(staffId))
+                return Unauthorized(new { success = false, message = "Không tìm thấy thông tin định danh." });
+
+            var nguoiDung = await _context.NguoiDungs.FindAsync(staffId);
+            if (nguoiDung == null)
+                return NotFound(new { success = false, message = "Không tìm thấy tài khoản." });
+
+            // Kiểm tra mật khẩu cũ (dùng PasswordService hỗ trợ cả text thuần lẫn BCrypt)
+            bool matKhauCuHopLe = _passwordService.VerifyPassword(request.MatKhauCu, nguoiDung.MatKhau ?? "");
+            if (!matKhauCuHopLe)
+                return BadRequest(new { success = false, message = "Mật khẩu cũ không đúng." });
+
+            // Hash mật khẩu mới bằng BCrypt trước khi lưu
+            nguoiDung.MatKhau = _passwordService.HashPassword(request.MatKhauMoi);
+            _context.NguoiDungs.Update(nguoiDung);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Đổi mật khẩu thành công." });
+        }
     }
 
     // =============================================
@@ -1181,5 +1220,12 @@ namespace MyWebApi.Controllers
         public string maKyNang { get; set; } = null!;
         public string tenKyNang { get; set; } = string.Empty;
         public string kinhNghiem { get; set; } = string.Empty;
+    }
+
+    // DTO cho Đổi mật khẩu
+    public class DoiMatKhauRequest
+    {
+        public string MatKhauCu { get; set; } = null!;
+        public string MatKhauMoi { get; set; } = null!;
     }
 }
