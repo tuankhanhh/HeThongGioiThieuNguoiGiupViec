@@ -28,6 +28,20 @@ interface Props {
   services: Service[];
 }
 
+const getImageUrl = (imagePath: string) => {
+  if (!imagePath) return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500";
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5231/api";
+  const apiOrigin = apiUrl.replace(/\/api$/, "");
+  if (imagePath.startsWith("/uploads/") || imagePath.startsWith("uploads/")) {
+    const cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+    return `${apiOrigin}${cleanPath}`;
+  }
+  return `/images/dichvu/${imagePath}`;
+};
+
 // ---------------- CLIENT COMPONENT ----------------
 export default function ServiceSelectionClient({ services }: Props) {
   const router = useRouter();
@@ -145,7 +159,7 @@ export default function ServiceSelectionClient({ services }: Props) {
                 >
                   {service.image ? (
                     <img
-                      src={`/images/dichvu/${service.image}`}
+                      src={getImageUrl(service.image)}
                       alt={service.title}
                       className="w-full h-full object-cover"
                     />

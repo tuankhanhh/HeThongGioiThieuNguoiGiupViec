@@ -37,6 +37,20 @@ const emptyForm: FormData = {
   tenKyNang: "", // Khởi tạo chuỗi rỗng
 };
 
+const getImageUrl = (imagePath: string) => {
+  if (!imagePath) return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500";
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5231/api";
+  const apiOrigin = apiUrl.replace(/\/api$/, "");
+  if (imagePath.startsWith("/uploads/") || imagePath.startsWith("uploads/")) {
+    const cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+    return `${apiOrigin}${cleanPath}`;
+  }
+  return `/images/dichvu/${imagePath}`;
+};
+
 export default function ServicesManagement() {
   const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
@@ -408,10 +422,7 @@ export default function ServicesManagement() {
                 }}
               >
                 <img
-                  src={
-                    service.hinhAnh ||
-                    "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500"
-                  }
+                  src={getImageUrl(service.hinhAnh)}
                   alt={service.tenDichVu}
                   loading="lazy"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -798,7 +809,7 @@ export default function ServicesManagement() {
                   }}
                 >
                   <img
-                    src={viewingService.hinhAnh}
+                    src={getImageUrl(viewingService.hinhAnh)}
                     style={{
                       width: "100%",
                       height: "100%",
@@ -1258,7 +1269,7 @@ export default function ServicesManagement() {
                       }}
                     >
                       <img
-                        src={formData.hinhAnh}
+                        src={getImageUrl(formData.hinhAnh)}
                         alt="Preview"
                         style={{
                           width: "100%",

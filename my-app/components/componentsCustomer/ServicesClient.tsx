@@ -16,6 +16,20 @@ interface ServiceType {
   popular?: boolean;
 }
 
+const getImageUrl = (imagePath: string) => {
+  if (!imagePath) return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500";
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5231/api";
+  const apiOrigin = apiUrl.replace(/\/api$/, "");
+  if (imagePath.startsWith("/uploads/") || imagePath.startsWith("uploads/")) {
+    const cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+    return `${apiOrigin}${cleanPath}`;
+  }
+  return `/images/dichvu/${imagePath}`;
+};
+
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -74,7 +88,7 @@ function ServiceCard({ service }: { service: ServiceType }) {
       {/* ... (Giữ nguyên toàn bộ phần render HTML của ServiceCard như cũ) ... */}
       <div className="relative h-56 overflow-hidden">
         <img
-          src={`/images/dichvu/${service.image}`}
+          src={getImageUrl(service.image)}
           alt={service.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
