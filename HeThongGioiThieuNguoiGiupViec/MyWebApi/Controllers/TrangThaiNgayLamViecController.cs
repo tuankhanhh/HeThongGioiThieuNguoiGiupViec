@@ -118,19 +118,12 @@ namespace MyWebApi.Controllers
                     _context.ThuNhapNguoiGiupViecs.Add(thuNhap);
                 }
             }
-            // ---> LOGIC TỰ ĐỘNG TẠO KHIẾU NẠI <---
+            
             else if (request.TrangThai == "Không đến làm")
             {
                 // Sử dụng luôn tham số maNgayLamViec của hàm, không khai báo lại
                 string maKhachHang = job.MaDonDatDichVuNavigation.MaDonNavigation.MaKhachhang;
-
-                // Kiểm tra xem đã tạo khiếu nại cho ngày làm việc này chưa
-                bool daTaoKhieuNai = await _context.KhieuNais
-                    .AnyAsync(k => k.MaNgayLamViec == maNgayLamViec && k.NoiDung == "Người giúp việc không đến làm");
-
-
-                if (!daTaoKhieuNai)
-                {
+                
                     var khieuNai = new KhieuNai
                     {
                         MaKhieuNai = await _context.GenerateIdAsync("KhieuNai", "MaKhieuNai", "KN"),
@@ -141,8 +134,7 @@ namespace MyWebApi.Controllers
                         TrangThai = "Chờ xử lý"
                     };
 
-                    _context.KhieuNais.Add(khieuNai);
-                }
+                    _context.KhieuNais.Add(khieuNai); 
             }
 
             await _context.SaveChangesAsync();

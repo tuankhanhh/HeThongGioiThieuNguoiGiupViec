@@ -279,7 +279,8 @@ INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) VALUES
 ('CA005', '18:00', '21:00'),
 ('CA006', '08:00', '14:00'),
 ('CA007', '14:00', '20:00'),
-('CA008', '07:00', '13:00');
+('CA008', '07:00', '13:00'),
+('CA009', '07:00', '23:00');
 
 -- 5. DichVu (Tiền tố: DV)
 INSERT INTO DichVu (MaDichVu, MaKyNang, TenDichVu, MoTa, GiaTheoGio, HinhAnh, PhoBien, TrangThai) VALUES 
@@ -377,7 +378,8 @@ INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
 ('LR014', 'GV002', '2026-06-24'),
 ('LR015', 'GV003', '2026-06-24'), 
 ('LR016', 'GV002', '2026-06-25'),
-('LR017', 'GV003', '2026-06-25');
+('LR017', 'GV003', '2026-06-25'),
+('LR018', 'GV001', GETDATE());
 
 -- 12. LichRanhCaLamViec (Mã LR và CA đã chuẩn hóa)
 INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) VALUES
@@ -390,8 +392,8 @@ INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) VALUES
 ('LR010', 'CA001'), ('LR011', 'CA001'), 
 ('LR012', 'CA001'), ('LR013', 'CA001'), 
 ('LR014', 'CA001'), ('LR015', 'CA001'), 
-('LR016', 'CA001'), ('LR017', 'CA001');
-
+('LR016', 'CA001'), ('LR017', 'CA001'),
+('LR018', 'CA009');
 -- 13. DonDat (Tiền tố: DD)
 INSERT INTO DonDat (MaDon, MaKhachhang, MaNhanVien, DiaChi, SoNgay, TongTien, NgayDat, GhiChu) VALUES
 ('DD001', 'KH001', NULL, N'123 Lê Duẩn, Hải Châu, Đà Nẵng', 1, 180000, '2026-05-05 10:00:00', N'Nhà nhiều bụi, cần dọn dẹp kỹ'),
@@ -528,8 +530,8 @@ SET
     NgayLam = GETDATE(),
     
     -- 2. Cập nhật giờ bắt đầu lùi lại 30 phút so với lúc bạn chạy lệnh này
-    GioBatDau = CAST(DATEADD(MINUTE, -30, GETDATE()) AS TIME),
-	GioKetThuc = CAST(DATEADD(MINUTE, ThoiLuongThucHien + 30, GETDATE()) AS TIME),
+    GioBatDau = CAST(DATEADD(MINUTE, -15, GETDATE()) AS TIME),
+	GioKetThuc = CAST(DATEADD(MINUTE, ThoiLuongThucHien + 15, GETDATE()) AS TIME),
     
     -- 3. Đảm bảo trạng thái đang là "Đã phân công" để Frontend hiện nút
     TrangThai = N'Đã phân công'
@@ -563,15 +565,12 @@ VALUES (
 ---để ca giặt sofa không có người thay thế
 -- Giặt sofa 2h (không có người thay thế)
 INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) VALUES
-('LR018', 'GV001', '2026-05-24'),
 ('LR019', 'GV004', '2026-05-24'),
 ('LR020', 'GV005', '2026-05-24'),
 ('LR021', 'GV006', '2026-05-24'),
 ('LR022', 'GV007', '2026-05-24');
 GO
 INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) VALUES
-('LR018', 'CA001'),
-('LR018', 'CA002'),
 
 ('LR019', 'CA003'),
 
@@ -635,52 +634,49 @@ VALUES
 ('KN005', 'HS008', N'Dưới 1 năm'),
 ('KN006', 'HS008', N'1 - 3 năm');
 go
--- 1. Xóa sạch lịch rảnh cũ của GV008 để làm lại từ đầu (tránh lỗi trùng lặp)
-DELETE FROM LichRanhCaLamViec 
-WHERE MaLichRanh IN (SELECT MaLichRanh FROM LichRanh WHERE MaNguoiGiupViec = 'GV008');
+-- Xóa lịch rảnh cũ của GV008
+DELETE FROM LichRanhCaLamViec
+WHERE MaLichRanh IN (
+    SELECT MaLichRanh
+    FROM LichRanh
+    WHERE MaNguoiGiupViec = 'GV008'
+);
 
-DELETE FROM LichRanh 
+DELETE FROM LichRanh
 WHERE MaNguoiGiupViec = 'GV008';
 
--- 2. Kiểm tra và tạo Ca Làm Việc (Sáng: 08:00 - 12:00)
-IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '14:00')
+-- Tạo ca làm việc 06:00 - 23:00 nếu chưa tồn tại
+IF NOT EXISTS (
+    SELECT 1
+    FROM CaLamViec
+    WHERE GioBatDau = '06:00'
+      AND GioKetThuc = '23:00'
+)
 BEGIN
-    -- Nếu DB chưa có ca này, chèn mã mới CA009
-    INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) 
-    VALUES ('CA009', '08:00', '12:00');
+    INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc)
+    VALUES ('CA011', '06:00', '23:00');
 END
+GO
 
--- 3. Kiểm tra và tạo Ca Làm Việc (Chiều: 14:00 - 18:00)
-IF NOT EXISTS (SELECT 1 FROM CaLamViec WHERE GioBatDau = '16:00' AND GioKetThuc = '20:00')
-BEGIN
-    -- Nếu DB chưa có ca này, chèn mã mới CA010
-    INSERT INTO CaLamViec (MaCaLamViec, GioBatDau, GioKetThuc) 
-    VALUES ('CA010', '16:00', '20:00');
-END
-
--- 4. Tạo Ngày rảnh cho 3 ngày (02/06, 03/06, 04/06)
--- Đặt mã LR901 trở đi để chắc chắn không đụng hàng với dữ liệu cũ
-go
-INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay) 
+-- Tạo lịch rảnh cho 3 ngày
+INSERT INTO LichRanh (MaLichRanh, MaNguoiGiupViec, Ngay)
 VALUES
-('LR901', 'GV008', GETDATE()),
+('LR901', 'GV008', CAST(GETDATE() AS DATE)),
 ('LR902', 'GV008', DATEADD(DAY, 1, CAST(GETDATE() AS DATE))),
 ('LR903', 'GV008', DATEADD(DAY, 2, CAST(GETDATE() AS DATE)));
-go
--- 5. Lấy mã ca thực tế trong DB (Dù là CA009 hay mã do C# tự sinh ra)
-DECLARE @MaCaSang CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '08:00' AND GioKetThuc = '14:00');
-DECLARE @MaCaChieu CHAR(5) = (SELECT MaCaLamViec FROM CaLamViec WHERE GioBatDau = '16:00' AND GioKetThuc = '20:00');
--- 6. Gắn 2 ca vừa tìm được vào 3 ngày rảnh
-INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec) 
+GO
+
+-- Lấy mã ca 06:00 - 23:00
+DECLARE @MaCa CHAR(5);
+
+SELECT @MaCa = MaCaLamViec
+FROM CaLamViec
+WHERE GioBatDau = '06:00'
+  AND GioKetThuc = '23:00';
+
+-- Gán ca cho cả 3 ngày
+INSERT INTO LichRanhCaLamViec (MaLichRanh, MaCaLamViec)
 VALUES
--- Lịch ngày 02/06
-('LR901', @MaCaSang), 
-('LR901', @MaCaChieu),
-
--- Lịch ngày 03/06
-('LR902', @MaCaSang), 
-('LR902', @MaCaChieu),
-
--- Lịch ngày 04/06
-('LR903', @MaCaSang), 
-('LR903', @MaCaChieu);
+('LR901', @MaCa),
+('LR902', @MaCa),
+('LR903', @MaCa);
